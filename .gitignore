@@ -1,0 +1,19 @@
+node_modules/
+.pnpm-store/
+dist/
+.next/
+out/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Material interno (no se publica): kit de referencia y plan de sprints
+/PROTOTIPO Y DISEÑO ()/
+/plan-sprints/

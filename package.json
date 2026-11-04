@@ -1,0 +1,19 @@
+{
+  "name": "edunova",
+  "private": true,
+  "description": "Edunova: SaaS de gestión escolar (monorepo)",
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @edunova/web dev",
+    "dev:sitio": "pnpm --filter @edunova/sitio dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "api:artisan": "docker compose exec api php artisan"
+  }
+}

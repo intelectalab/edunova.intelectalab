@@ -1,0 +1,59 @@
+# Entorno local de Edunova (docs/10-infraestructura.md del kit).
+# Arranque: docker compose up -d   ·   API: http://localhost:8100/api/v1/salud
+name: edunova
+
+services:
+  api:
+    build: ./apps/api
+    volumes:
+      - ./apps/api:/app
+      - api_vendor:/app/vendor
+    ports:
+      - "${EDUNOVA_API_PUERTO:-8100}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: edunova
+      POSTGRES_USER: edunova
+      POSTGRES_PASSWORD: edunova
+      TZ: America/Lima
+    ports:
+      - "${EDUNOVA_PG_PUERTO:-5433}:5432"
+    volumes:
+      - postgres_datos:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edunova -d edunova"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "${EDUNOVA_REDIS_PUERTO:-6379}:6379"
+
+  s3:
+    # Almacenamiento compatible con S3 para desarrollo (la imagen de MinIO ya no se publica).
+    image: chrislusf/seaweedfs:latest
+    command: server -dir=/data -s3 -s3.port=8333
+    ports:
+      - "${EDUNOVA_S3_PUERTO:-9000}:8333"
+    volumes:
+      - s3_datos:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${EDUNOVA_SMTP_PUERTO:-1026}:1025"
+      - "${EDUNOVA_MAILPIT_PUERTO:-8026}:8025"
+
+volumes:
+  postgres_datos:
+  s3_datos:
+  api_vendor:

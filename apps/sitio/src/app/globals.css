@@ -1,0 +1,18 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--en-fondo);
+  color: var(--en-texto);
+  font-family: var(--en-fuente-texto);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--en-fuente-titulos);
+}

@@ -1,0 +1,36 @@
+/* Generado a mano desde tokens.json; mantener ambos iguales. */
+:root {
+  --en-fondo: #f8f9ff;
+  --en-tarjeta: #ffffff;
+  --en-menu-lateral: #27496f;
+  --en-navy: #1f3d5e;
+  --en-texto: #1f3d5e;
+  --en-texto2: #64748b;
+  --en-placeholder: #94a3b8;
+  --en-primario: #3a6f9f;
+  --en-primario-hover: #2e5b83;
+  --en-primario-activo: #27496f;
+  --en-suave: #f1f5f9;
+  --en-suave2: #eef4fa;
+  --en-linea: #e4e9ef;
+  --en-linea2: #d8e0e8;
+  --en-lima: #86b84a;
+  --en-lima-tinta: #2e7d32;
+  --en-lima-suave: #eaf6ed;
+  --en-ambar: #b78103;
+  --en-ambar-suave: #fef7e0;
+  --en-rojo: #c5221f;
+  --en-rojo-suave: #fde8e8;
+  --en-azul-suave: #e8f0fe;
+
+  --en-fuente-titulos: "Lexend", "Segoe UI", system-ui, sans-serif;
+  --en-fuente-texto: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+
+  --en-sombra-1: 0 1px 3px 0 rgba(31, 61, 94, 0.06), 0 1px 2px -1px rgba(31, 61, 94, 0.04);
+  --en-sombra-2: 0 10px 15px -3px rgba(39, 73, 111, 0.1), 0 4px 6px -4px rgba(39, 73, 111, 0.05);
+
+  --en-radio-sm: 6px;
+  --en-radio-md: 8px;
+  --en-radio-lg: 12px;
+  --en-radio-pill: 999px;
+}
