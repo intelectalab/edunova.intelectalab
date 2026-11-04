@@ -2,24 +2,24 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * Semillas globales del kit: 25 roles, 165 permisos, módulos, planes, SLA,
+ * parámetros legales y currículo (database/sql/02_semillas.sql).
+ * En local y en pruebas carga además el colegio de demostración.
+ *
+ *   php artisan migrate --database=propietario --seed
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        DB::unprepared(file_get_contents(database_path('sql/02_semillas.sql')));
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        if (app()->environment('local', 'testing')) {
+            $this->call(DemoSeeder::class);
+        }
     }
 }

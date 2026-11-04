@@ -12,7 +12,7 @@ SaaS de gestión escolar para colegios privados del Perú. Monorepo con la API, 
 
 El kit de referencia (documentos, prototipos y SQL original) y el plan de sprints son material interno y no están en este repositorio.
 
-Pendientes de otras historias: `apps/movil` (Expo, MOB), `packages/api-client` (requiere `api/openapi.yaml`), `database/` con el SQL del kit (EDUN-416).
+Pendientes de otras historias: `apps/movil` (Expo, MOB), `packages/api-client` (requiere `api/openapi.yaml`).
 
 ## Requisitos
 
@@ -38,7 +38,28 @@ npx pnpm@10.18.3 dev:web
 npx pnpm@10.18.3 dev:sitio
 ```
 
-La primera vez, copia `apps/api/.env.example` a `apps/api/.env` y genera la llave con `docker compose exec api php artisan key:generate`.
+La primera vez:
+
+1. Copia `apps/api/.env.example` a `apps/api/.env` y genera la llave con `docker compose exec api php artisan key:generate`.
+2. Crea la base con el esquema, las semillas y el colegio de demostración:
+
+```bash
+docker compose exec api php artisan migrate --database=propietario --seed
+```
+
+## Base de datos
+
+- El esquema inicial (171 tablas con RLS por colegio) está en `apps/api/database/sql/01_esquema.sql` y lo carga la primera migración. Los cambios posteriores van en migraciones nuevas, nunca editando ese archivo.
+- Semillas globales (25 roles, 165 permisos, módulos, planes, currículo) en `02_semillas.sql`; colegio de demostración ficticio en `03_datos_demo.sql`, solo en local y pruebas.
+- Roles de PostgreSQL:
+
+| Conexión de Laravel | Rol | Para qué |
+|---|---|---|
+| `pgsql` (por defecto) | `edunova_app` | La app. Sin bypass de RLS: solo ve el colegio fijado en `app.institucion_id` |
+| `propietario` | dueño de la base | Solo migraciones y semillas (`--database=propietario`) |
+| `plataforma` | `edunova_plataforma` | Consola interna; ve todos los colegios |
+
+En local, `infra/postgres/00-roles.sql` crea los roles con claves de desarrollo la primera vez que se crea el volumen.
 
 | Servicio | Dirección en tu máquina | Variable para cambiar el puerto |
 |---|---|---|
@@ -57,6 +78,12 @@ Los puertos de la API, PostgreSQL y Mailpit no son los habituales porque en esta
 ```bash
 docker compose exec api php artisan test
 ```
+
+```bash
+sh infra/pruebas-aislamiento.sh
+```
+
+La segunda corre las 34 pruebas de aislamiento y reglas de la base en una base limpia.
 
 ```bash
 npx pnpm@10.18.3 -r typecheck

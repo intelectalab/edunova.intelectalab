@@ -14,6 +14,10 @@
     "typecheck": "pnpm -r typecheck",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
-    "api:artisan": "docker compose exec api php artisan"
+    "api:artisan": "docker compose exec api php artisan",
+    "db:migrar": "docker compose exec api php artisan migrate --database=propietario --seed",
+    "db:reiniciar": "docker compose exec api php artisan migrate:fresh --database=propietario --seed",
+    "db:aislamiento": "sh infra/pruebas-aislamiento.sh",
+    "api:test": "docker compose exec api php artisan test"
   }
 }

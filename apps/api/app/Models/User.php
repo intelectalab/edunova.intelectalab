@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,23 +10,33 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+/**
+ * Usuario global (tabla «users» del kit, sin institucion_id): una persona puede
+ * pertenecer a varios colegios por medio de «membresias».
+ */
+#[Fillable(['nombres', 'apellidos', 'tipo_documento', 'numero_documento', 'email', 'celular', 'password'])]
+#[Hidden(['password', 'dos_pasos_secreto'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    /** La tabla del kit no tiene «remember_token»: se desactiva «recordarme». */
+    protected $rememberTokenName = '';
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'email_verificado_at' => 'datetime',
+            'ultimo_acceso_at' => 'datetime',
+            'es_staff_plataforma' => 'boolean',
+            'activo' => 'boolean',
             'password' => 'hashed',
         ];
+    }
+
+    public function nombreCompleto(): string
+    {
+        return trim("{$this->nombres} {$this->apellidos}");
     }
 }
