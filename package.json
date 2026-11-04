@@ -18,6 +18,13 @@
     "db:migrar": "docker compose exec api php artisan migrate --database=propietario --seed",
     "db:reiniciar": "docker compose exec api php artisan migrate:fresh --database=propietario --seed",
     "db:aislamiento": "sh infra/pruebas-aislamiento.sh",
-    "api:test": "docker compose exec api php artisan test"
+    "api:test": "docker compose exec api php artisan test",
+    "test": "pnpm -r test",
+    "verificar": "sh infra/verificar.sh"
+  },
+  "pnpm": {
+    "overrides": {
+      "next>postcss": "^8.5.23"
+    }
   }
 }
