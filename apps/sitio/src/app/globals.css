@@ -1,18 +1,53 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --fuente-titulos: 'Lexend', system-ui, sans-serif;
+    --fuente-texto: 'Source Sans 3', system-ui, sans-serif;
+
+    /* D-SIT-12 (abierta): token único del verde de acción. Candidatos con texto blanco:
+       emerald-600 de la landing 3.77:1, #7BB33B del CMS 2.51:1, #0E8A5F de DESIGN.md 4.36:1;
+       ninguno llega al 4.5:1 de WCAG AA. Mientras se decide se usa emerald-700 (5.48:1),
+       que es el hover de la landing, y emerald-800 en hover. */
+    --accion: #047857;
+    --accion-hover: #065f46;
+    --accion-texto: #ffffff;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    @apply bg-background font-body-md text-body-md text-on-surface antialiased;
+    overscroll-behavior: none;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--fuente-titulos);
+  }
 }
 
-body {
-  margin: 0;
-  background: var(--en-fondo);
-  color: var(--en-texto);
-  font-family: var(--en-fuente-texto);
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--en-fuente-titulos);
+@layer components {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
 }

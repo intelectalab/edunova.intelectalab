@@ -17,3 +17,7 @@ Thumbs.db
 # Material interno (no se publica): kit de referencia y plan de sprints
 /PROTOTIPO Y DISEÑO ()/
 /plan-sprints/
+
+# Resultados de Playwright
+test-results/
+playwright-report/

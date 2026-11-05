@@ -1,9 +1,13 @@
-// Esqueleto del sitio público (EDUN-415). La landing real llega con EDUN-220 y EDUN-242.
+import { sitio } from '@/contenido/provisional';
+
+// Landing pública. Su contenido real llega con las historias de la landing (EP-SIT).
 export default function Inicio() {
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: '64px 16px' }}>
-      <h1 style={{ color: 'var(--en-navy)' }}>Edunova</h1>
-      <p style={{ color: 'var(--en-texto2)' }}>Sitio público en construcción.</p>
+    <main className="max-w-5xl mx-auto px-margin-mobile md:px-margin py-space-2xl flex flex-col gap-space-md">
+      <h1 className="font-headline-lg-mobile text-headline-lg-mobile md:font-display-lg md:text-display-lg text-primary">
+        {sitio.titulo}
+      </h1>
+      <p className="font-body-lg text-body-lg text-on-surface-variant">{sitio.enConstruccion}</p>
     </main>
   );
 }

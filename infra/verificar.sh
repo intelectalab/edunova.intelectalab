@@ -3,7 +3,8 @@
 #   sh infra/verificar.sh      (o «make verify» donde haya make)
 #
 # Partes del «make verify» del kit que aún no aplican:
-#   cms (EDUN-223), OpenAPI (falta api/openapi.yaml), Jest (app móvil), axe (sin pantallas todavía).
+#   cms (EDUN-223), OpenAPI (falta api/openapi.yaml), Jest (app móvil).
+# La primera vez: (cd apps/sitio && npx playwright install chromium)
 set -e
 PNPM="${PNPM:-npx -y pnpm@10.18.3}"
 
@@ -19,5 +20,8 @@ $PNPM -r typecheck
 $PNPM -r lint
 $PNPM -r test
 $PNPM -r build
+
+echo "== Sitio: pruebas de pantalla (Playwright + axe)"
+(cd apps/sitio && $PNPM e2e)
 
 echo "Verificación completa: todo OK"
