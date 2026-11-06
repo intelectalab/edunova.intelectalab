@@ -72,3 +72,30 @@ INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden, fijo) VALUES
 -- Sección de módulos de la landing (EDUN-251). {n} = cantidad de módulos visibles.
 INSERT INTO cms.secciones (clave, nombre, orden, config) VALUES
  ('modulos', 'Módulos', 6, '{"insignia":"[A CONFIRMAR]","titulo":"[A CONFIRMAR]","descripcion":null,"boton_ver":"Ver los {n} módulos del sistema escolar","boton_ocultar":"Ocultar catálogo de módulos"}');
+
+-- Sprint 5 (EDUN-245, 248, 254, 257, 260, 263): secciones de la landing con textos por completar,
+-- cifras verificables del producto y enlaces del footer.
+INSERT INTO cms.secciones (clave, nombre, orden, config) VALUES
+ ('retos', 'Retos', 4, '{"insignia": "[A CONFIRMAR]", "titulo": "[A CONFIRMAR]", "descripcion": null, "etiqueta_dolor": "El dolor habitual", "etiqueta_solucion": "Solución Edunova", "tarjetas": []}'),
+ ('videos', 'Videos', 7, '{"insignia": "[A CONFIRMAR]", "titulo": "[A CONFIRMAR]", "descripcion": null, "boton_demo": "Coordinar demostración en vivo"}'),
+ ('pasos', 'Implementación', 8, '{"insignia": "[A CONFIRMAR]", "titulo": "[A CONFIRMAR]", "descripcion": null, "pasos": []}'),
+ ('casos_uso', 'Casos de uso', 9, '{"insignia": "[A CONFIRMAR]", "titulo": "[A CONFIRMAR]", "descripcion": null, "tarjetas": []}'),
+ ('testimonios', 'Testimonios', 10, '{"insignia": "Testimonios", "titulo": "[A CONFIRMAR]", "leyenda_ejemplo": "Testimonios de ejemplo: se reemplazan por testimonios reales con consentimiento firmado."}'),
+ ('planes', 'Planes', 11, '{"insignia": "[A CONFIRMAR]", "titulo": "[A CONFIRMAR]", "descripcion": null, "mensual": "Mensual", "anual": "Anual", "por_mes": "/ mes", "personalizado": "Personalizado", "personalizado_nota": "[A CONFIRMAR]"}'),
+ ('cta_final', 'CTA final', 12, '{"insignia": null, "titulo": "[A CONFIRMAR]", "descripcion": null, "boton": "Solicitar demo gratuita", "beneficios": []}'),
+ ('footer', 'Footer', 13, '{"descripcion": "[A CONFIRMAR]", "derechos": "Todos los derechos reservados.", "moneda": "Moneda: Soles (S/)"}');
+INSERT INTO cms.contadores (label, valor, sufijo, orden) VALUES
+ ('módulos integrados en una sola plataforma', 18, NULL, 1),
+ ('roles con permisos propios: dirección, docentes, familias', 25, NULL, 2),
+ ('apps móviles para familias y docentes, Android e iPhone', 2, NULL, 3),
+ ('consulta de pensiones, notas y circulares para las familias', 24, '/7', 4);
+INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden) VALUES
+ ('footer', 'Plataforma', 'Módulos', '/#funcionalidades', 1),
+ ('footer', 'Plataforma', 'Integración SIAGIE', '/funcionalidades#modulo-siagie', 2),
+ ('footer', 'Plataforma', 'Planes', '/#planes', 3),
+ ('footer', 'Recursos y legal', 'Blog', '/blog', 10);
+INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden, fijo) VALUES
+ ('footer', 'Legal', 'Seguridad de datos', '/#seguridad', 4, true);
+INSERT INTO cms.config (clave, valor) VALUES
+ ('testimonios_solo_4_estrellas', 'false'),
+ ('oferta_migracion', '{"visible":false,"titulo":null,"texto":"","cta":null,"expira":null}');

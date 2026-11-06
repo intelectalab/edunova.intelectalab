@@ -25,12 +25,55 @@ export type ModuloWeb = {
 
 export type SeccionModulos = { insignia: string; titulo: string; descripcion: string | null; boton_ver: string; boton_ocultar: string };
 
+export type Plan = {
+  clave: string;
+  nombre: string;
+  rango_texto: string;
+  precio_mensual: string | null;
+  descripcion: string | null;
+  caracteristicas: { texto: string; incluida: boolean }[];
+  recomendado: boolean;
+  cta_texto: string;
+};
+export type Complemento = { clave: string; etiqueta: string; precio: string | null; nota: string | null };
+export type Oferta = { titulo: string | null; texto: string; cta: string | null };
+export type Contador = { label: string; valor: number; prefijo: string | null; sufijo: string | null };
+export type Video = { id: number; titulo: string; descripcion: string | null; proveedor: string; embed_url: string; duracion_seg: number | null; miniatura: string | null; miniatura_alt: string | null };
+export type Testimonio = { id: number; nombre: string | null; cargo: string; institucion: string; texto: string; calificacion: number; es_ejemplo: boolean; avatar: string | null };
+
+export type SeccionPlanes = { insignia: string; titulo: string; descripcion: string | null; mensual: string; anual: string; por_mes: string; personalizado: string; personalizado_nota: string };
+export type SeccionRetos = { insignia: string; titulo: string; descripcion: string | null; etiqueta_dolor: string; etiqueta_solucion: string; tarjetas: { icono: string; titulo: string; dolor: string; solucion: string; visible: boolean }[] };
+export type SeccionPasos = { insignia: string; titulo: string; descripcion: string | null; pasos: { titulo: string; descripcion: string; nota: string | null; visible: boolean }[] };
+export type SeccionCasos = { insignia: string; titulo: string; descripcion: string | null; tarjetas: { icono: string; rango: string; titulo: string; descripcion: string; beneficios: string[]; modulos: string | null; nota: string | null; visible: boolean }[] };
+export type SeccionTestimonios = { insignia: string; titulo: string; leyenda_ejemplo: string };
+export type SeccionVideos = { insignia: string; titulo: string; descripcion: string | null; boton_demo: string };
+export type SeccionCtaFinal = { insignia: string | null; titulo: string; descripcion: string | null; boton: string; beneficios: string[] };
+export type SeccionFooter = { descripcion: string; derechos: string; moneda: string };
+
 export type ItemMenu = { label: string; url: string; target: string; columna: string | null };
 
 export type Landing = {
-  secciones: { barra_superior?: { aviso: string }; hero?: Hero; modulos?: SeccionModulos } & Record<string, unknown>;
+  secciones: {
+    barra_superior?: { aviso: string };
+    hero?: Hero;
+    modulos?: SeccionModulos;
+    planes?: SeccionPlanes;
+    retos?: SeccionRetos;
+    pasos?: SeccionPasos;
+    casos_uso?: SeccionCasos;
+    testimonios?: SeccionTestimonios;
+    videos?: SeccionVideos;
+    cta_final?: SeccionCtaFinal;
+    footer?: SeccionFooter;
+  };
   modulos: ModuloWeb[];
-  config: Record<string, string | null>;
+  planes: Plan[];
+  complementos: Complemento[];
+  oferta: Oferta | null;
+  contadores: Contador[];
+  videos: Video[];
+  testimonios: Testimonio[];
+  config: Record<string, string | number | boolean | null>;
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
 };
 

@@ -11,8 +11,9 @@ test('muestra el hero publicado en el CMS con un único H1', async ({ page }) =>
   // El texto exacto lo cambia la prueba de revalidación; aquí basta que venga del CMS.
   await expect(page.getByRole('heading', { level: 1 })).not.toBeEmpty();
   await expect(page.getByText('Gestión escolar K-12')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Solicitar demo gratuita' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ver video demostrativo' })).toBeVisible();
+  const hero = page.locator('section[aria-labelledby="titulo-hero"]');
+  await expect(hero.getByRole('link', { name: 'Solicitar demo gratuita' })).toBeVisible();
+  await expect(hero.getByRole('link', { name: 'Ver video demostrativo' })).toBeVisible();
 });
 
 test('la barra superior lleva al Panel CMS y, sin teléfono, muestra [A CONFIRMAR]', async ({ page, viewport }) => {

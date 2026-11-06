@@ -115,5 +115,5 @@ it('la landing solo expone la configuración pública', function () {
 
     expect($config)->toHaveKey('telefono_central')
         ->and($config)->not->toHaveKey('crm_endpoint')
-        ->and($config)->not->toHaveKey('descuento_anual_pct');
+        ->and($config)->not->toHaveKey('blog_wp_url');
 });

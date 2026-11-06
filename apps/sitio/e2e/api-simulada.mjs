@@ -35,15 +35,58 @@ const landing = () => ({
       cta_secundario: 'Ver video demostrativo',
       sellos: 'Implementación asistida · Soporte local en Perú',
     },
+    // Sprint 5
+    retos: {
+      insignia: 'Diagnóstico',
+      titulo: 'Los retos de la dirección escolar',
+      descripcion: null,
+      etiqueta_dolor: 'El dolor habitual',
+      etiqueta_solucion: 'Solución Edunova',
+      tarjetas: [
+        { icono: 'grid_off', titulo: 'Datos dispersos', dolor: 'Hojas de cálculo sueltas.', solucion: 'Una sola base.', visible: true },
+        { icono: 'ring_volume', titulo: 'Reto oculto', dolor: 'No debe verse.', solucion: 'No debe verse.', visible: false },
+        { icono: 'alarm_off', titulo: 'Notas tarde al SIAGIE', dolor: 'Fin de bimestre a mano.', solucion: 'Exportación de actas.', visible: true },
+      ],
+    },
+    pasos: {
+      insignia: 'Acompañamiento',
+      titulo: 'Implementación en 4 pasos',
+      descripcion: null,
+      pasos: ['Solicitas la demo', 'Configuramos tu colegio', 'Capacitamos a tu equipo', 'Empiezas a operar'].map((t, i) => ({ titulo: t, descripcion: `Paso ${i + 1}.`, nota: null, visible: true })),
+    },
+    casos_uso: { insignia: 'Modelos', titulo: 'Modelos por tamaño de colegio', descripcion: null, tarjetas: [{ icono: 'cottage', rango: 'Hasta 150 alumnos', titulo: 'En crecimiento', descripcion: 'Colegios pequeños.', beneficios: ['Menos trabajo en secretaría.'], modulos: null, nota: null, visible: true }] },
+    testimonios: { insignia: 'Testimonios', titulo: 'Lo que cambia en el colegio', leyenda_ejemplo: 'Testimonios de ejemplo: se reemplazan por testimonios reales con consentimiento firmado.' },
+    videos: { insignia: 'Videos', titulo: 'Edunova en video', descripcion: null, boton_demo: 'Coordinar demostración en vivo' },
+    planes: { insignia: 'Tarifas', titulo: 'Inversión transparente', descripcion: null, mensual: 'Mensual', anual: 'Anual', por_mes: '/ mes', personalizado: 'Personalizado', personalizado_nota: 'Cotización a medida' },
+    cta_final: { insignia: null, titulo: '¿Listo para modernizar tu colegio?', descripcion: null, boton: 'Solicitar demo gratuita', beneficios: ['Sin compromiso'] },
+    footer: { descripcion: 'Gestión escolar para colegios privados.', derechos: 'Todos los derechos reservados.', moneda: 'Moneda: Soles (S/)' },
   },
-  config: { telefono_central: null },
+  config: { telefono_central: null, ruc: null, razon_social: null, direccion: null, email_contacto: null, horario_soporte: null, nota_legal_precios: 'Precios referenciales sin IGV · sujeto a validación comercial', selector_anual_visible: true, descuento_anual_pct: 10 },
   modulos: MODULOS,
+  planes: [
+    { clave: 'inicial', nombre: 'Plan Inicial', rango_texto: 'Hasta 150 alumnos', precio_mensual: '300.00', descripcion: null, caracteristicas: [{ texto: 'Matrícula', incluida: true }, { texto: 'Facturación electrónica', incluida: false }], recomendado: false, cta_texto: 'Seleccionar plan' },
+    { clave: 'crecimiento', nombre: 'Plan Crecimiento', rango_texto: 'Hasta 300 alumnos', precio_mensual: '500.00', descripcion: null, caracteristicas: [{ texto: 'Todo lo del Inicial', incluida: true }], recomendado: true, cta_texto: 'Elegir Crecimiento' },
+    { clave: 'institucional', nombre: 'Institucional', rango_texto: 'Más de 500 alumnos', precio_mensual: null, descripcion: null, caracteristicas: [], recomendado: false, cta_texto: 'Cotizar' },
+  ],
+  complementos: [{ clave: 'tramo_501_800', etiqueta: '501 a 800 alumnos', precio: '1234.00', nota: 'al mes' }],
+  oferta: { titulo: '¿Vienes de otro sistema?', texto: 'Migración gratis.', cta: 'Quiero migrar' },
+  contadores: [
+    { label: 'módulos integrados', valor: 18, prefijo: null, sufijo: null },
+    { label: 'roles con permisos propios', valor: 25, prefijo: null, sufijo: null },
+    { label: 'consulta para las familias', valor: 24, prefijo: null, sufijo: '/7' },
+  ],
+  videos: [{ id: 1, titulo: 'Recorrido general', descripcion: 'Panel de dirección.', proveedor: 'youtube', embed_url: 'https://www.youtube-nocookie.com/embed/abc123', duracion_seg: 270, miniatura: null, miniatura_alt: null }],
+  testimonios: [{ id: 1, nombre: null, cargo: 'Directora', institucion: 'Colegio particular · Arequipa', texto: 'Cerramos el bimestre sin pasar notas a mano.', calificacion: 5, es_ejemplo: true, avatar: null }],
   menu: {
     principal: [
       { label: 'Funcionalidades', url: '/funcionalidades', target: '_self', columna: null },
       { label: 'Planes', url: '/#planes', target: '_self', columna: null },
     ],
-    footer: [],
+    footer: [
+      { label: 'Módulos', url: '/#funcionalidades', target: '_self', columna: 'Plataforma' },
+      { label: 'Política de privacidad', url: '/#privacidad', target: '_self', columna: 'Legal' },
+      { label: 'Libro de Reclamaciones', url: '/libro-de-reclamaciones', target: '_self', columna: 'Legal' },
+    ],
   },
 });
 

@@ -1,12 +1,17 @@
 import { Cabecera } from '@/componentes/landing/Cabecera';
+import { Cifras } from '@/componentes/landing/Cifras';
+import { CtaFinal, Pie } from '@/componentes/landing/Cierre';
 import { Hero } from '@/componentes/landing/Hero';
 import { Modulos } from '@/componentes/landing/Modulos';
-import { sitio } from '@/contenido/provisional';
+import { Planes } from '@/componentes/landing/Planes';
+import { CasosUso, Pasos, Retos } from '@/componentes/landing/Propuesta';
+import { Testimonios } from '@/componentes/landing/Testimonios';
+import { Videos } from '@/componentes/landing/Videos';
+import { landing, sitio } from '@/contenido/provisional';
 import { obtenerLanding } from '@/lib/landing';
 
-// Landing pública (EDUN-242). TRASPASO §3: SSR en la landing e ISR de 5 minutos para el
-// contenido del CMS. La página se arma en cada visita; los datos del CMS quedan en caché
-// 5 minutos con la etiqueta «landing», que la API revalida al publicar (EDUN-233).
+// Landing pública. TRASPASO §3: SSR en la landing e ISR de 5 minutos para el contenido del
+// CMS (solo lo publicado). Orden de secciones de TRASPASO §5.
 export const dynamic = 'force-dynamic';
 
 const URL_INGRESO = process.env.EDUNOVA_WEB_URL ?? 'http://localhost:5174';
@@ -24,18 +29,35 @@ export default async function Inicio() {
     );
   }
 
+  const s = datos.secciones;
+  const c = datos.config;
   return (
     <>
-      <Cabecera
-        aviso={datos.secciones.barra_superior?.aviso ?? ''}
-        telefono={datos.config.telefono_central ?? null}
-        menu={datos.menu.principal}
-        urlIngreso={URL_INGRESO}
-      />
+      <Cabecera aviso={s.barra_superior?.aviso ?? ''} telefono={(c.telefono_central as string | null) ?? null} menu={datos.menu.principal} urlIngreso={URL_INGRESO} />
       <main className="w-full pt-28 bg-surface">
         <Hero datos={hero} />
-        {datos.secciones.modulos && datos.modulos?.length > 0 && <Modulos seccion={datos.secciones.modulos} modulos={datos.modulos} />}
+        <Cifras contadores={datos.contadores ?? []} />
+        {s.retos && <Retos datos={s.retos} />}
+        {s.modulos && datos.modulos?.length > 0 && <Modulos seccion={s.modulos} modulos={datos.modulos} />}
+        {s.videos && <Videos datos={s.videos} videos={datos.videos ?? []} etiquetaCerrar={landing.cerrarVideo} />}
+        {s.pasos && <Pasos datos={s.pasos} />}
+        {s.casos_uso && <CasosUso datos={s.casos_uso} />}
+        {s.testimonios && <Testimonios datos={s.testimonios} testimonios={datos.testimonios ?? []} />}
+        {s.planes && (
+          <Planes
+            datos={s.planes}
+            planes={datos.planes ?? []}
+            complementos={datos.complementos ?? []}
+            oferta={datos.oferta}
+            notaLegal={(c.nota_legal_precios as string | null) || 'Precios referenciales sin IGV · sujeto a validación comercial'}
+            selectorAnual={c.selector_anual_visible === true}
+            descuentoAnual={Number(c.descuento_anual_pct ?? 0)}
+            textoAnio={landing.porAnio}
+          />
+        )}
+        {s.cta_final && <CtaFinal datos={s.cta_final} telefono={c.telefono_central} />}
       </main>
+      {s.footer && <Pie datos={s.footer} config={c} enlaces={datos.menu.footer} />}
     </>
   );
 }
