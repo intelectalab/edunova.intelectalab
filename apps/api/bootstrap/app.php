@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CabecerasSeguridad;
 use App\Modulos\SEG\Http\Middleware\IdentificarInstitucion;
 use App\Modulos\SEG\Http\Middleware\VerificarPermiso;
 use App\Modulos\SIT\Http\Middleware\AccesoCms;
@@ -20,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // EDUN-209 · Cabeceras de seguridad en todas las respuestas de la API.
+        $middleware->api(append: [CabecerasSeguridad::class]);
+
         // EDUN-39 · Colegio activo (RLS) y permisos por ruta.
         $middleware->alias([
             'colegio' => IdentificarInstitucion::class,

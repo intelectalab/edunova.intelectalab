@@ -19,7 +19,7 @@ Route::post('/correo/eventos', EventosCorreoController::class)->middleware('thro
 
 // EDUN-35 · Sesión: ingreso con DNI o correo, elección de colegio, quién soy y salir.
 Route::prefix('auth')->group(function () {
-    Route::post('/ingresar', [SesionController::class, 'ingresar'])->middleware('throttle:20,1');
+    Route::post('/ingresar', [SesionController::class, 'ingresar'])->middleware('throttle:ingreso');
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/colegio', [SesionController::class, 'elegirColegio']);
         Route::get('/yo', [SesionController::class, 'yo']);
@@ -49,4 +49,4 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
 });
 
 // Sitio público (sin sesión): solo contenido publicado.
-Route::get('/sitio/landing', LandingController::class)->middleware('throttle:120,1');
+Route::get('/sitio/landing', LandingController::class)->middleware('throttle:publico');
