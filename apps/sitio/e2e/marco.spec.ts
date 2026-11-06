@@ -1,10 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { conSesionCms } from './sesion';
 
 // EDUN-220 · Criterios de aceptación de pantalla. Corren a 1440 px y a 390 px (playwright.config.ts).
 
 const PRIMARY = 'rgb(10, 50, 87)'; // #0a3257
 const ACCION = 'rgb(4, 120, 87)'; // --accion (D-SIT-12, ver globals.css)
+
+// El Panel CMS exige sesión de superadmin (EDUN-226): se entra con la API simulada.
+test.beforeEach(async ({ context, baseURL }) => conSesionCms(context, baseURL));
 
 test.describe('Fuentes y colores del prototipo', () => {
   for (const ruta of ['/', '/cms']) {

@@ -2,6 +2,7 @@
 
 use App\Modulos\SEG\Http\Middleware\IdentificarInstitucion;
 use App\Modulos\SEG\Http\Middleware\VerificarPermiso;
+use App\Modulos\SIT\Http\Middleware\AccesoCms;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'colegio' => IdentificarInstitucion::class,
             'permiso' => VerificarPermiso::class,
+            // EDUN-226 · Panel CMS: solo superadmin; fija app.rol_cms y app.usuario_id.
+            'cms' => AccesoCms::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -13,6 +13,8 @@ export const sitio = {
 
 export const cms = {
   nombrePanel: 'Panel CMS',
+  cerrarSesion: 'Cerrar sesión',
+  nombresRol: { superadmin: 'Superadministrador' } as Record<string, string>,
   tituloInicio: 'Panel CMS',
   descripcionInicio: 'Las pantallas del panel llegan con las historias del sitio (EP-SIT).',
   grupos: [
@@ -34,6 +36,27 @@ export const cms = {
       ],
     },
   ],
+};
+
+/** EDUN-226 · Ingreso al Panel CMS. */
+export const cmsIngreso = {
+  titulo: 'Ingresa al Panel CMS',
+  subtitulo: 'Panel CMS',
+  usuario: 'Correo o DNI',
+  password: 'Contraseña',
+  boton: 'Ingresar',
+  enviando: 'Ingresando…',
+  errorFaltanDatos: 'Escribe tu correo o DNI y tu contraseña.',
+  errorSinAcceso: 'Tu usuario no tiene acceso al Panel CMS. Los colegios administran su información en la web de gestión.',
+  errorConexion: 'No pudimos conectar con Edunova. Inténtalo de nuevo en unos minutos.',
+};
+
+/** EDUN-226 · Pantalla 403 del Panel CMS. */
+export const cmsSinAcceso = {
+  titulo: 'No tienes acceso al Panel CMS',
+  detalle: 'Solo el equipo de Edunova administra el sitio web. Los colegios administran su información en la web de gestión.',
+  otraCuenta: 'Ingresar con otra cuenta',
+  irAlSitio: 'Ir al sitio público',
 };
 
 /** Textos de la página de muestra de componentes (/muestra). Son datos de demostración. */

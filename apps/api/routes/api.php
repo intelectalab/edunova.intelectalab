@@ -4,6 +4,7 @@ use App\Http\Controllers\SaludController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
+use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use Illuminate\Support\Facades\Route;
 
 // Todas las rutas quedan bajo /api/v1 (bootstrap/app.php, apiPrefix).
@@ -28,4 +29,9 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     Route::get('/alumnos', [AlumnosController::class, 'index'])->middleware('permiso:adm.alumnos.ver');
     // Sin permiso de ruta: la policy deja pasar al personal con adm.alumnos.ver y a la familia por propiedad.
     Route::get('/alumnos/{alumno}', [AlumnosController::class, 'show'])->whereNumber('alumno');
+});
+
+// EDUN-226 · Panel CMS: solo el superadmin del SaaS. Los colegios no tienen CMS.
+Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
+    Route::get('/sesion', SesionCmsController::class);
 });
