@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "edunova",
+      "credentials": [{ "accessKey": "edunova", "secretKey": "edunova-secreto" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

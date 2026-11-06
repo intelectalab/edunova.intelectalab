@@ -47,6 +47,24 @@ return [
             'report' => false,
         ],
 
+        // Almacenamiento de objetos de Edunova (EDUN-207): bucket privado compatible con S3.
+        // En local es SeaweedFS (docker compose); en la nube, el S3 del proveedor.
+        // AWS_URL_FIRMAS reemplaza el host en las URL firmadas cuando el endpoint interno
+        // (http://s3:8333 dentro de Docker) no es el que ve el navegador.
+        'objetos' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'bucket' => env('AWS_BUCKET'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'temporary_url' => env('AWS_URL_FIRMAS'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
