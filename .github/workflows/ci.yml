@@ -67,6 +67,10 @@ jobs:
           cp .env.example .env
           php artisan key:generate --no-interaction
 
+      - name: Estilo de código PHP (Pint)
+        working-directory: apps/api
+        run: ./vendor/bin/pint --test
+
       - name: Pruebas de la API (Pest)
         working-directory: apps/api
         run: php artisan test

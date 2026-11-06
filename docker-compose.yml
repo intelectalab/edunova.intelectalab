@@ -16,6 +16,17 @@ services:
       redis:
         condition: service_started
 
+  cola:
+    # Procesa la cola (correo y trabajos de fondo). Reutiliza la imagen de la API.
+    build: ./apps/api
+    command: sh -c "php artisan queue:work --queue=correo,default --tries=5 --sleep=2"
+    volumes:
+      - ./apps/api:/app
+      - api_vendor:/app/vendor
+    depends_on:
+      - api
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     environment:

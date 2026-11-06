@@ -9,6 +9,7 @@ set -e
 PNPM="${PNPM:-npx -y pnpm@10.18.3}"
 
 echo "== API: pruebas (Pest) y auditoría de dependencias"
+docker compose exec -T api ./vendor/bin/pint --test
 docker compose exec -T api php artisan test
 docker compose exec -T api composer audit
 

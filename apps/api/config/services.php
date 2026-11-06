@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // EDUN-208 · Webhook de rebotes y quejas del proveedor de correo.
+    'correo' => [
+        'webhook_secreto' => env('CORREO_WEBHOOK_SECRETO'),
+    ],
+
 ];
