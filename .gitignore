@@ -21,3 +21,9 @@ Thumbs.db
 # Resultados de Playwright
 test-results/
 playwright-report/
+
+# Contenido real del sitio (precios, ofertas, datos de la empresa): no se publica
+/apps/api/database/sql/cms/privado/
+
+# Configuración local de Claude Code
+/.claude/

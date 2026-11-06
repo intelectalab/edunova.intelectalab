@@ -3,7 +3,7 @@
 #   sh infra/verificar.sh      (o «make verify» donde haya make)
 #
 # Partes del «make verify» del kit que aún no aplican:
-#   cms (EDUN-223), OpenAPI (falta api/openapi.yaml), Jest (app móvil).
+#   OpenAPI (falta api/openapi.yaml), Jest (app móvil).
 # La primera vez: (cd apps/sitio && npx playwright install chromium)
 set -e
 PNPM="${PNPM:-npx -y pnpm@10.18.3}"
@@ -14,6 +14,9 @@ docker compose exec -T api composer audit
 
 echo "== Base de datos: aislamiento y reglas (34 pruebas)"
 sh infra/pruebas-aislamiento.sh
+
+echo "== CMS: reglas y permisos (17 pruebas)"
+sh infra/pruebas-cms.sh
 
 echo "== Web y sitio: tipos, lint, pruebas y build"
 $PNPM -r typecheck

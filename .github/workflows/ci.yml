@@ -78,6 +78,9 @@ jobs:
       - name: Pruebas de aislamiento y reglas de la base (34)
         run: PSQL="psql" sh infra/pruebas-aislamiento.sh
 
+      - name: Pruebas de reglas y permisos del CMS (17)
+        run: PSQL="psql" sh infra/pruebas-cms.sh
+
   frontend:
     name: Web y sitio (tipos, lint, Vitest, build)
     runs-on: ubuntu-latest
