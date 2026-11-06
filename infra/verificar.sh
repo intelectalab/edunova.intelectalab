@@ -26,6 +26,6 @@ $PNPM -r test
 $PNPM -r build
 
 echo "== Sitio: pruebas de pantalla (Playwright + axe)"
-(cd apps/sitio && $PNPM e2e)
+(cd apps/sitio && $PNPM e2e:local)
 
 echo "Verificación completa: todo OK"

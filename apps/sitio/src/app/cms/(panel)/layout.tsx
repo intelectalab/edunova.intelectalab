@@ -2,11 +2,12 @@ import { cookies } from 'next/headers';
 import { forbidden, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ProveedorToast } from '@/componentes/base';
-import { MenuCms } from '@/componentes/cms/MenuCms';
+import { MarcoCms } from '@/componentes/cms/MarcoCms';
 import { cmsIngreso } from '@/contenido/provisional';
 import { COOKIE_CMS, leerSesionCms } from '@/lib/sesionCms';
 
 // EDUN-226 · Solo el superadmin del SaaS ve el panel. La API lo decide en cada carga.
+// EDUN-230 · Marco del panel: menú, barra superior y navegación rápida.
 export default async function LayoutPanelCms({ children }: { children: ReactNode }) {
   const sesion = await leerSesionCms((await cookies()).get(COOKIE_CMS)?.value);
 
@@ -22,10 +23,14 @@ export default async function LayoutPanelCms({ children }: { children: ReactNode
     );
   }
 
+  // «En línea» solo cuando hay un dominio público configurado (TRASPASO §7: nada sin respaldo).
+  const sitioPublico = process.env.EDUNOVA_SITIO_PUBLICO || null;
+
   return (
     <ProveedorToast>
-      <MenuCms usuario={sesion.usuario} />
-      <main className="min-h-screen bg-background xl:pl-menu-cms">{children}</main>
+      <MarcoCms usuario={sesion.usuario} sitioPublico={sitioPublico}>
+        {children}
+      </MarcoCms>
     </ProveedorToast>
   );
 }

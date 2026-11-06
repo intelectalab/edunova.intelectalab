@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:local": "cross-env NEXT_DIST_DIR=.next-e2e next build && cross-env NEXT_DIST_DIR=.next-e2e playwright test"
   },
   "dependencies": {
     "next": "15.5.29",
@@ -29,6 +30,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.2.1",
     "autoprefixer": "^10.6.2",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
     "jsdom": "^30.1.3",

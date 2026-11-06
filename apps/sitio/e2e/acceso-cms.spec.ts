@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { conSesionCms } from './sesion';
+import { abrirMenuCms, conSesionCms } from './sesion';
 
 // EDUN-226 / SIT-042 · Acceso al Panel CMS solo para el superadmin del SaaS.
 const CLAVE = 'clave-de-prueba';
@@ -42,6 +42,7 @@ test('el superadmin entra, vuelve a donde iba y ve su nombre y «Superadministra
   await page.goto('/cms');
   await ingresar(page, 'superadmin@demo.edunova.pe');
   await expect(page).toHaveURL(/\/cms$/);
+  await abrirMenuCms(page);
   const menu = page.locator('aside');
   await expect(menu.getByText('Ana Administradora')).toBeVisible();
   await expect(menu.getByText('Superadministrador')).toBeVisible();
@@ -50,6 +51,7 @@ test('el superadmin entra, vuelve a donde iba y ve su nombre y «Superadministra
 test('cerrar sesión desde el pie del menú vuelve al inicio de sesión', async ({ page, context, baseURL }) => {
   await conSesionCms(context, baseURL);
   await page.goto('/cms');
+  await abrirMenuCms(page);
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await expect(page).toHaveURL(/\/cms\/ingresar/);
   await page.goto('/cms');

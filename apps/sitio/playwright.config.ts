@@ -26,7 +26,7 @@ export default defineConfig({
     {
       command: `next start -p ${PUERTO}`,
       url: `http://127.0.0.1:${PUERTO}`,
-      env: { EDUNOVA_API_URL: `http://127.0.0.1:${PUERTO_API}/api/v1` },
+      env: { EDUNOVA_API_URL: `http://127.0.0.1:${PUERTO_API}/api/v1`, NEXT_DIST_DIR: process.env.NEXT_DIST_DIR ?? '.next' },
       reuseExistingServer: !process.env.CI,
     },
   ],

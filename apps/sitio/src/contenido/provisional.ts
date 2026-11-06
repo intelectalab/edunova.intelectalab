@@ -11,32 +11,61 @@ export const sitio = {
   enConstruccion: 'Sitio público en construcción.',
 };
 
+export type EnlaceCms = { href: string; etiqueta: string; icono: string; descripcion: string; roles: string[] };
+
+const SOLO_SUPERADMIN = ['superadmin'];
+
 export const cms = {
   nombrePanel: 'Panel CMS',
   cerrarSesion: 'Cerrar sesión',
   nombresRol: { superadmin: 'Superadministrador' } as Record<string, string>,
   tituloInicio: 'Panel CMS',
   descripcionInicio: 'Las pantallas del panel llegan con las historias del sitio (EP-SIT).',
+  enConstruccion: 'Esta pantalla llega con su historia del sitio (EP-SIT).',
+  barra: {
+    verSitio: 'Ver sitio público',
+    guardar: 'Guardar borrador',
+    publicar: 'Publicar',
+    sinCambios: 'Disponible cuando haya cambios en una pantalla de edición.',
+    abrirMenu: 'Abrir menú',
+    cerrarMenu: 'Cerrar menú',
+    navegacionRapida: 'Navegación rápida',
+    migas: 'Ubicación',
+    estadoSitio: 'Sitio público:',
+    enLinea: 'En línea',
+    sinDominio: 'Sin dominio publicado',
+  },
   grupos: [
     {
       titulo: 'Estructura del portal',
       enlaces: [
-        { href: '/cms/sitio/secciones', etiqueta: 'Hero y Portada', icono: 'view_carousel' },
-        { href: '/cms/conversion/planes', etiqueta: 'Planes y Tarifas', icono: 'payments' },
-        { href: '/cms/contenido/modulos', etiqueta: 'Módulos Web', icono: 'widgets' },
-        { href: '/cms/contenido/testimonios', etiqueta: 'Casos de Éxito', icono: 'reviews' },
-      ],
+        { href: '/cms/sitio/secciones', etiqueta: 'Hero y Portada', icono: 'view_carousel', descripcion: 'Insignia, titular, subtítulo y botón principal de la portada.', roles: SOLO_SUPERADMIN },
+        { href: '/cms/conversion/planes', etiqueta: 'Planes y Tarifas', icono: 'payments', descripcion: 'Planes, precios en soles, complementos y nota legal.', roles: SOLO_SUPERADMIN },
+        { href: '/cms/contenido/modulos', etiqueta: 'Módulos Web', icono: 'widgets', descripcion: 'Los 18 módulos, su orden y los 6 del grid principal.', roles: SOLO_SUPERADMIN },
+        { href: '/cms/contenido/testimonios', etiqueta: 'Casos de Éxito', icono: 'reviews', descripcion: 'Testimonios con consentimiento y logos de clientes.', roles: SOLO_SUPERADMIN },
+      ] as EnlaceCms[],
     },
     {
       titulo: 'Gestión',
       enlaces: [
-        { href: '/cms/seo/paginas', etiqueta: 'Ajustes SEO', icono: 'travel_explore' },
-        { href: '/cms/leads/bandeja', etiqueta: 'Bandeja de solicitudes', icono: 'inbox' },
-        { href: '/cms/auditoria', etiqueta: 'Auditoría de cambios', icono: 'history' },
-      ],
+        { href: '/cms/seo/paginas', etiqueta: 'Ajustes SEO', icono: 'travel_explore', descripcion: 'Title, meta descripción, canonical y Open Graph.', roles: SOLO_SUPERADMIN },
+        { href: '/cms/leads/bandeja', etiqueta: 'Bandeja de solicitudes', icono: 'inbox', descripcion: 'Solicitudes de demo y su estado.', roles: SOLO_SUPERADMIN },
+        { href: '/cms/auditoria', etiqueta: 'Auditoría de cambios', icono: 'history', descripcion: 'Quién cambió qué y cuándo, con opción de restaurar.', roles: SOLO_SUPERADMIN },
+      ] as EnlaceCms[],
     },
   ],
 };
+
+/** Ítems del menú que puede abrir un rol (EDUN-230: el menú muestra solo esos). */
+export function enlacesPara(rol: string) {
+  return cms.grupos
+    .map((g) => ({ ...g, enlaces: g.enlaces.filter((e) => e.roles.includes(rol)) }))
+    .filter((g) => g.enlaces.length > 0);
+}
+
+export function enlacePorRuta(ruta: string): EnlaceCms | undefined {
+  return cms.grupos.flatMap((g) => g.enlaces).find((e) => e.href === ruta);
+}
 
 /** EDUN-226 · Ingreso al Panel CMS. */
 export const cmsIngreso = {

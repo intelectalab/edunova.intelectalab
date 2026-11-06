@@ -27,3 +27,4 @@ playwright-report/
 
 # Configuración local de Claude Code
 /.claude/
+.next-e2e/
