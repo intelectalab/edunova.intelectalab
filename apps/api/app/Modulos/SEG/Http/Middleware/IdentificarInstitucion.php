@@ -13,8 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Colegio activo de la petición (docs/rls-tablas-globales.md): abre una transacción, fija
  * app.institucion_id con SET LOCAL y comprueba que el usuario tenga una membresía vigente.
  *
- * El colegio llega en la cabecera X-Institucion. La elección de colegio al iniciar sesión
- * y su persistencia en el token llegan con EDUN-35; este middleware ya es el punto único.
+ * El colegio sale del token de la sesión (POST /auth/colegio) o, si no hay, de la cabecera
+ * X-Institucion.
  */
 class IdentificarInstitucion
 {
@@ -22,7 +22,10 @@ class IdentificarInstitucion
 
     public function handle(Request $request, Closure $next): Response
     {
-        $institucion = $request->header('X-Institucion');
+        // El colegio elegido al iniciar sesión vive en el token (EDUN-35). Si el token no
+        // lo tiene, se acepta la cabecera X-Institucion; la membresía se valida igual.
+        $token = $request->user()?->currentAccessToken();
+        $institucion = isset($token->institucion_id) ? (string) $token->institucion_id : $request->header('X-Institucion');
         if ($institucion === null || ! ctype_digit($institucion)) {
             return response()->json(['message' => 'Elige un colegio para continuar.'], 400);
         }

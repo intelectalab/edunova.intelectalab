@@ -1,0 +1,152 @@
+/* Pantalla de ingreso (prototipo: loginHTML). Colores y radios de packages/tokens. */
+.ingreso {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: linear-gradient(180deg, var(--en-fondo), var(--en-suave2));
+}
+
+.ingreso-tarjeta {
+  width: min(420px, 100%);
+  padding: 28px;
+  background: var(--en-tarjeta);
+  border-radius: var(--en-radio-lg);
+  box-shadow: var(--en-sombra-2);
+}
+
+.ingreso-marca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ingreso-marca h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--en-navy);
+}
+
+.ingreso-marca small,
+.ingreso-ayuda,
+.ingreso-opcion small {
+  color: var(--en-texto2);
+}
+
+.ingreso-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: var(--en-menu-lateral);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-family: var(--en-fuente-titulos);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.ingreso-pila {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ingreso-pila h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--en-navy);
+}
+
+.ingreso-ayuda {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ingreso-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--en-texto);
+}
+
+.ingreso-campo input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1.5px solid var(--en-linea2);
+  border-radius: var(--en-radio-md);
+  font: inherit;
+  font-weight: 400;
+  color: var(--en-texto);
+}
+
+.ingreso-campo input:focus-visible,
+.ingreso-opcion:focus-visible,
+.ingreso-boton:focus-visible {
+  outline: 2px solid var(--en-primario);
+  outline-offset: 2px;
+}
+
+.ingreso-boton {
+  height: 40px;
+  border: 0;
+  border-radius: var(--en-radio-md);
+  background: var(--en-primario);
+  color: #fff;
+  font-family: var(--en-fuente-titulos);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ingreso-boton:hover {
+  background: var(--en-primario-hover);
+}
+
+.ingreso-boton:disabled,
+.ingreso-opcion:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ingreso-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--en-linea);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--en-texto);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ingreso-opcion:hover {
+  border-color: var(--en-primario);
+  background: var(--en-suave2);
+}
+
+.ingreso-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--en-radio-md);
+  background: var(--en-rojo-suave);
+  color: var(--en-rojo);
+  font-size: 14px;
+}
+
+.ingreso-nota {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #c7daf8;
+  border-radius: 10px;
+  background: #f3f7fe;
+  font-size: 14px;
+  color: var(--en-texto);
+}

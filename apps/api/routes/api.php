@@ -3,7 +3,7 @@
 use App\Http\Controllers\SaludController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
-use Illuminate\Http\Request;
+use App\Modulos\SEG\Http\Controllers\SesionController;
 use Illuminate\Support\Facades\Route;
 
 // Todas las rutas quedan bajo /api/v1 (bootstrap/app.php, apiPrefix).
@@ -13,9 +13,15 @@ Route::get('/salud', SaludController::class);
 // EDUN-208 · Rebotes y quejas del proveedor de correo (firmado con HMAC).
 Route::post('/correo/eventos', EventosCorreoController::class)->middleware('throttle:60,1');
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// EDUN-35 · Sesión: ingreso con DNI o correo, elección de colegio, quién soy y salir.
+Route::prefix('auth')->group(function () {
+    Route::post('/ingresar', [SesionController::class, 'ingresar'])->middleware('throttle:20,1');
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/colegio', [SesionController::class, 'elegirColegio']);
+        Route::get('/yo', [SesionController::class, 'yo']);
+        Route::post('/salir', [SesionController::class, 'salir']);
+    });
+});
 
 // Rutas del colegio: sesión, colegio activo (RLS) y permiso por ruta (EDUN-39).
 Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
