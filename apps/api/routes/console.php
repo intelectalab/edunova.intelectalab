@@ -1,7 +1,10 @@
 <?php
 
+use App\Modulos\SEG\Services\AlmacenArchivos;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -9,8 +12,8 @@ Artisan::command('inspire', function () {
 
 // EDUN-207 · Crea el bucket privado del almacenamiento de objetos si no existe (local y entornos nuevos).
 Artisan::command('objetos:preparar', function () {
-    /** @var \Illuminate\Filesystem\AwsS3V3Adapter $disco */
-    $disco = \Illuminate\Support\Facades\Storage::disk(\App\Modulos\SEG\Services\AlmacenArchivos::DISCO);
+    /** @var AwsS3V3Adapter $disco */
+    $disco = Storage::disk(AlmacenArchivos::DISCO);
     $cliente = $disco->getClient();
     $bucket = config('filesystems.disks.objetos.bucket');
     if ($cliente->doesBucketExistV2($bucket, false)) {
