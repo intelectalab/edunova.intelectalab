@@ -1,5 +1,6 @@
 import { Cabecera } from '@/componentes/landing/Cabecera';
 import { Hero } from '@/componentes/landing/Hero';
+import { Modulos } from '@/componentes/landing/Modulos';
 import { sitio } from '@/contenido/provisional';
 import { obtenerLanding } from '@/lib/landing';
 
@@ -33,6 +34,7 @@ export default async function Inicio() {
       />
       <main className="w-full pt-28 bg-surface">
         <Hero datos={hero} />
+        {datos.secciones.modulos && datos.modulos?.length > 0 && <Modulos seccion={datos.secciones.modulos} modulos={datos.modulos} />}
       </main>
     </>
   );

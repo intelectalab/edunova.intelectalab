@@ -23,6 +23,14 @@ class ReglasSecciones
                 'cta_secundario' => ['nullable', 'string', 'max:30'],
                 'sellos' => ['nullable', 'string', 'max:120'],
             ],
+            'modulos' => [
+                'insignia' => ['required', 'string', 'max:40'],
+                'titulo' => ['required', 'string', 'max:120'],
+                'descripcion' => ['nullable', 'string', 'max:220'],
+                // {n} se reemplaza por la cantidad de módulos visibles.
+                'boton_ver' => ['required', 'string', 'max:60'],
+                'boton_ocultar' => ['required', 'string', 'max:60'],
+            ],
             default => null,
         };
     }

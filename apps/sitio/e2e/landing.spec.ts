@@ -55,3 +55,26 @@ test('un H1 publicado aparece en la landing al revalidar', async ({ page, reques
   await request.post(`${API}/__publicar`, { data: { titulo: 'Administra tu colegio desde un solo lugar' } });
   await request.post('/api/revalidar', { headers: { 'x-edunova-revalidar': 'secreto-e2e' }, data: { etiquetas: ['landing'] } });
 });
+
+// EDUN-251 / SIT-048 · Módulos: grid principal con imagen y catálogo.
+test('el grid y el catálogo respetan el orden publicado; la imagen lleva su texto alternativo', async ({ page }) => {
+  await page.goto('/');
+  const seccion = page.getByRole('region', { name: 'Módulos para colegios' });
+  const grid = seccion.getByRole('list').first().getByRole('listitem');
+  await expect(grid).toHaveCount(6);
+  await expect(grid.first()).toContainText('Matrículas');
+  await expect(grid.nth(5)).toContainText('Apps móviles');
+  await expect(seccion.getByRole('img', { name: 'Vista de matrículas' })).toBeVisible();
+  await expect(seccion.getByRole('link', { name: /Matrículas/ })).toHaveAttribute('href', '/funcionalidades#modulo-m1');
+
+  const boton = seccion.getByRole('button', { name: 'Ver los 18 módulos del sistema escolar' });
+  await expect(boton).toHaveAttribute('aria-expanded', 'false');
+  await expect(seccion.getByText('Laboratorios', { exact: true })).toBeHidden();
+
+  await boton.click();
+  await expect(seccion.getByRole('button', { name: 'Ocultar catálogo de módulos' })).toHaveAttribute('aria-expanded', 'true');
+  const catalogo = seccion.getByRole('list').nth(1).getByRole('listitem');
+  await expect(catalogo).toHaveCount(12);
+  await expect(catalogo.first()).toContainText('Plataforma');
+  await expect(catalogo.last()).toContainText('Laboratorios');
+});

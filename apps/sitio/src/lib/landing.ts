@@ -13,10 +13,23 @@ export type Hero = {
   sellos: string | null;
 };
 
+export type ModuloWeb = {
+  clave: string;
+  nombre: string;
+  icono: string;
+  descripcion: string;
+  etiqueta: string | null;
+  en_grid: boolean;
+  imagen: { url: string; alt: string | null; ancho: number | null; alto: number | null } | null;
+};
+
+export type SeccionModulos = { insignia: string; titulo: string; descripcion: string | null; boton_ver: string; boton_ocultar: string };
+
 export type ItemMenu = { label: string; url: string; target: string; columna: string | null };
 
 export type Landing = {
-  secciones: { barra_superior?: { aviso: string }; hero?: Hero } & Record<string, unknown>;
+  secciones: { barra_superior?: { aviso: string }; hero?: Hero; modulos?: SeccionModulos } & Record<string, unknown>;
+  modulos: ModuloWeb[];
   config: Record<string, string | null>;
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
 };

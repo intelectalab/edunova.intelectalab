@@ -10,11 +10,23 @@ const USUARIOS = {
   'superadmin@demo.edunova.pe': { token: 'tk-superadmin', nombre: 'Ana Administradora', roles_plataforma: ['superadmin'] },
   'director@demo.edunova.pe': { token: 'tk-director', nombre: 'María Cárdenas', roles_plataforma: [] },
 };
+const NOMBRES = ['Matrículas', 'Pagos', 'Calificaciones', 'Aula virtual', 'Comunicados', 'Apps móviles', 'Plataforma', 'Seguridad', 'SIAGIE', 'Documentos', 'Moodle', 'Biblioteca', 'Movilidad', 'Comedor', 'Enfermería', 'Tienda', 'Portería', 'Laboratorios'];
+const MODULOS = NOMBRES.map((nombre, i) => ({
+  clave: `m${i + 1}`,
+  nombre,
+  icono: 'widgets',
+  descripcion: `Descripción de ${nombre}.`,
+  etiqueta: i < 6 ? `Etiqueta ${i + 1}` : null,
+  en_grid: i < 6,
+  imagen: i === 0 ? { url: '/favicon.ico', alt: 'Vista de matrículas', ancho: 1200, alto: 800 } : null,
+}));
+
 // Contenido publicado de la landing; las pruebas lo cambian con POST /__publicar.
 let titulo = 'Administra tu colegio desde un solo lugar';
 const landing = () => ({
   secciones: {
     barra_superior: { aviso: 'Plataforma para colegios privados del Perú' },
+    modulos: { insignia: 'Ecosistema Modular', titulo: 'Módulos para colegios', descripcion: null, boton_ver: 'Ver los {n} módulos del sistema escolar', boton_ocultar: 'Ocultar catálogo de módulos' },
     hero: {
       insignia: 'Gestión escolar K-12',
       titulo,
@@ -25,6 +37,7 @@ const landing = () => ({
     },
   },
   config: { telefono_central: null },
+  modulos: MODULOS,
   menu: {
     principal: [
       { label: 'Funcionalidades', url: '/funcionalidades', target: '_self', columna: null },

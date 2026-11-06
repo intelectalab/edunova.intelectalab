@@ -26,12 +26,29 @@ class LandingController
             $menu = DB::table('cms.menu_items')->where('visible', true)->orderBy('ubicacion')->orderBy('orden')
                 ->get(['ubicacion', 'columna', 'label', 'url', 'target']);
 
+            // EDUN-251 · Módulos publicados y visibles, en el orden del CMS, con su imagen.
+            $modulos = DB::table('cms.modulos_web as m')
+                ->leftJoin('cms.medios as i', 'i.id', '=', 'm.imagen_id')
+                ->where('m.visible', true)->where('m.estado', 'publicado')
+                ->orderBy('m.orden')
+                ->get(['m.clave', 'm.nombre', 'm.icono', 'm.descripcion', 'm.etiqueta', 'm.en_grid', 'i.url', 'i.alt', 'i.ancho', 'i.alto'])
+                ->map(fn ($m) => [
+                    'clave' => $m->clave,
+                    'nombre' => $m->nombre,
+                    'icono' => $m->icono,
+                    'descripcion' => $m->descripcion,
+                    'etiqueta' => $m->etiqueta,
+                    'en_grid' => (bool) $m->en_grid,
+                    'imagen' => $m->url ? ['url' => $m->url, 'alt' => $m->alt, 'ancho' => $m->ancho, 'alto' => $m->alto] : null,
+                ]);
+
             $config = DB::table('cms.config')->whereIn('clave', self::CONFIG_PUBLICA)->get(['clave', 'valor'])
                 ->mapWithKeys(fn ($c) => [$c->clave => json_decode($c->valor, true)]);
 
             return response()->json([
                 'secciones' => $secciones,
                 'config' => $config,
+                'modulos' => $modulos,
                 'menu' => [
                     'principal' => $menu->where('ubicacion', 'principal')->values(),
                     'footer' => $menu->where('ubicacion', 'footer')->values(),
