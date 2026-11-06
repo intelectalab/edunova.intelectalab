@@ -52,3 +52,19 @@ INSERT INTO cms.config (clave, valor) VALUES
 
 -- Tracking apagado hasta cargar los IDs reales (TRASPASO §10).
 INSERT INTO cms.tracking (nombre, activo) VALUES ('gtm', false), ('ga4', false), ('meta_pixel', false), ('linkedin', false), ('clarity', false), ('search_console', false);
+
+-- Secciones editables de la landing (EDUN-233 / EDUN-242), con textos por completar en el CMS.
+INSERT INTO cms.secciones (clave, nombre, orden, config) VALUES
+ ('barra_superior', 'Barra superior', 1, '{"aviso":"[A CONFIRMAR]"}'),
+ ('hero', 'Hero y Portada', 2, '{"insignia":"[A CONFIRMAR]","titulo":"[A CONFIRMAR]","subtitulo":"[A CONFIRMAR]","cta_principal":"Solicitar demo","cta_secundario":null,"sellos":null}');
+
+-- Menú principal y enlaces legales del footer (los legales no se pueden ocultar).
+INSERT INTO cms.menu_items (ubicacion, label, url, orden) VALUES
+ ('principal', 'Funcionalidades', '/funcionalidades', 1),
+ ('principal', 'Planes', '/#planes', 2),
+ ('principal', 'Para colegios', '/para-colegios', 3),
+ ('principal', 'Blog', '/blog', 4);
+INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden, fijo) VALUES
+ ('footer', 'Legal', 'Política de privacidad', '/#privacidad', 1, true),
+ ('footer', 'Legal', 'Términos y condiciones', '/#terminos', 2, true),
+ ('footer', 'Legal', 'Libro de Reclamaciones', '/libro-de-reclamaciones', 3, true);

@@ -2,9 +2,11 @@ import { cookies } from 'next/headers';
 import { forbidden, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ProveedorToast } from '@/componentes/base';
+import { ProveedorEditorCms } from '@/componentes/cms/EditorCms';
 import { MarcoCms } from '@/componentes/cms/MarcoCms';
 import { cmsIngreso } from '@/contenido/provisional';
 import { COOKIE_CMS, leerSesionCms } from '@/lib/sesionCms';
+import { leerEstadoPublicacion } from '../editor-acciones';
 
 // EDUN-226 · Solo el superadmin del SaaS ve el panel. La API lo decide en cada carga.
 // EDUN-230 · Marco del panel: menú, barra superior y navegación rápida.
@@ -28,9 +30,11 @@ export default async function LayoutPanelCms({ children }: { children: ReactNode
 
   return (
     <ProveedorToast>
-      <MarcoCms usuario={sesion.usuario} sitioPublico={sitioPublico}>
-        {children}
-      </MarcoCms>
+      <ProveedorEditorCms estadoInicial={await leerEstadoPublicacion()}>
+        <MarcoCms usuario={sesion.usuario} sitioPublico={sitioPublico}>
+          {children}
+        </MarcoCms>
+      </ProveedorEditorCms>
     </ProveedorToast>
   );
 }

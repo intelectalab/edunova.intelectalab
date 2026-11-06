@@ -35,6 +35,12 @@ return [
         ],
     ],
 
+    // EDUN-233 · Revalidación del sitio Next.js al publicar desde el CMS.
+    'sitio' => [
+        'revalidar_url' => env('SITIO_REVALIDAR_URL'),
+        'revalidar_secreto' => env('SITIO_REVALIDAR_SECRETO'),
+    ],
+
     // EDUN-208 · Webhook de rebotes y quejas del proveedor de correo.
     'correo' => [
         'webhook_secreto' => env('CORREO_WEBHOOK_SECRETO'),

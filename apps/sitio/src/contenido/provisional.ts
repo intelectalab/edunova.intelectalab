@@ -11,6 +11,41 @@ export const sitio = {
   enConstruccion: 'Sitio público en construcción.',
 };
 
+/** EDUN-242 · Textos fijos de la cabecera de la landing (lo editable viene de cms.secciones). */
+export const landing = {
+  panelCms: 'Panel CMS',
+  atencion: 'Atención Lima:',
+  pais: 'Perú',
+  menuPrincipal: 'Menú principal',
+  iniciarSesion: 'Iniciar sesión',
+  solicitarDemo: 'Solicitar demo',
+  mockupDescripcion: 'Ilustración del panel de Edunova con datos de un colegio de ejemplo.',
+  mockup: {
+    producto: 'Edunova',
+    colegio: 'Colegio de ejemplo',
+    periodo: 'Ciclo 2027 · II Bimestre',
+    saludo: 'Buenos días, María',
+    resumen: 'Resumen del día.',
+    kpis: [
+      { etiqueta: 'Matriculados', valor: '842', icono: 'groups' },
+      { etiqueta: 'Asistencia', valor: '94.6%', icono: 'check_circle' },
+      { etiqueta: 'Cobranza', valor: '87%', icono: 'payments' },
+      { etiqueta: 'Morosidad', valor: '6.2%', icono: 'warning' },
+    ],
+    grafico: 'Cobranza de pensiones 2027',
+    barras: [
+      { mes: 'Mar', valor: 98 },
+      { mes: 'Abr', valor: 97 },
+      { mes: 'May', valor: 96 },
+      { mes: 'Jun', valor: 95 },
+      { mes: 'Jul', valor: 94 },
+      { mes: 'Ago', valor: 93 },
+      { mes: 'Set', valor: 91 },
+      { mes: 'Oct', valor: 87 },
+    ],
+  },
+};
+
 export type EnlaceCms = { href: string; etiqueta: string; icono: string; descripcion: string; roles: string[] };
 
 const SOLO_SUPERADMIN = ['superadmin'];
@@ -22,6 +57,29 @@ export const cms = {
   tituloInicio: 'Panel CMS',
   descripcionInicio: 'Las pantallas del panel llegan con las historias del sitio (EP-SIT).',
   enConstruccion: 'Esta pantalla llega con su historia del sitio (EP-SIT).',
+  editor: {
+    cambiosSinPublicar: 'Cambios sin publicar',
+    ultimaPublicacion: 'Última publicación:',
+    por: 'por',
+    sinPublicaciones: 'Aún no hay publicaciones desde el panel.',
+    borradorGuardado: 'Borrador guardado',
+    publicado: 'Cambios publicados. El sitio se actualiza en unos segundos.',
+    sinCambios: 'No había cambios por publicar.',
+  },
+  hero: {
+    titulo: 'Hero y Portada',
+    descripcion: 'Textos de la portada. Los cambios se guardan como borrador hasta que publiques.',
+    campos: {
+      insignia: { etiqueta: 'Insignia', max: 45 },
+      titulo: { etiqueta: 'Titular (H1)', max: 90 },
+      subtitulo: { etiqueta: 'Subtítulo', max: 220 },
+      cta_principal: { etiqueta: 'Botón principal', max: 30 },
+      cta_secundario: { etiqueta: 'Botón secundario (opcional)', max: 30 },
+      sellos: { etiqueta: 'Sellos de confianza (opcional)', max: 120 },
+    },
+    borradorPendiente: 'Tienes un borrador guardado que aún no está publicado.',
+    errorCarga: 'No pudimos cargar la sección. Recarga la página.',
+  },
   barra: {
     verSitio: 'Ver sitio público',
     guardar: 'Guardar borrador',

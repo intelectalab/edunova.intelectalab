@@ -10,6 +10,30 @@ const USUARIOS = {
   'superadmin@demo.edunova.pe': { token: 'tk-superadmin', nombre: 'Ana Administradora', roles_plataforma: ['superadmin'] },
   'director@demo.edunova.pe': { token: 'tk-director', nombre: 'María Cárdenas', roles_plataforma: [] },
 };
+// Contenido publicado de la landing; las pruebas lo cambian con POST /__publicar.
+let titulo = 'Administra tu colegio desde un solo lugar';
+const landing = () => ({
+  secciones: {
+    barra_superior: { aviso: 'Plataforma para colegios privados del Perú' },
+    hero: {
+      insignia: 'Gestión escolar K-12',
+      titulo,
+      subtitulo: 'Matrículas, notas, pagos y comunicados en un solo sistema.',
+      cta_principal: 'Solicitar demo gratuita',
+      cta_secundario: 'Ver video demostrativo',
+      sellos: 'Implementación asistida · Soporte local en Perú',
+    },
+  },
+  config: { telefono_central: null },
+  menu: {
+    principal: [
+      { label: 'Funcionalidades', url: '/funcionalidades', target: '_self', columna: null },
+      { label: 'Planes', url: '/#planes', target: '_self', columna: null },
+    ],
+    footer: [],
+  },
+});
+
 const POR_TOKEN = Object.fromEntries(Object.values(USUARIOS).map((u) => [u.token, u]));
 
 function json(res, estado, cuerpo) {
@@ -30,6 +54,11 @@ createServer((req, res) => {
         return json(res, 422, { message: 'x', errors: { usuario: ['El documento, correo o contraseña no son correctos.'] } });
       }
       return json(res, 200, { token: u.token, usuario: { nombres: u.nombre }, colegios: [], roles_plataforma: u.roles_plataforma });
+    }
+    if (req.method === 'GET' && req.url === '/api/v1/sitio/landing') return json(res, 200, landing());
+    if (req.method === 'POST' && req.url === '/__publicar') {
+      titulo = JSON.parse(datos || '{}').titulo ?? titulo;
+      return json(res, 200, { titulo });
     }
     if (req.method === 'POST' && req.url === '/api/v1/auth/salir') return json(res, 200, { message: 'Sesión cerrada.' });
     if (req.method === 'GET' && req.url === '/api/v1/cms/sesion') {

@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { salirCms } from '@/app/cms/acciones';
-import { Boton, Chip, Icono } from '@/componentes/base';
+import { Chip, Icono } from '@/componentes/base';
+import { BotonesEditor, FranjaEstado } from './EditorCms';
 import { cms, enlacePorRuta, enlacesPara, sitio } from '@/contenido/provisional';
 
 type Usuario = { nombre: string; rol: string };
@@ -155,12 +156,7 @@ export function MarcoCms({ usuario, sitioPublico, children }: { usuario: Usuario
               <span className="sr-only md:not-sr-only">{cms.barra.verSitio}</span>
             </a>
             <span className="hidden md:contents">
-              <Boton variante="secundario" icono="save" disabled title={cms.barra.sinCambios}>
-                {cms.barra.guardar}
-              </Boton>
-              <Boton variante="accion" icono="rocket_launch" disabled title={cms.barra.sinCambios}>
-                {cms.barra.publicar}
-              </Boton>
+              <BotonesEditor />
             </span>
           </div>
         </header>
@@ -173,6 +169,7 @@ export function MarcoCms({ usuario, sitioPublico, children }: { usuario: Usuario
             ))}
         </nav>
 
+        <FranjaEstado />
         <main className="flex-1">{children}</main>
       </div>
     </>

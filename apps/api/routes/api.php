@@ -4,6 +4,8 @@ use App\Http\Controllers\SaludController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
+use App\Modulos\SIT\Http\Controllers\EditorCmsController;
+use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,4 +36,12 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
 // EDUN-226 · Panel CMS: solo el superadmin del SaaS. Los colegios no tienen CMS.
 Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::get('/sesion', SesionCmsController::class);
+    // EDUN-233 · Borrador y publicación.
+    Route::get('/estado', [EditorCmsController::class, 'estado']);
+    Route::get('/secciones/{clave}', [EditorCmsController::class, 'mostrar']);
+    Route::put('/secciones/{clave}', [EditorCmsController::class, 'guardar']);
+    Route::post('/publicar', [EditorCmsController::class, 'publicar']);
 });
+
+// Sitio público (sin sesión): solo contenido publicado.
+Route::get('/sitio/landing', LandingController::class)->middleware('throttle:120,1');
