@@ -50,6 +50,17 @@ export type SeccionVideos = { insignia: string; titulo: string; descripcion: str
 export type SeccionCtaFinal = { insignia: string | null; titulo: string; descripcion: string | null; boton: string; beneficios: string[] };
 export type SeccionFooter = { descripcion: string; derechos: string; moneda: string };
 
+export type Seo = {
+  titulo: string;
+  descripcion: string;
+  canonical: string | null;
+  robots: string;
+  keywords: string[];
+  og_titulo: string | null;
+  og_descripcion: string | null;
+  og_imagen: { url: string; alt: string | null; ancho: number | null; alto: number | null } | null;
+};
+
 export type ItemMenu = { label: string; url: string; target: string; columna: string | null };
 
 export type Landing = {
@@ -73,6 +84,8 @@ export type Landing = {
   contadores: Contador[];
   videos: Video[];
   testimonios: Testimonio[];
+  seo: Seo | null;
+  faq: { pregunta: string; respuesta: string }[];
   config: Record<string, string | number | boolean | null>;
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
 };

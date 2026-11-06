@@ -99,3 +99,7 @@ INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden, fijo) VALUES
 INSERT INTO cms.config (clave, valor) VALUES
  ('testimonios_solo_4_estrellas', 'false'),
  ('oferta_migracion', '{"visible":false,"titulo":null,"texto":"","cta":null,"expira":null}');
+
+-- EDUN-311 · SEO de la landing (por completar desde el CMS).
+INSERT INTO cms.seo_paginas (slug, meta_titulo, meta_descripcion) VALUES
+ ('inicio', 'Edunova', 'Sistema de gestión escolar para colegios privados del Perú.');

@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
+import { indexable, URL_SITIO } from '@/lib/seo';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(URL_SITIO),
   title: 'Edunova',
+  // EDUN-311: en staging nada se indexa; las páginas públicas lo permiten solo en producción.
+  robots: indexable() ? undefined : { index: false, follow: false },
 };
 
 // Fuentes del prototipo: Lexend (títulos), Source Sans 3 (texto) y Material Symbols Outlined,

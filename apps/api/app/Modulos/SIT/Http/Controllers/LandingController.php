@@ -38,6 +38,8 @@ class LandingController
                     ->map(fn ($c) => ['label' => $c->label, 'valor' => (float) $c->valor, 'prefijo' => $c->prefijo, 'sufijo' => $c->sufijo]),
                 'videos' => $this->videos(),
                 'testimonios' => $this->testimonios((bool) $config->get('testimonios_solo_4_estrellas')),
+                'seo' => $this->seo('inicio'),
+                'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(20)->get(['pregunta', 'respuesta']),
             ])->header('Cache-Control', 'public, max-age=60');
         });
     }
@@ -107,6 +109,28 @@ class LandingController
         }
 
         return ['titulo' => $oferta['titulo'] ?? null, 'texto' => $oferta['texto'] ?? '', 'cta' => $oferta['cta'] ?? null];
+    }
+
+    /** EDUN-311 · SEO publicado de una página, con la imagen Open Graph de la Biblioteca. */
+    private function seo(string $slug): ?array
+    {
+        $p = DB::table('cms.seo_paginas as s')->leftJoin('cms.medios as m', 'm.id', '=', 's.og_imagen_id')
+            ->where('s.slug', $slug)->where('s.estado', 'publicado')
+            ->first(['s.meta_titulo', 's.meta_descripcion', 's.canonical_url', 's.robots', 's.keywords', 's.og_titulo', 's.og_descripcion', 'm.url as og_imagen', 'm.alt as og_imagen_alt', 'm.ancho', 'm.alto']);
+        if (! $p) {
+            return null;
+        }
+
+        return [
+            'titulo' => $p->meta_titulo,
+            'descripcion' => $p->meta_descripcion,
+            'canonical' => $p->canonical_url,
+            'robots' => $p->robots,
+            'keywords' => $p->keywords ? array_values(array_filter(str_getcsv(trim($p->keywords, '{}')))) : [],
+            'og_titulo' => $p->og_titulo,
+            'og_descripcion' => $p->og_descripcion,
+            'og_imagen' => $p->og_imagen ? ['url' => $p->og_imagen, 'alt' => $p->og_imagen_alt, 'ancho' => $p->ancho, 'alto' => $p->alto] : null,
+        ];
     }
 
     /** EDUN-254 · Hasta 3 videos de la landing, con su miniatura. */

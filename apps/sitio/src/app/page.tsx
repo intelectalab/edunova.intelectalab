@@ -9,10 +9,16 @@ import { Testimonios } from '@/componentes/landing/Testimonios';
 import { Videos } from '@/componentes/landing/Videos';
 import { landing, sitio } from '@/contenido/provisional';
 import { obtenerLanding } from '@/lib/landing';
+import { jsonLdLanding, metadatosLanding, scriptJsonLd } from '@/lib/seo';
 
 // Landing pública. TRASPASO §3: SSR en la landing e ISR de 5 minutos para el contenido del
 // CMS (solo lo publicado). Orden de secciones de TRASPASO §5.
 export const dynamic = 'force-dynamic';
+
+// EDUN-311 · Metadatos de cms.seo_paginas (la petición se comparte con la página).
+export async function generateMetadata() {
+  return metadatosLanding(await obtenerLanding());
+}
 
 const URL_INGRESO = process.env.EDUNOVA_WEB_URL ?? 'http://localhost:5174';
 
@@ -33,6 +39,9 @@ export default async function Inicio() {
   const c = datos.config;
   return (
     <>
+      {jsonLdLanding(datos).map((bloque, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: scriptJsonLd(bloque) }} />
+      ))}
       <Cabecera aviso={s.barra_superior?.aviso ?? ''} telefono={(c.telefono_central as string | null) ?? null} menu={datos.menu.principal} urlIngreso={URL_INGRESO} />
       <main className="w-full pt-28 bg-surface">
         <Hero datos={hero} />

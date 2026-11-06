@@ -76,6 +76,8 @@ const landing = () => ({
     { label: 'consulta para las familias', valor: 24, prefijo: null, sufijo: '/7' },
   ],
   videos: [{ id: 1, titulo: 'Recorrido general', descripcion: 'Panel de dirección.', proveedor: 'youtube', embed_url: 'https://www.youtube-nocookie.com/embed/abc123', duracion_seg: 270, miniatura: null, miniatura_alt: null }],
+  seo: { titulo: 'Edunova · Gestión escolar', descripcion: 'Software de gestión escolar para colegios privados del Perú.', canonical: null, robots: 'index,follow', keywords: ['gestión escolar'], og_titulo: 'Edunova', og_descripcion: 'Gestión escolar integral.', og_imagen: null },
+  faq: [{ pregunta: '¿Funciona con SIAGIE?', respuesta: 'Exporta las actas en el formato de MINEDU.' }],
   testimonios: [{ id: 1, nombre: null, cargo: 'Directora', institucion: 'Colegio particular · Arequipa', texto: 'Cerramos el bimestre sin pasar notas a mano.', calificacion: 5, es_ejemplo: true, avatar: null }],
   menu: {
     principal: [
