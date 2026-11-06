@@ -65,6 +65,22 @@ return [
             'report' => true,
         ],
 
+        // Medios del sitio web (EDUN-237): imágenes y PDF públicos del CMS. Bucket aparte, de
+        // lectura pública (en la nube, detrás de un CDN). Nunca guardar aquí datos de colegios.
+        'medios_sitio' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+            'bucket' => env('AWS_BUCKET_SITIO', 'edunova-sitio'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'url' => env('AWS_URL_SITIO'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'public',
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

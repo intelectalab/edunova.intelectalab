@@ -6,6 +6,7 @@ use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
+use App\Modulos\SIT\Http\Controllers\MediosCmsController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,10 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::get('/secciones/{clave}', [EditorCmsController::class, 'mostrar']);
     Route::put('/secciones/{clave}', [EditorCmsController::class, 'guardar']);
     Route::post('/publicar', [EditorCmsController::class, 'publicar']);
+    // EDUN-237 · Biblioteca de medios.
+    Route::get('/medios', [MediosCmsController::class, 'index']);
+    Route::post('/medios', [MediosCmsController::class, 'store'])->middleware('throttle:30,1');
+    Route::patch('/medios/{medio}', [MediosCmsController::class, 'update'])->whereNumber('medio');
 });
 
 // Sitio público (sin sesión): solo contenido publicado.

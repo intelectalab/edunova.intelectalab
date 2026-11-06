@@ -3,6 +3,7 @@
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\SEG\Services\AlmacenArchivos;
+use App\Modulos\SIT\Services\BibliotecaMedios;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -12,20 +13,23 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// EDUN-207 · Crea el bucket privado del almacenamiento de objetos si no existe (local y entornos nuevos).
+// EDUN-207 / EDUN-237 · Crea los buckets si no existen: «objetos» (privado, archivos de los
+// colegios) y «medios_sitio» (público, imágenes del sitio web).
 Artisan::command('objetos:preparar', function () {
-    /** @var AwsS3V3Adapter $disco */
-    $disco = Storage::disk(AlmacenArchivos::DISCO);
-    $cliente = $disco->getClient();
-    $bucket = config('filesystems.disks.objetos.bucket');
-    if ($cliente->doesBucketExistV2($bucket, false)) {
-        $this->info("El bucket «{$bucket}» ya existe.");
+    foreach ([AlmacenArchivos::DISCO, BibliotecaMedios::DISCO] as $nombreDisco) {
+        /** @var AwsS3V3Adapter $disco */
+        $disco = Storage::disk($nombreDisco);
+        $cliente = $disco->getClient();
+        $bucket = config("filesystems.disks.{$nombreDisco}.bucket");
+        if ($cliente->doesBucketExistV2($bucket, false)) {
+            $this->info("El bucket «{$bucket}» ya existe.");
 
-        return;
+            continue;
+        }
+        $cliente->createBucket(['Bucket' => $bucket]);
+        $this->info("Bucket «{$bucket}» creado.");
     }
-    $cliente->createBucket(['Bucket' => $bucket]);
-    $this->info("Bucket «{$bucket}» creado (privado).");
-})->purpose('Crea el bucket del almacenamiento de objetos si no existe');
+})->purpose('Crea los buckets del almacenamiento de objetos si no existen');
 
 // EDUN-208 · Envía un correo de prueba por la cola (en local llega a Mailpit: http://localhost:8026).
 Artisan::command('correo:probar {email}', function (string $email) {

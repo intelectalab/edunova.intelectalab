@@ -47,6 +47,9 @@ const landing = () => ({
   },
 });
 
+// Biblioteca de medios en memoria (EDUN-237).
+const medios = [];
+
 const POR_TOKEN = Object.fromEntries(Object.values(USUARIOS).map((u) => [u.token, u]));
 
 function json(res, estado, cuerpo) {
@@ -72,6 +75,18 @@ createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/__publicar') {
       titulo = JSON.parse(datos || '{}').titulo ?? titulo;
       return json(res, 200, { titulo });
+    }
+    if (req.url.startsWith('/api/v1/cms/medios')) {
+      if (!POR_TOKEN[token]?.roles_plataforma.includes('superadmin')) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' });
+      if (req.method === 'GET') return json(res, 200, { data: medios });
+      const nombre = /filename="([^"]+)"/.exec(datos)?.[1] ?? 'archivo';
+      // Valor del campo alt del multipart: va dos líneas después de su cabecera.
+      const lineas = datos.split(String.fromCharCode(10)).map((l) => l.replace(String.fromCharCode(13), ''));
+      const i = lineas.findIndex((l) => l.includes('name="alt"'));
+      const alt = i >= 0 ? lineas[i + 2] || null : null;
+      const medio = { id: medios.length + 1, tipo: 'imagen', nombre, url: '/favicon.ico', mime: 'image/png', bytes: datos.length, ancho: 1200, alto: 800, alt };
+      medios.unshift(medio);
+      return json(res, 201, { data: medio, message: 'Archivo subido.' });
     }
     if (req.method === 'POST' && req.url === '/api/v1/auth/salir') return json(res, 200, { message: 'Sesión cerrada.' });
     if (req.method === 'GET' && req.url === '/api/v1/cms/sesion') {
