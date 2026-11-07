@@ -4,12 +4,22 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Que la sesión sea del superadmin lo verifica la API en el layout del panel.
 const COOKIE_CMS = 'edunova_cms';
 
+/**
+ * Origen público de la petición. Detrás de un proxy (nginx), request.url trae la dirección
+ * interna del servidor (127.0.0.1:puerto); el dominio real llega en Host y X-Forwarded-Proto.
+ */
+function origenPublico(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '');
+  return host ? `${proto}://${host}` : request.nextUrl.origin;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (pathname.startsWith('/cms/ingresar')) return NextResponse.next();
   if (request.cookies.get(COOKIE_CMS)?.value) return NextResponse.next();
 
-  const destino = new URL('/cms/ingresar', request.url);
+  const destino = new URL('/cms/ingresar', origenPublico(request));
   destino.searchParams.set('volver', pathname + search);
   return NextResponse.redirect(destino);
 }
