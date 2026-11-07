@@ -19,6 +19,8 @@ function cabecerasHosting(apiUrl: string | undefined): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
+    // Ruta donde se publica la web (p. ej. /app/ cuando comparte dominio con el sitio).
+    base: env.VITE_BASE || '/',
     plugins: [react(), cabecerasHosting(env.VITE_API_URL)],
     server: { headers: cabecerasSeguridad(env.VITE_API_URL, true) },
     preview: { headers: cabecerasSeguridad(env.VITE_API_URL, false) },
