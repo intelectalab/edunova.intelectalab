@@ -1,0 +1,10 @@
+# EDUN-211 · Despliegue continuo en el VPS de pruebas (ver desplegar.sh).
+[Unit]
+Description=Edunova: desplegar el último commit de main con CI en verde
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/edunova/infra/vps/desplegar.sh
+TimeoutStartSec=1800

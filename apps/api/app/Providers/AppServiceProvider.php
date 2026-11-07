@@ -8,6 +8,7 @@ use App\Modulos\ADM\Models\Seccion;
 use App\Modulos\ADM\Policies\AlumnoPolicy;
 use App\Modulos\ADM\Policies\SeccionPolicy;
 use App\Modulos\SEG\Services\Autorizacion;
+use App\Modulos\SIT\Http\Middleware\VisitanteSitio;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -27,9 +28,12 @@ class AppServiceProvider extends ServiceProvider
         // EDUN-209 · Límites de uso por IP (por cuenta, el ingreso ya bloquea tras 5 intentos).
         RateLimiter::for('ingreso', fn (Request $r) => Limit::perMinute(20)->by('ip:'.$r->ip())
             ->response(fn () => response()->json(['message' => 'Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.'], 429)));
+        // Formularios del sitio: por la IP del visitante que reenvía el servidor de Next.js.
         RateLimiter::for('formularios', fn (Request $r) => [
-            Limit::perMinute(10)->by('ip:'.$r->ip()),
-            Limit::perHour(60)->by('ip-hora:'.$r->ip()),
+            Limit::perMinute(10)->by('ip:'.VisitanteSitio::ip($r))
+                ->response(fn () => response()->json(['message' => 'Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.'], 429)),
+            Limit::perHour(60)->by('ip-hora:'.VisitanteSitio::ip($r))
+                ->response(fn () => response()->json(['message' => 'Demasiadas solicitudes. Inténtalo más tarde.'], 429)),
         ]);
         RateLimiter::for('publico', fn (Request $r) => Limit::perMinute(120)->by('ip:'.$r->ip()));
 

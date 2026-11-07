@@ -22,6 +22,7 @@ test('JSON-LD: Organization y SoftwareApplication con ofertas en PEN; FAQPage; s
   expect(app.offers).toEqual([
     expect.objectContaining({ '@type': 'Offer', name: 'Plan Inicial', price: '300.00', priceCurrency: 'PEN' }),
     expect.objectContaining({ name: 'Plan Crecimiento', price: '500.00', priceCurrency: 'PEN' }),
+    expect.objectContaining({ name: 'Plan Integral', price: '800.00', priceCurrency: 'PEN' }),
   ]);
   expect(app.review).toBeUndefined();
   expect(tipo('FAQPage').mainEntity[0]).toMatchObject({ '@type': 'Question', name: '¿Funciona con SIAGIE?' });

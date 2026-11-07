@@ -16,7 +16,7 @@ docker compose exec -T api composer audit
 echo "== Base de datos: aislamiento y reglas (34 pruebas)"
 sh infra/pruebas-aislamiento.sh
 
-echo "== CMS: reglas y permisos (17 pruebas)"
+echo "== CMS: reglas y permisos (21 pruebas)"
 sh infra/pruebas-cms.sh
 
 echo "== Web y sitio: tipos, lint, pruebas y build"

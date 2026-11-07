@@ -4,6 +4,7 @@ use App\Http\Middleware\CabecerasSeguridad;
 use App\Modulos\SEG\Http\Middleware\IdentificarInstitucion;
 use App\Modulos\SEG\Http\Middleware\VerificarPermiso;
 use App\Modulos\SIT\Http\Middleware\AccesoCms;
+use App\Modulos\SIT\Http\Middleware\VisitanteSitio;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permiso' => VerificarPermiso::class,
             // EDUN-226 · Panel CMS: solo superadmin; fija app.rol_cms y app.usuario_id.
             'cms' => AccesoCms::class,
+            // Sprint 6 · IP y navegador del visitante en los formularios del sitio.
+            'visitante' => VisitanteSitio::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

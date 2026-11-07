@@ -216,3 +216,103 @@ export const muestra = {
   modal: { titulo: 'Modal', abrir: 'Abrir modal', tituloModal: 'Solicitar demo gratuita', cuerpo: 'Contenido de ejemplo del modal.', cerrar: 'Cerrar' },
   toast: { titulo: 'Aviso flotante', mostrar: 'Mostrar aviso', texto: 'Borrador guardado' },
 };
+
+/** EDUN-267 / SIT-002 · Ventana «Solicitar demo gratuita» con calendario (prototipo #demo). */
+export const demo = {
+  titulo: 'Solicitar demo gratuita',
+  cerrar: 'Cerrar',
+  pasoContacto: '1. Datos de contacto',
+  pasoCalendario: '2. Elige fecha y hora de la demo',
+  nombre: 'Nombre completo *',
+  cargo: 'Cargo *',
+  telefono: 'Teléfono / WhatsApp *',
+  telefonoEjemplo: '9XX XXX XXX',
+  email: 'Correo electrónico *',
+  colegio: 'Nombre del colegio *',
+  alumnos: 'N.° de alumnos *',
+  plan: 'Plan de interés',
+  elegir: 'Elegir…',
+  aunNoSe: 'Aún no sé',
+  cargos: ['Promotor(a)', 'Director(a)', 'Administrador(a)', 'Coordinador(a) académico', 'Secretaría / Tesorería', 'Otro'],
+  rangosAlumnos: [
+    { valor: '150', etiqueta: 'Hasta 150' },
+    { valor: '300', etiqueta: '151 a 300' },
+    { valor: '500', etiqueta: '301 a 500' },
+    { valor: '800', etiqueta: '501 a 800' },
+    { valor: '801', etiqueta: 'Más de 800' },
+  ],
+  planes: [
+    { valor: 'inicial', etiqueta: 'Inicial' },
+    { valor: 'crecimiento', etiqueta: 'Crecimiento' },
+    { valor: 'integral', etiqueta: 'Integral' },
+    { valor: 'institucional', etiqueta: 'Institucional' },
+  ],
+  mesAnterior: 'Mes anterior',
+  mesSiguiente: 'Mes siguiente',
+  diasSemana: ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'],
+  meses: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'],
+  diasLargos: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
+  noDisponible: 'no disponible',
+  horas: [
+    { valor: '09:00', etiqueta: '9:00 a. m.' },
+    { valor: '10:30', etiqueta: '10:30 a. m.' },
+    { valor: '12:00', etiqueta: '12:00 m.' },
+    { valor: '15:00', etiqueta: '3:00 p. m.' },
+    { valor: '16:30', etiqueta: '4:30 p. m.' },
+    { valor: '18:00', etiqueta: '6:00 p. m.' },
+  ],
+  horasDisponibles: 'Horas disponibles (hora de Lima)',
+  resumenInicial: 'Demo por videollamada · 30 minutos · hora de Lima',
+  seleccionado: (fecha: string, hora: string | null) => `Seleccionado: ${fecha} · ${hora ?? 'elige una hora'}`,
+  consentimientoAntes: 'He leído y acepto la ',
+  consentimientoEnlace: 'Política de Privacidad',
+  consentimientoDespues: ' y autorizo el uso de mis datos para coordinar la demo.',
+  trampa: 'Sitio web (déjalo vacío)',
+  agendar: 'Agendar mi demo',
+  enviando: 'Enviando…',
+  errorIncompleto: 'Completa los campos marcados con * y acepta la Política de Privacidad.',
+  errorCalendario: 'Elige el día y la hora de la demo en el calendario.',
+  errorConexion: 'No pudimos registrar tu solicitud. Inténtalo de nuevo en unos minutos.',
+  listoTitulo: 'Solicitud registrada',
+  listo: (nombre: string, fecha: string, hora: string, email: string) =>
+    `Gracias, ${nombre}. Un asesor confirmará tu demo del ${fecha} a las ${hora} en ${email}.`,
+  cerrarListo: 'Cerrar',
+};
+
+/** EDUN-287 / SIT-053 · Ventana y páginas de políticas. */
+export const politicas = {
+  cerrar: 'Cerrar',
+  cargando: 'Cargando…',
+  error: 'No pudimos cargar la política. Inténtalo de nuevo en unos minutos.',
+  version: (version: string, desde: string) => `Versión ${version} · vigente desde ${desde}`,
+  borrador: 'Borrador pendiente de revisión legal',
+  borradorDetalle: 'Este texto es provisional y puede cambiar antes de su versión definitiva.',
+  noPublicada: 'Esta política aún no está publicada.',
+  titulos: {
+    privacidad: 'Política de Privacidad',
+    terminos: 'Términos y Condiciones del servicio',
+    seguridad: 'Seguridad de Datos (LPDP)',
+    cookies: 'Política de Cookies',
+  } as Record<string, string>,
+};
+
+/** EDUN-306 / SIT-055 · Banner de cookies (sin diseño en el prototipo: estilo de la landing). */
+export const cookies = {
+  titulo: 'Tu privacidad en Edunova',
+  texto: 'Usamos cookies esenciales para que el sitio funcione. Con tu permiso, también usamos cookies de analítica, marketing y personalización.',
+  verPolitica: 'Política de Cookies',
+  aceptarTodo: 'Aceptar todo',
+  soloEsenciales: 'Solo esenciales',
+  configurar: 'Configurar',
+  guardar: 'Guardar mis preferencias',
+  tituloConfigurar: 'Preferencias de cookies',
+  cerrar: 'Cerrar',
+  preferencias: 'Preferencias de cookies',
+  siempreActivas: 'Siempre activas',
+  categorias: [
+    { clave: 'esenciales', titulo: 'Esenciales', descripcion: 'Necesarias para el funcionamiento y la seguridad del sitio, y para recordar tu elección.' },
+    { clave: 'analitica', titulo: 'Analítica', descripcion: 'Nos dicen qué páginas se visitan para mejorar el sitio (Google Analytics).' },
+    { clave: 'marketing', titulo: 'Marketing', descripcion: 'Miden campañas y muestran anuncios de Edunova en otros sitios.' },
+    { clave: 'personalizacion', titulo: 'Personalización', descripcion: 'Recuerdan preferencias para adaptar el contenido.' },
+  ],
+};

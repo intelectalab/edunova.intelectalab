@@ -2,15 +2,10 @@
 
 import { useState } from 'react';
 import { Icono, Modal } from '@/componentes/base';
+import { registrarEvento } from '@/lib/consentimiento';
 import { duracion } from '@/lib/formato';
 import type { SeccionVideos, Video } from '@/lib/landing';
 import { Encabezado } from './Encabezado';
-
-declare global {
-  interface Window {
-    dataLayer?: Record<string, unknown>[];
-  }
-}
 
 /** Solo se aceptan reproductores conocidos (TRASPASO D-SIT-09: YouTube, Vimeo o S3). */
 function urlReproductor(v: Video): string | null {
@@ -35,7 +30,7 @@ export function Videos({ datos, videos, etiquetaCerrar }: { datos: SeccionVideos
 
   function abrir(v: Video) {
     setAbierto(v);
-    window.dataLayer?.push({ event: 'video_play', video_title: v.titulo });
+    registrarEvento('video_play', { video_title: v.titulo });
   }
 
   const url = abierto ? urlReproductor(abierto) : null;

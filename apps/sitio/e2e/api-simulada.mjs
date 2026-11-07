@@ -66,6 +66,7 @@ const landing = () => ({
   planes: [
     { clave: 'inicial', nombre: 'Plan Inicial', rango_texto: 'Hasta 150 alumnos', precio_mensual: '300.00', descripcion: null, caracteristicas: [{ texto: 'Matrícula', incluida: true }, { texto: 'Facturación electrónica', incluida: false }], recomendado: false, cta_texto: 'Seleccionar plan' },
     { clave: 'crecimiento', nombre: 'Plan Crecimiento', rango_texto: 'Hasta 300 alumnos', precio_mensual: '500.00', descripcion: null, caracteristicas: [{ texto: 'Todo lo del Inicial', incluida: true }], recomendado: true, cta_texto: 'Elegir Crecimiento' },
+    { clave: 'integral', nombre: 'Plan Integral', rango_texto: 'Hasta 500 alumnos', precio_mensual: '800.00', descripcion: null, caracteristicas: [{ texto: 'Todo lo del Crecimiento', incluida: true }], recomendado: false, cta_texto: 'Seleccionar Plan' },
     { clave: 'institucional', nombre: 'Institucional', rango_texto: 'Más de 500 alumnos', precio_mensual: null, descripcion: null, caracteristicas: [], recomendado: false, cta_texto: 'Cotizar' },
   ],
   complementos: [{ clave: 'tramo_501_800', etiqueta: '501 a 800 alumnos', precio: '1234.00', nota: 'al mes' }],
@@ -87,10 +88,37 @@ const landing = () => ({
     footer: [
       { label: 'Módulos', url: '/#funcionalidades', target: '_self', columna: 'Plataforma' },
       { label: 'Política de privacidad', url: '/#privacidad', target: '_self', columna: 'Legal' },
+      { label: 'Términos y condiciones', url: '/#terminos', target: '_self', columna: 'Legal' },
       { label: 'Libro de Reclamaciones', url: '/libro-de-reclamaciones', target: '_self', columna: 'Legal' },
     ],
   },
+  // EDUN-306 · Contenedor de prueba: las pruebas interceptan googletagmanager.com.
+  tracking: { gtm: 'GTM-PRUEBA1' },
 });
+
+// Sprint 6 · Políticas, leads y consentimientos en memoria (EDUN-267, 287, 291 y 306).
+const TITULOS = { privacidad: 'Política de Privacidad', terminos: 'Términos y Condiciones del servicio', seguridad: 'Seguridad de Datos (LPDP)', cookies: 'Política de Cookies' };
+const politica = (tipo) => ({
+  tipo,
+  titulo: TITULOS[tipo],
+  version: '1.0',
+  vigente_desde: '2026-11-07',
+  borrador: true,
+  contenido: `<p>Texto de prueba de ${TITULOS[tipo]}.</p><h3>1. Datos que recopilamos</h3><p>Nombre y correo.</p>`,
+});
+const leads = [];
+const consentimientos = [];
+const HORAS = ['09:00', '10:30', '12:00', '15:00', '16:30', '18:00'];
+
+function validarDemo(d) {
+  const errores = {};
+  for (const k of ['nombre', 'cargo', 'telefono', 'email', 'colegio', 'alumnos', 'demo_fecha']) if (!d[k]) errores[k] = ['Completa este campo.'];
+  if (!HORAS.includes(d.demo_hora)) errores.demo_hora = ['Elige una de las horas disponibles.'];
+  if (d.consentimiento !== true) errores.consentimiento = ['Debes aceptar la Política de Privacidad para enviar la solicitud.'];
+  const dia = d.demo_fecha ? new Date(`${d.demo_fecha}T12:00:00Z`).getUTCDay() : 1;
+  if (dia === 0 || dia === 6) errores.demo_fecha = ['La demo se agenda de lunes a viernes.'];
+  return errores;
+}
 
 // Biblioteca de medios en memoria (EDUN-237).
 const medios = [];
@@ -117,6 +145,23 @@ createServer((req, res) => {
       return json(res, 200, { token: u.token, usuario: { nombres: u.nombre }, colegios: [], roles_plataforma: u.roles_plataforma });
     }
     if (req.method === 'GET' && req.url === '/api/v1/sitio/landing') return json(res, 200, landing());
+    const tipoPolitica = /^\/api\/v1\/sitio\/politicas\/(\w+)$/.exec(req.url)?.[1];
+    if (req.method === 'GET' && tipoPolitica) return TITULOS[tipoPolitica] ? json(res, 200, politica(tipoPolitica)) : json(res, 404, { message: 'No encontramos lo que buscas.' });
+    if (req.method === 'POST' && req.url === '/api/v1/sitio/leads') {
+      const d = JSON.parse(datos || '{}');
+      const errores = validarDemo(d);
+      if (Object.keys(errores).length > 0) return json(res, 422, { message: Object.values(errores)[0][0], errors: errores });
+      leads.push(d);
+      consentimientos.push({ tipo: 'formulario', version_politica: 'privacidad-v1.0', email: d.email, ip: req.headers['x-visitante-ip'] ?? null });
+      return json(res, 201, { message: 'Solicitud registrada.', demo_fecha: d.demo_fecha, demo_hora: d.demo_hora, email: d.email.toLowerCase(), consentimiento_version: 'privacidad-v1.0' });
+    }
+    if (req.method === 'POST' && req.url === '/api/v1/sitio/consentimientos/cookies') {
+      const { categorias } = JSON.parse(datos || '{}');
+      consentimientos.push({ tipo: 'cookies', version_politica: 'cookies-v1.0', categorias });
+      return json(res, 201, { message: 'Preferencias guardadas.', version_politica: 'cookies-v1.0' });
+    }
+    // Solo para las pruebas: qué recibió la API.
+    if (req.method === 'GET' && req.url === '/__leads') return json(res, 200, { leads, consentimientos });
     if (req.method === 'POST' && req.url === '/__publicar') {
       titulo = JSON.parse(datos || '{}').titulo ?? titulo;
       return json(res, 200, { titulo });

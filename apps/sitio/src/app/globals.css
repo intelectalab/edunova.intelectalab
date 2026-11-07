@@ -35,6 +35,25 @@
 }
 
 @layer components {
+  /* EDUN-287 · Texto de las políticas (HTML limpio que viene del CMS). */
+  .texto-politica h2,
+  .texto-politica h3 {
+    @apply font-title-lg text-title-lg text-primary mt-2;
+  }
+  .texto-politica ul,
+  .texto-politica ol {
+    @apply pl-6 flex flex-col gap-1;
+  }
+  .texto-politica ul {
+    list-style: disc;
+  }
+  .texto-politica ol {
+    list-style: decimal;
+  }
+  .texto-politica a {
+    @apply text-primary font-semibold underline;
+  }
+
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;

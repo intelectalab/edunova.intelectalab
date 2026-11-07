@@ -39,6 +39,9 @@ return [
     'sitio' => [
         'revalidar_url' => env('SITIO_REVALIDAR_URL'),
         'revalidar_secreto' => env('SITIO_REVALIDAR_SECRETO'),
+        // Sprint 6 · El servidor del sitio reenvía los formularios con la IP y el navegador del
+        // visitante; la API solo les cree si viene este secreto compartido.
+        'proxy_secreto' => env('SITIO_PROXY_SECRETO'),
     ],
 
     // EDUN-208 · Webhook de rebotes y quejas del proveedor de correo.

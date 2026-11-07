@@ -1,0 +1,11 @@
+# EDUN-211 · Revisa cada 5 minutos si hay un commit nuevo en main con CI en verde.
+[Unit]
+Description=Edunova: revisar despliegues cada 5 minutos
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

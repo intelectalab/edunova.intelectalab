@@ -88,6 +88,8 @@ export type Landing = {
   faq: { pregunta: string; respuesta: string }[];
   config: Record<string, string | number | boolean | null>;
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
+  /** EDUN-306 · Contenedor de GTM; solo se carga con consentimiento de analítica o marketing. */
+  tracking?: { gtm: string | null };
 };
 
 export const REVALIDAR_SEGUNDOS = 300;

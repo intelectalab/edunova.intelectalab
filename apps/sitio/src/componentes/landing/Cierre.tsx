@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Icono } from '@/componentes/base';
+import { BotonPreferenciasCookies } from '@/componentes/conversion/BannerCookies';
 import { landing, sitio } from '@/contenido/provisional';
 import { oConfirmar } from '@/lib/formato';
 import type { ItemMenu, SeccionCtaFinal, SeccionFooter } from '@/lib/landing';
@@ -117,8 +118,12 @@ export function Pie({ datos, config, enlaces }: { datos: SeccionFooter; config: 
         <p>
           © {anio} {oConfirmar(config.razon_social)}. {datos.derechos}
         </p>
-        <p>
-          {datos.moneda} · {landing.horario} {oConfirmar(config.horario_soporte)}
+        <p className="flex flex-wrap items-center gap-x-space-sm gap-y-1">
+          <span>
+            {datos.moneda} · {landing.horario} {oConfirmar(config.horario_soporte)}
+          </span>
+          <span aria-hidden="true">·</span>
+          <BotonPreferenciasCookies className="underline hover:text-inverse-on-surface" />
         </p>
       </div>
     </footer>

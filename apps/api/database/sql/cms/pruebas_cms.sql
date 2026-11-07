@@ -27,9 +27,9 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 4: aceptó lead sin contacto';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 4 · lead exige email o teléfono'; END;
 
-  -- 5. Demo solo en días hábiles (2026-11-07 es sábado)
+  -- 5. Demo solo en días hábiles (2030-01-05 es sábado)
   BEGIN
-    INSERT INTO cms.leads (source, email, demo_fecha, consentimiento_version) VALUES ('demo','a@b.pe','2026-11-07','privacidad-v1.0');
+    INSERT INTO cms.leads (source, email, demo_fecha, demo_hora, consentimiento_version) VALUES ('demo','a@b.pe','2030-01-05','09:00','privacidad-v1.0');
     RAISE EXCEPTION 'FALLO 5: aceptó demo en sábado';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 5 · demo solo lunes a viernes'; END;
 
@@ -70,6 +70,26 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 10: ocultó un enlace legal';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 10 · enlaces legales siempre visibles'; END;
 
+  -- 18. Demo desde mañana y con fecha y hora (EDUN-267, 03_cms_conversion.sql)
+  BEGIN
+    INSERT INTO cms.leads (source, email, demo_fecha, demo_hora, consentimiento_version) VALUES ('demo','a@b.pe',(now() AT TIME ZONE 'America/Lima')::date,'09:00','privacidad-v1.0');
+    RAISE EXCEPTION 'FALLO 18: aceptó una demo para hoy';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 18 · demo desde mañana'; END;
+  BEGIN
+    INSERT INTO cms.leads (source, email, demo_fecha, consentimiento_version) VALUES ('demo','a@b.pe','2030-01-07','privacidad-v1.0');
+    RAISE EXCEPTION 'FALLO 19: aceptó una demo sin hora';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 19 · demo con fecha y hora'; END;
+
+  -- 20. Cookies: siempre «esenciales» y solo categorías conocidas (EDUN-306)
+  BEGIN
+    INSERT INTO cms.consentimientos (tipo, version_politica, categorias) VALUES ('cookies','cookies-v1.0',ARRAY['analitica']);
+    RAISE EXCEPTION 'FALLO 20: aceptó cookies sin esenciales';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  BEGIN
+    INSERT INTO cms.consentimientos (tipo, version_politica, categorias) VALUES ('cookies','cookies-v1.0',ARRAY['esenciales','rastreo']);
+    RAISE EXCEPTION 'FALLO 20: aceptó una categoría desconocida';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 20 · categorías de cookies válidas'; END;
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 
@@ -90,6 +110,12 @@ DO $$ DECLARE n int; BEGIN
   SELECT count(*) INTO n FROM cms.leads; IF n <> 0 THEN RAISE EXCEPTION 'FALLO 12: el público leyó leads'; END IF;
   INSERT INTO cms.leads (source, email, consentimiento_version) VALUES ('popup', 'visitante@colegio.pe', 'privacidad-v1.0');
   RAISE NOTICE 'OK 11-13 · público: lee contenido, no edita, no lee leads, sí envía leads';
+
+  -- 21. El público registra consentimientos pero no los lee (EDUN-291)
+  INSERT INTO cms.consentimientos (tipo, version_politica, categorias, ip) VALUES ('cookies', 'cookies-v1.0', ARRAY['esenciales'], '203.0.113.5');
+  SELECT count(*) INTO n FROM cms.consentimientos; IF n <> 0 THEN RAISE EXCEPTION 'FALLO 21: el público leyó consentimientos'; END IF;
+  SELECT count(*) INTO n FROM cms.politicas; IF n < 4 THEN RAISE EXCEPTION 'FALLO 21: el público no lee las políticas'; END IF;
+  RAISE NOTICE 'OK 21 · público: registra consentimientos sin leerlos y lee las políticas';
 
   -- Un usuario de colegio (por ejemplo, el promotor o propietario) no tiene CMS
   PERFORM set_config('app.rol_cms', 'promotor', true);

@@ -67,7 +67,8 @@ INSERT INTO cms.menu_items (ubicacion, label, url, orden) VALUES
 INSERT INTO cms.menu_items (ubicacion, columna, label, url, orden, fijo) VALUES
  ('footer', 'Legal', 'Política de privacidad', '/#privacidad', 1, true),
  ('footer', 'Legal', 'Términos y condiciones', '/#terminos', 2, true),
- ('footer', 'Legal', 'Libro de Reclamaciones', '/libro-de-reclamaciones', 3, true);
+ ('footer', 'Legal', 'Libro de Reclamaciones', '/libro-de-reclamaciones', 3, true),
+ ('footer', 'Legal', 'Seguridad de datos', '/#seguridad', 4, true);
 
 -- Sección de módulos de la landing (EDUN-251). {n} = cantidad de módulos visibles.
 INSERT INTO cms.secciones (clave, nombre, orden, config) VALUES

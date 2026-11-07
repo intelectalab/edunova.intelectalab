@@ -11,7 +11,16 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: `http://127.0.0.1:${PUERTO}`, trace: 'retain-on-failure' },
+  use: {
+    baseURL: `http://127.0.0.1:${PUERTO}`,
+    trace: 'retain-on-failure',
+    // EDUN-306 · Por defecto el visitante ya eligió sus cookies, para que el banner no tape la
+    // pantalla en las demás pruebas. conversion.spec.ts lo prueba con un visitante nuevo.
+    storageState: {
+      cookies: [],
+      origins: [{ origin: `http://127.0.0.1:${PUERTO}`, localStorage: [{ name: 'edunova_cookies', value: JSON.stringify({ categorias: ['esenciales'], fecha: '2026-11-07T00:00:00.000Z' }) }] }],
+    },
+  },
   projects: [
     { name: 'escritorio', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'celular', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },

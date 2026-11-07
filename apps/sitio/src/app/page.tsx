@@ -1,5 +1,6 @@
 import { Cabecera } from '@/componentes/landing/Cabecera';
 import { Cifras } from '@/componentes/landing/Cifras';
+import { Conversion } from '@/componentes/conversion/Conversion';
 import { CtaFinal, Pie } from '@/componentes/landing/Cierre';
 import { Hero } from '@/componentes/landing/Hero';
 import { Modulos } from '@/componentes/landing/Modulos';
@@ -67,6 +68,7 @@ export default async function Inicio() {
         {s.cta_final && <CtaFinal datos={s.cta_final} telefono={c.telefono_central} />}
       </main>
       {s.footer && <Pie datos={s.footer} config={c} enlaces={datos.menu.footer} />}
+      <Conversion gtm={datos.tracking?.gtm ?? null} />
     </>
   );
 }

@@ -8,6 +8,7 @@ use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\MediosCmsController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
+use App\Modulos\SIT\Http\Controllers\SitioLegalController;
 use Illuminate\Support\Facades\Route;
 
 // Todas las rutas quedan bajo /api/v1 (bootstrap/app.php, apiPrefix).
@@ -50,3 +51,14 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
 
 // Sitio público (sin sesión): solo contenido publicado.
 Route::get('/sitio/landing', LandingController::class)->middleware('throttle:publico');
+
+// Sprint 6 · Políticas vigentes (EDUN-287), demo con consentimiento (EDUN-267, EDUN-291) y
+// preferencias de cookies (EDUN-306). El público solo inserta: no puede leer leads ni consentimientos.
+Route::prefix('sitio')->group(function () {
+    Route::get('/politicas/{tipo}', [SitioLegalController::class, 'politica'])
+        ->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies'])->middleware('throttle:publico');
+    Route::middleware(['visitante', 'throttle:formularios'])->group(function () {
+        Route::post('/leads', [SitioLegalController::class, 'lead']);
+        Route::post('/consentimientos/cookies', [SitioLegalController::class, 'cookies']);
+    });
+});

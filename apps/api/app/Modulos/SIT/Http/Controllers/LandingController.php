@@ -40,6 +40,7 @@ class LandingController
                 'testimonios' => $this->testimonios((bool) $config->get('testimonios_solo_4_estrellas')),
                 'seo' => $this->seo('inicio'),
                 'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(20)->get(['pregunta', 'respuesta']),
+                'tracking' => $this->tracking(),
             ])->header('Cache-Control', 'public, max-age=60');
         });
     }
@@ -109,6 +110,19 @@ class LandingController
         }
 
         return ['titulo' => $oferta['titulo'] ?? null, 'texto' => $oferta['texto'] ?? '', 'cta' => $oferta['cta'] ?? null];
+    }
+
+    /**
+     * EDUN-306 · Contenedor de Google Tag Manager, si está activo y con un ID real. El sitio solo
+     * lo carga cuando el visitante acepta analítica o marketing (Consent Mode v2). El ID de GTM
+     * es público (va en el HTML); el resto de cms.tracking no sale de la API.
+     */
+    private function tracking(): array
+    {
+        $gtm = DB::table('cms.tracking')->where('nombre', 'gtm')->where('activo', true)->value('valor');
+        $gtm = is_string($gtm) ? strtoupper(trim($gtm)) : '';
+
+        return ['gtm' => preg_match('/^GTM-[A-Z0-9]{4,10}$/', $gtm) && $gtm !== 'GTM-XXXXXXX' ? $gtm : null];
     }
 
     /** EDUN-311 · SEO publicado de una página, con la imagen Open Graph de la Biblioteca. */
