@@ -123,6 +123,7 @@ export function SolicitarDemo() {
       telefono: texto('telefono'),
       email: texto('email'),
       colegio: texto('colegio'),
+      ciudad: texto('ciudad') || null,
       alumnos: Number(texto('alumnos')) || 0,
       plan_interes: plan || null,
       demo_fecha: fecha,
@@ -211,10 +212,16 @@ export function SolicitarDemo() {
               {t.email}
               <input name="email" type="email" required maxLength={160} autoComplete="email" aria-invalid={marcar('email')} className={CAMPO} />
             </label>
-            <label className={ETIQUETA}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+              <label className={ETIQUETA}>
               {t.colegio}
               <input name="colegio" required minLength={2} maxLength={160} autoComplete="organization" aria-invalid={marcar('colegio')} className={CAMPO} />
             </label>
+              <label className={ETIQUETA}>
+                {t.ciudad}
+                <input name="ciudad" maxLength={80} autoComplete="address-level2" className={CAMPO} />
+              </label>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
               <label className={ETIQUETA}>
                 {t.alumnos}

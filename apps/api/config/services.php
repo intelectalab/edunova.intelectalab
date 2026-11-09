@@ -42,6 +42,14 @@ return [
         // Sprint 6 · El servidor del sitio reenvía los formularios con la IP y el navegador del
         // visitante; la API solo les cree si viene este secreto compartido.
         'proxy_secreto' => env('SITIO_PROXY_SECRETO'),
+        // URL pública del sitio (enlaces de los correos, p. ej. el seguimiento del reclamo).
+        'url' => env('SITIO_URL', env('APP_URL')),
+    ],
+
+    // EDUN-294 · reCAPTCHA v3 del Libro de Reclamaciones (sin secreto, no se exige).
+    'recaptcha' => [
+        'secreto' => env('RECAPTCHA_SECRETO'),
+        'umbral' => (float) env('RECAPTCHA_UMBRAL', 0.5),
     ],
 
     // EDUN-208 · Webhook de rebotes y quejas del proveedor de correo.

@@ -33,6 +33,8 @@ class SolicitudDemoRequest extends FormRequest
             'telefono' => ['required', 'string', 'regex:/^\+?[0-9 ()-]{6,20}$/'],
             'email' => ['required', 'email:rfc', 'max:160'],
             'colegio' => ['required', 'string', 'min:2', 'max:160'],
+            // EDUN-278 · Para filtrar la bandeja por ciudad.
+            'ciudad' => ['nullable', 'string', 'max:80'],
             'alumnos' => ['required', 'integer', 'min:1', 'max:100000'],
             'plan_interes' => ['nullable', Rule::in(self::PLANES)],
             'demo_fecha' => ['required', 'date_format:Y-m-d', $this->diaHabilDesdeManana(...)],

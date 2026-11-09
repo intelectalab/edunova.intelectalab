@@ -120,6 +120,77 @@ function validarDemo(d) {
   return errores;
 }
 
+// Sprint 7 · Libro de Reclamaciones (EDUN-294), seguimiento (EDUN-298) y bandeja (EDUN-278).
+const reclamosGuardados = [];
+const auditoria = [];
+const fallosSeguimiento = new Map();
+
+/** Campos de texto de un multipart/form-data (los archivos solo se cuentan). */
+function camposMultipart(cuerpo, tipo) {
+  const limite = /boundary=(.+)$/.exec(tipo ?? '')?.[1];
+  const campos = {};
+  let archivos = 0;
+  if (!limite) return { campos, archivos };
+  for (const parte of cuerpo.split(`--${limite}`)) {
+    const nombre = /name="([^"]+)"/.exec(parte)?.[1];
+    if (!nombre) continue;
+    if (/filename="/.test(parte)) {
+      archivos++;
+      continue;
+    }
+    const valor = parte.split(String.fromCharCode(13, 10, 13, 10)).slice(1).join('');
+    campos[nombre] = valor.endsWith(String.fromCharCode(13, 10)) ? valor.slice(0, -2) : valor;
+  }
+  return { campos, archivos };
+}
+
+const PLANES_LEAD = ['inicial', 'crecimiento', 'integral'];
+const NOMBRE_PLAN = { inicial: 'Plan Inicial', crecimiento: 'Plan Crecimiento', integral: 'Plan Integral' };
+const leadsBandeja = Array.from({ length: 42 }, (_, i) => ({
+  id: i + 1,
+  nombre: `Contacto ${i + 1}`,
+  cargo: 'Director(a)',
+  email: `contacto${i + 1}@ejemplo.pe`,
+  telefono: '987654321',
+  colegio: `Colegio de ejemplo ${i + 1}`,
+  ciudad: i % 2 ? 'Arequipa' : 'Lima',
+  alumnos: 150 + i,
+  plan_interes: PLANES_LEAD[i % 3],
+  plan_nombre: NOMBRE_PLAN[PLANES_LEAD[i % 3]],
+  precio_mensual: null,
+  estado: 'nuevo',
+  source: 'demo',
+  demo_fecha: null,
+  demo_hora: null,
+  mensaje: null,
+  utm_source: null,
+  utm_medium: null,
+  utm_campaign: null,
+  page_url: null,
+  created_at: new Date(Date.now() - i * 3600_000).toISOString(),
+  primer_contacto_en: null,
+}));
+
+function bandeja(url) {
+  const p = url.searchParams;
+  const base = leadsBandeja.filter((l) => (!p.get('plan') || l.plan_interes === p.get('plan')) && (!p.get('ciudad') || l.ciudad === p.get('ciudad')) && (!p.get('q') || l.colegio.toLowerCase().includes(p.get('q').toLowerCase())));
+  const filtrados = base.filter((l) => !p.get('estado') || l.estado === p.get('estado'));
+  const pagina = Math.max(1, Number(p.get('pagina') ?? 1));
+  const contadores = { todos: base.length };
+  for (const e of ['nuevo', 'contactado', 'en_proceso', 'ganado', 'perdido']) contadores[e] = base.filter((l) => l.estado === e).length;
+  return {
+    data: filtrados.slice((pagina - 1) * 10, pagina * 10),
+    pagina,
+    por_pagina: 10,
+    total: filtrados.length,
+    paginas: Math.max(1, Math.ceil(filtrados.length / 10)),
+    contadores,
+    indicadores: { total_mes: leadsBandeja.length, sin_contactar: contadores.nuevo, respuesta_horas: null, demos_agendadas: 0, demos_hoy: 0, pipeline_mensual: '0.00', pipeline_leads: 0 },
+    ciudades: ['Arequipa', 'Lima'],
+    planes: Object.entries(NOMBRE_PLAN).map(([clave, nombre]) => ({ clave, nombre })),
+  };
+}
+
 // Biblioteca de medios en memoria (EDUN-237).
 const medios = [];
 
@@ -160,6 +231,41 @@ createServer((req, res) => {
       consentimientos.push({ tipo: 'cookies', version_politica: 'cookies-v1.0', categorias });
       return json(res, 201, { message: 'Preferencias guardadas.', version_politica: 'cookies-v1.0' });
     }
+    if (req.method === 'POST' && req.url === '/api/v1/sitio/reclamaciones') {
+      const { campos, archivos } = camposMultipart(datos, req.headers['content-type']);
+      const errores = {};
+      for (const k of ['tipo', 'nombre', 'tipo_doc', 'numero_doc', 'email', 'direccion', 'producto', 'descripcion', 'pedido']) if (!campos[k]) errores[k] = ['Completa este campo.'];
+      if (campos.descripcion && campos.descripcion.length < 50) errores.descripcion = ['Describe los hechos con al menos 50 caracteres.'];
+      if (!campos.declaracion) errores.declaracion = ['Debes declarar que la información es verdadera.'];
+      if (!campos.consentimiento) errores.consentimiento = ['Debes autorizar el tratamiento de tus datos para tramitar el reclamo.'];
+      if (Object.keys(errores).length > 0) return json(res, 422, { message: Object.values(errores)[0][0], errors: errores });
+      const expediente = `REC-2026-${String(reclamosGuardados.length + 1).padStart(4, '0')}`;
+      reclamosGuardados.push({ expediente, ...campos, archivos, estado: 'recibido' });
+      return json(res, 201, { message: 'Reclamación registrada.', expediente, vence_en: '2026-11-30', email: campos.email, plazo_dias_habiles: 15 });
+    }
+    if (req.method === 'GET' && req.url.startsWith('/api/v1/sitio/reclamaciones/seguimiento')) {
+      const u = new URL(req.url, 'http://x');
+      const ip = req.headers['x-visitante-ip'] ?? 'local';
+      if ((fallosSeguimiento.get(ip) ?? 0) >= 10) return json(res, 429, { message: 'Hiciste demasiadas consultas sin resultado. Inténtalo de nuevo en 15 minutos.' });
+      const r = reclamosGuardados.find((x) => x.expediente === (u.searchParams.get('expediente') ?? '').toUpperCase() && x.numero_doc === u.searchParams.get('documento'));
+      if (!r) {
+        fallosSeguimiento.set(ip, (fallosSeguimiento.get(ip) ?? 0) + 1);
+        return json(res, 404, { message: 'No encontramos un reclamo con esos datos.' });
+      }
+      fallosSeguimiento.delete(ip);
+      return json(res, 200, { expediente: r.expediente, tipo: r.tipo, estado: r.estado, actualizado_en: '2026-11-09T15:20:00Z', vence_en: '2026-11-30' });
+    }
+    if (req.url.startsWith('/api/v1/cms/leads')) {
+      if (!POR_TOKEN[token]?.roles_plataforma.includes('superadmin')) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' });
+      const u = new URL(req.url, 'http://x');
+      if (req.method === 'GET') return json(res, 200, bandeja(u));
+      const lead = leadsBandeja.find((l) => l.id === Number(u.pathname.split('/').pop()));
+      if (!lead) return json(res, 404, { message: 'No encontramos esa solicitud.' });
+      lead.estado = JSON.parse(datos || '{}').estado;
+      auditoria.push({ entidad: 'leads', entidad_id: lead.id, campo: 'estado', valor_despues: lead.estado });
+      return json(res, 200, { data: { id: lead.id, estado: lead.estado }, message: 'Estado actualizado.' });
+    }
+    if (req.method === 'GET' && req.url === '/__auditoria') return json(res, 200, auditoria);
     // Solo para las pruebas: qué recibió la API.
     if (req.method === 'GET' && req.url === '/__leads') return json(res, 200, { leads, consentimientos });
     if (req.method === 'POST' && req.url === '/__publicar') {

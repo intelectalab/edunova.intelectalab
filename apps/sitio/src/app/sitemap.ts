@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${URL_SITIO}/`, changeFrequency: 'weekly', priority: 1, lastModified: new Date() },
+    { url: `${URL_SITIO}/libro-de-reclamaciones`, changeFrequency: 'yearly' as const, priority: 0.3 },
     ...Object.values(RUTAS_POLITICAS).map((ruta) => ({ url: `${URL_SITIO}${ruta}`, changeFrequency: 'monthly' as const, priority: 0.3 })),
   ];
 }

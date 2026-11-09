@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { demo } from '@/contenido/provisional';
+import { demo, reclamos, seguimiento } from '@/contenido/provisional';
 import { API_URL } from '@/lib/sesionCms';
 
 /*
@@ -11,13 +11,13 @@ import { API_URL } from '@/lib/sesionCms';
  * consentimiento (EDUN-291).
  */
 
-async function cabecerasVisitante(): Promise<Record<string, string>> {
+async function cabecerasVisitante(json = true): Promise<Record<string, string>> {
   const h = await headers();
   const ip = (h.get('x-forwarded-for') ?? '').split(',')[0].trim() || h.get('x-real-ip') || '';
   const secreto = process.env.SITIO_PROXY_SECRETO ?? '';
   return {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
     ...(secreto ? { 'X-Sitio-Secreto': secreto, 'X-Visitante-Ip': ip, 'X-Visitante-Agente': (h.get('user-agent') ?? '').slice(0, 500) } : {}),
   };
 }
@@ -32,6 +32,7 @@ export type SolicitudDemo = {
   telefono: string;
   email: string;
   colegio: string;
+  ciudad: string | null;
   alumnos: number;
   plan_interes: string | null;
   demo_fecha: string;
@@ -59,6 +60,7 @@ export async function solicitarDemo(s: SolicitudDemo): Promise<ResultadoDemo> {
       telefono: s.telefono,
       email: s.email,
       colegio: s.colegio,
+      ciudad: s.ciudad,
       alumnos: s.alumnos,
       plan_interes: s.plan_interes || null,
       demo_fecha: s.demo_fecha,
@@ -89,5 +91,69 @@ export async function registrarCookies(categorias: string[]): Promise<boolean> {
     return r.status === 201;
   } catch {
     return false;
+  }
+}
+
+// --- EDUN-294 · Libro de Reclamaciones ------------------------------------------------------
+
+export type ResultadoReclamo =
+  | { ok: true; expediente: string; vence_en: string; email: string }
+  | { ok: false; error: string; errores: Record<string, string> };
+
+const CAMPOS_RECLAMO = ['tipo', 'nombre', 'tipo_doc', 'numero_doc', 'email', 'telefono', 'direccion', 'menor_edad', 'apoderado_nombre', 'apoderado_doc', 'producto', 'monto', 'descripcion', 'pedido', 'declaracion', 'consentimiento', 'recaptcha', 'sitio_web'];
+const MAX_ADJUNTO = 5 * 1024 * 1024;
+
+/** Reenvía la hoja de reclamación (con sus adjuntos) a POST /api/v1/sitio/reclamaciones. */
+export async function registrarReclamo(datos: FormData): Promise<ResultadoReclamo> {
+  const envio = new FormData();
+  for (const campo of CAMPOS_RECLAMO) {
+    const v = datos.get(campo);
+    if (typeof v === 'string' && v !== '') envio.set(campo, v.slice(0, 4000));
+  }
+  const archivos = datos.getAll('adjuntos').filter((a): a is File => a instanceof File && a.size > 0);
+  if (archivos.length > 2 || archivos.some((a) => a.size > MAX_ADJUNTO)) {
+    return { ok: false, error: reclamos.errorAdjuntos, errores: { adjuntos: reclamos.errorAdjuntos } };
+  }
+  archivos.forEach((a) => envio.append('adjuntos[]', a, a.name));
+
+  let r: Response;
+  try {
+    r = await fetch(`${API_URL}/sitio/reclamaciones`, { method: 'POST', headers: await cabecerasVisitante(false), body: envio, cache: 'no-store', signal: AbortSignal.timeout(30_000) });
+  } catch {
+    return { ok: false, error: reclamos.errorConexion, errores: {} };
+  }
+  const cuerpo = await r.json().catch(() => ({}));
+  if (r.status === 201) return { ok: true, expediente: cuerpo.expediente, vence_en: cuerpo.vence_en, email: cuerpo.email };
+  if (r.status === 422 && cuerpo?.errors) {
+    // «adjuntos.0» → «adjuntos»: el formulario tiene un solo campo de archivos.
+    const errores = Object.fromEntries(Object.entries(cuerpo.errors as Record<string, string[]>).map(([k, v]) => [k.split('.')[0], v[0]]));
+    return { ok: false, error: reclamos.errorIncompleto, errores };
+  }
+  return { ok: false, error: r.status === 429 ? String(cuerpo?.message ?? reclamos.errorConexion) : reclamos.errorConexion, errores: {} };
+}
+
+// --- EDUN-298 · Seguimiento del reclamo -----------------------------------------------------
+
+export type ResultadoSeguimiento =
+  | { ok: true; expediente: string; tipo: string; estado: string; actualizado_en: string; vence_en: string }
+  | { ok: false; error: string };
+
+export async function consultarReclamo(expediente: string, documento: string): Promise<ResultadoSeguimiento> {
+  const e = String(expediente ?? '').trim().slice(0, 20);
+  const d = String(documento ?? '').trim().slice(0, 15);
+  if (!e || !d) return { ok: false, error: seguimiento.faltan };
+
+  try {
+    const r = await fetch(`${API_URL}/sitio/reclamaciones/seguimiento?${new URLSearchParams({ expediente: e, documento: d })}`, {
+      headers: await cabecerasVisitante(false),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    });
+    const cuerpo = await r.json().catch(() => ({}));
+    if (r.ok) return { ok: true, ...cuerpo };
+    if (r.status === 404 || r.status === 429) return { ok: false, error: String(cuerpo?.message ?? seguimiento.errorConexion) };
+    return { ok: false, error: seguimiento.errorConexion };
+  } catch {
+    return { ok: false, error: seguimiento.errorConexion };
   }
 }

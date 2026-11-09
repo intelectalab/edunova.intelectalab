@@ -46,6 +46,7 @@ class SitioLegalController
             'email' => mb_strtolower(trim($d['email'])),
             'telefono' => trim($d['telefono']),
             'colegio' => trim($d['colegio']),
+            'ciudad' => isset($d['ciudad']) && trim($d['ciudad']) !== '' ? trim($d['ciudad']) : null,
             'alumnos' => (int) $d['alumnos'],
             'plan_interes' => $d['plan_interes'] ?? null,
             'demo_fecha' => $d['demo_fecha'],

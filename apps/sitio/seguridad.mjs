@@ -17,9 +17,11 @@ function origenMedios() {
 
 // Orígenes de GTM y GA4 (guía de CSP de Google Tag Manager).
 const GOOGLE = {
-  script: ['https://www.googletagmanager.com'],
+  // EDUN-294 · reCAPTCHA v3 del Libro de Reclamaciones (solo si hay clave del sitio).
+  script: ['https://www.googletagmanager.com', 'https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'],
+  frame: ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
   img: ['https://www.googletagmanager.com', 'https://*.google-analytics.com'],
-  connect: ['https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com'],
+  connect: ['https://www.google.com/recaptcha/', 'https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com'],
 };
 
 export function politicaContenido() {
@@ -31,7 +33,7 @@ export function politicaContenido() {
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
     'img-src': ["'self'", 'data:', 'blob:', origenMedios(), ...GOOGLE.img].filter(Boolean),
     'media-src': ["'self'", origenMedios()].filter(Boolean),
-    'frame-src': ['https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com'],
+    'frame-src': ['https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com', ...GOOGLE.frame],
     'connect-src': ["'self'", ...GOOGLE.connect, ...(produccion ? [] : ['ws:'])],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],

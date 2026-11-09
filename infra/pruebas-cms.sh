@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Corre las 21 pruebas de reglas y permisos del esquema cms (database/sql/cms/pruebas_cms.sql)
+# Corre las 24 pruebas de reglas y permisos del esquema cms (database/sql/cms/pruebas_cms.sql)
 # sobre una base nueva «edunova_cms_pruebas» con el esquema del SaaS, el esquema cms y las
 # semillas neutras. Deben salir «TODAS LAS PRUEBAS PASARON» y «TODAS LAS PRUEBAS DE PERMISOS PASARON».
 #
@@ -16,6 +16,7 @@ $P -d edunova -c "DROP DATABASE IF EXISTS $BASE" -c "CREATE DATABASE $BASE OWNER
 $P -d $BASE -f - < "$SQL/01_esquema.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/01_cms_esquema.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/03_cms_conversion.sql" > /dev/null
+$P -d $BASE -f - < "$SQL/cms/04_cms_reclamos_y_bandeja.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/02_cms_semillas_base.sql" > /dev/null
 SALIDA=$($P -d $BASE -f - < "$SQL/cms/pruebas_cms.sql" 2>&1) || { echo "$SALIDA"; exit 1; }
 echo "$SALIDA" | grep -E "OK|PASARON|FALLO" | sed 's/^.*NOTICE: *//'

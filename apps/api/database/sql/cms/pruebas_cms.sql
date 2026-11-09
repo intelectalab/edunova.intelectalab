@@ -90,6 +90,17 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 20: aceptó una categoría desconocida';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 20 · categorías de cookies válidas'; END;
 
+  -- 22. Plazo del reclamo: 15 días hábiles sin fines de semana ni feriados (EDUN-294)
+  IF cms.sumar_dias_habiles('2026-12-01', 15) <> '2026-12-24' THEN RAISE EXCEPTION 'FALLO 22: no saltó los feriados del 8 y 9 de diciembre'; END IF;
+  RAISE NOTICE 'OK 22 · vencimiento en días hábiles';
+
+  -- 23. Menor de edad exige apoderado (EDUN-294)
+  BEGIN
+    INSERT INTO cms.reclamaciones (numero_expediente,tipo,nombre_reclamante,tipo_doc,numero_doc,email,producto_descripcion,descripcion,pedido,vence_en,menor_edad)
+    VALUES ('REC-2026-0002','queja','Alumno','DNI','12345678','a@x.pe','Plan Inicial',repeat('x',60),'Respuesta',current_date + 21,true);
+    RAISE EXCEPTION 'FALLO 23: aceptó un menor sin apoderado';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 23 · menor de edad con apoderado'; END;
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 
@@ -102,6 +113,7 @@ END $$;
 GRANT USAGE ON SCHEMA cms TO edunova_web;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA cms TO edunova_web;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA cms TO edunova_web;
+GRANT EXECUTE ON FUNCTION cms.seguimiento_reclamo(text, text) TO edunova_web;
 SET ROLE edunova_web;
 DO $$ DECLARE n int; BEGIN
   PERFORM set_config('app.rol_cms', 'publico', true);
@@ -116,6 +128,14 @@ DO $$ DECLARE n int; BEGIN
   SELECT count(*) INTO n FROM cms.consentimientos; IF n <> 0 THEN RAISE EXCEPTION 'FALLO 21: el público leyó consentimientos'; END IF;
   SELECT count(*) INTO n FROM cms.politicas; IF n < 4 THEN RAISE EXCEPTION 'FALLO 21: el público no lee las políticas'; END IF;
   RAISE NOTICE 'OK 21 · público: registra consentimientos sin leerlos y lee las políticas';
+
+  -- 24. Reclamos: el público inserta, no lee, y el seguimiento exige el documento (EDUN-294, EDUN-298)
+  INSERT INTO cms.reclamaciones (numero_expediente,tipo,nombre_reclamante,tipo_doc,numero_doc,email,producto_descripcion,descripcion,pedido,vence_en)
+  VALUES ('REC-2026-0003','reclamo','Ana Pérez','DNI','87654321','ana@x.pe','Plan Inicial',repeat('x',60),'Devolución',current_date + 21);
+  SELECT count(*) INTO n FROM cms.reclamaciones; IF n <> 0 THEN RAISE EXCEPTION 'FALLO 24: el público leyó reclamaciones'; END IF;
+  SELECT count(*) INTO n FROM cms.seguimiento_reclamo('REC-2026-0003', '11111111'); IF n <> 0 THEN RAISE EXCEPTION 'FALLO 24: seguimiento sin el documento correcto'; END IF;
+  SELECT count(*) INTO n FROM cms.seguimiento_reclamo('rec-2026-0003', '87654321'); IF n <> 1 THEN RAISE EXCEPTION 'FALLO 24: el titular no ve su estado'; END IF;
+  RAISE NOTICE 'OK 24 · reclamos: el público envía y consulta el suyo, sin leer los demás';
 
   -- Un usuario de colegio (por ejemplo, el promotor o propietario) no tiene CMS
   PERFORM set_config('app.rol_cms', 'promotor', true);

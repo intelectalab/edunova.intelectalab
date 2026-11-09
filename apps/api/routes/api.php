@@ -6,7 +6,9 @@ use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
+use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
 use App\Modulos\SIT\Http\Controllers\MediosCmsController;
+use App\Modulos\SIT\Http\Controllers\ReclamacionesController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use App\Modulos\SIT\Http\Controllers\SitioLegalController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +49,9 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::get('/medios', [MediosCmsController::class, 'index']);
     Route::post('/medios', [MediosCmsController::class, 'store'])->middleware('throttle:30,1');
     Route::patch('/medios/{medio}', [MediosCmsController::class, 'update'])->whereNumber('medio');
+    // EDUN-278 · Bandeja de solicitudes.
+    Route::get('/leads', [LeadsCmsController::class, 'index']);
+    Route::patch('/leads/{lead}', [LeadsCmsController::class, 'update'])->whereNumber('lead');
 });
 
 // Sitio público (sin sesión): solo contenido publicado.
@@ -60,5 +65,9 @@ Route::prefix('sitio')->group(function () {
     Route::middleware(['visitante', 'throttle:formularios'])->group(function () {
         Route::post('/leads', [SitioLegalController::class, 'lead']);
         Route::post('/consentimientos/cookies', [SitioLegalController::class, 'cookies']);
+        // EDUN-294 · Libro de Reclamaciones virtual.
+        Route::post('/reclamaciones', [ReclamacionesController::class, 'store']);
     });
+    // EDUN-298 · Seguimiento: el límite de consultas fallidas lo aplica el controlador.
+    Route::get('/reclamaciones/seguimiento', [ReclamacionesController::class, 'seguimiento'])->middleware(['visitante', 'throttle:publico']);
 });
