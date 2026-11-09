@@ -13,6 +13,10 @@
 # Las variables del sitio (URL pública, URL de la API) salen de /etc/edunova/sitio.env.
 set -euo pipefail
 
+# systemd no define HOME: Composer y npx lo necesitan para su caché.
+export HOME="${HOME:-/root}"
+export COMPOSER_HOME="${COMPOSER_HOME:-$HOME/.config/composer}"
+
 [ -f /etc/edunova/despliegue.env ] && . /etc/edunova/despliegue.env
 DIR="${EDUNOVA_DIR:-/var/www/edunova}"
 RAMA="${EDUNOVA_RAMA:-main}"
