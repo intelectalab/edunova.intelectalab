@@ -35,3 +35,9 @@ it('el ingreso tiene límite por IP además del bloqueo por cuenta', function ()
     $this->postJson('/api/v1/auth/ingresar', ['usuario' => 'otro@x.pe', 'password' => DemoSeeder::DEMO_PASSWORD])
         ->assertStatus(429)->assertJson(['message' => 'Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.']);
 });
+
+it('sin sesión responde 401 en JSON aunque el pedido no pida JSON (no redirige ni da 500)', function () {
+    foreach (['/api/v1/usuarios', '/api/v1/alumnos', '/api/v1/plataforma/instituciones', '/api/v1/cms/sesion'] as $ruta) {
+        $this->get($ruta)->assertUnauthorized()->assertExactJson(['message' => 'Inicia sesión para continuar.']);
+    }
+});

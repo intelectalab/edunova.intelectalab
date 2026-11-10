@@ -9,6 +9,7 @@ use App\Modulos\SEG\Http\Middleware\VerificarPermiso;
 use App\Modulos\SIT\Http\Middleware\AccesoCms;
 use App\Modulos\SIT\Http\Middleware\VisitanteSitio;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,6 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [CabecerasSeguridad::class]);
         // EDUN-206 · Cuenta los 5xx para las alertas del monitoreo.
         $middleware->api(prepend: [ContarErrores::class]);
+        // La API no tiene página de ingreso: sin sesión responde 401 en JSON (sin redirigir),
+        // aunque el pedido no envíe «Accept: application/json».
+        $middleware->redirectGuestsTo(fn () => null);
 
         // EDUN-39 · Colegio activo (RLS) y permisos por ruta.
         $middleware->alias([
@@ -50,6 +54,9 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         // Mensajes en español para la API (docs/13-convenciones.md).
+        $exceptions->render(fn (AuthenticationException $e, Request $request) => $request->is('api/v1/*')
+            ? response()->json(['message' => 'Inicia sesión para continuar.'], 401)
+            : null);
         $exceptions->render(fn (AuthorizationException|AccessDeniedHttpException $e, Request $request) => $request->is('api/v1/*')
             ? response()->json(['message' => 'No tienes permiso para realizar esta acción.'], 403)
             : null);
