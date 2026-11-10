@@ -96,6 +96,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // La sesión usa la zona del colegio aunque el servidor de base esté en UTC (CI, nube).
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'America/Lima')),
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
@@ -111,6 +113,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // La sesión usa la zona del colegio aunque el servidor de base esté en UTC (CI, nube).
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'America/Lima')),
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
@@ -126,6 +130,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            // La sesión usa la zona del colegio aunque el servidor de base esté en UTC (CI, nube).
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'America/Lima')),
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
