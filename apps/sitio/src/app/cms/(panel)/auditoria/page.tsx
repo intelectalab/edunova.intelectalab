@@ -164,7 +164,7 @@ export default async function AuditoriaCms({ searchParams }: { searchParams: Pro
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_26rem] gap-space-md items-start">
         <div className="flex flex-col gap-space-sm min-w-0">
           <div className="rounded-xl overflow-hidden border border-surface-container bg-surface-container-lowest">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t.tabla}>
               <table className="w-full border-collapse">
                 <caption className="sr-only">{t.tabla}</caption>
                 <thead>

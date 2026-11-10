@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Corre las 24 pruebas de reglas y permisos del esquema cms (database/sql/cms/pruebas_cms.sql)
+# Corre las pruebas de reglas y permisos del esquema cms (database/sql/cms/pruebas_cms.sql)
 # sobre una base nueva «edunova_cms_pruebas» con el esquema del SaaS, el esquema cms y las
 # semillas neutras. Deben salir «TODAS LAS PRUEBAS PASARON» y «TODAS LAS PRUEBAS DE PERMISOS PASARON».
 #

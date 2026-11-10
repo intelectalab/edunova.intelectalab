@@ -71,7 +71,7 @@ it('publicar copia el borrador, crea versión, audita «publicado» y revalida e
         ->and($db->table('cms.auditoria')->where('seccion', 'hero')->where('accion', 'borrador')->exists())->toBeTrue()
         ->and(json_decode($db->table('cms.versiones')->where('seccion', 'hero')->latest('id')->value('contenido'), true)['titulo'])->toBe('Titular nuevo');
 
-    Http::assertSent(fn ($req) => $req->url() === 'http://sitio.test/api/revalidar' && $req->header('X-Edunova-Revalidar')[0] === 's3cr3t' && $req['etiquetas'] === ['landing']);
+    Http::assertSent(fn ($req) => $req->url() === 'http://sitio.test/api/revalidar' && $req->header('X-Edunova-Revalidar')[0] === 's3cr3t' && $req['etiquetas'] === ['landing', 'politicas']);
 });
 
 it('publicar es atómico: si una sección no existe, no se publica ninguna', function () {

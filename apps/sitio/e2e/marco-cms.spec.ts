@@ -23,11 +23,11 @@ test.describe('escritorio (1440 px)', () => {
     await expect(page.getByRole('navigation', { name: 'Navegación rápida' }).getByRole('link', { name: 'Planes y Tarifas' })).toHaveAttribute('aria-current', 'page');
   });
 
-  test('el menú mide 288 px y muestra los 8 ítems del superadmin', async ({ page }) => {
+  test('el menú mide 288 px y muestra los 15 ítems del superadmin', async ({ page }) => {
     await page.goto('/cms');
     const menu = page.getByRole('complementary', { name: 'Panel CMS' });
     await expect(menu).toHaveCSS('width', '288px');
-    await expect(menu.getByRole('navigation').getByRole('link')).toHaveCount(8);
+    await expect(menu.getByRole('navigation').getByRole('link')).toHaveCount(15);
   });
 
   test('«Ver sitio público» abre la landing en otra pestaña', async ({ page, context }) => {

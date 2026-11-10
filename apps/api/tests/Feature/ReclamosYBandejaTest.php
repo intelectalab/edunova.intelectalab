@@ -20,11 +20,6 @@ use Laravel\Sanctum\Sanctum;
 | solicitudes del Panel CMS (EDUN-278). Leen y limpian con la conexión dueña (sin RLS).
 */
 
-function dueno()
-{
-    return DB::connection('propietario');
-}
-
 function reclamo(array $cambios = []): array
 {
     return [
@@ -43,20 +38,6 @@ function reclamo(array $cambios = []): array
         'consentimiento' => true,
         ...$cambios,
     ];
-}
-
-function visitante(?string $ip = null): array
-{
-    config()->set('services.sitio.proxy_secreto', 'secreto-de-prueba');
-
-    return ['X-Sitio-Secreto' => 'secreto-de-prueba', 'X-Visitante-Ip' => $ip ?? '198.51.100.'.random_int(1, 254)];
-}
-
-function superadmin(): User
-{
-    $id = dueno()->table('roles_plataforma as rp')->join('roles as r', 'r.id', '=', 'rp.rol_id')->where('r.codigo', 'superadmin')->value('rp.user_id');
-
-    return User::findOrFail($id);
 }
 
 beforeEach(function () {
@@ -194,19 +175,6 @@ it('el público no puede leer reclamaciones', function () {
 });
 
 // --- EDUN-278 / SIT-026 ---------------------------------------------------------------------
-
-function sembrarLeads(int $n, array $datos = []): void
-{
-    $filas = [];
-    for ($i = 1; $i <= $n; $i++) {
-        $filas[] = [
-            'source' => 'demo', 'nombre' => "Contacto {$i}", 'cargo' => 'Director(a)', 'email' => "lead{$i}-".uniqid().'@bandeja.prueba',
-            'telefono' => '987654321', 'colegio' => "Colegio {$i}", 'alumnos' => 300, 'plan_interes' => $i % 3 === 0 ? 'integral' : 'inicial',
-            'ciudad' => $i % 2 ? 'Arequipa' : 'Lima', 'consentimiento_version' => 'privacidad-v1.0', ...$datos,
-        ];
-    }
-    dueno()->table('cms.leads')->insert($filas);
-}
 
 it('con 42 leads del mes el indicador muestra 42 y la tabla 10 por página', function () {
     dueno()->table('cms.leads')->delete();

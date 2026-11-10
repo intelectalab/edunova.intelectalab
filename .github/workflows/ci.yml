@@ -82,7 +82,7 @@ jobs:
       - name: Pruebas de aislamiento y reglas de la base (34)
         run: PSQL="psql" sh infra/pruebas-aislamiento.sh
 
-      - name: Pruebas de reglas y permisos del CMS (17)
+      - name: Pruebas de reglas y permisos del CMS
         run: PSQL="psql" sh infra/pruebas-cms.sh
 
   frontend:

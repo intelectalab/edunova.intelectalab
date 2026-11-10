@@ -8,4 +8,6 @@ use Tests\TestCase;
 | también corren con Pest sin cambios.
 */
 
+require_once __DIR__.'/Ayudas.php';
+
 pest()->extend(TestCase::class)->in('Feature');

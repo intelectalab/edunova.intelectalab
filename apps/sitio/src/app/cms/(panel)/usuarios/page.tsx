@@ -25,7 +25,7 @@ export default async function UsuariosCms() {
         </p>
       ) : (
         <div className="rounded-xl overflow-hidden border border-surface-container bg-surface-container-lowest">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t.tabla}>
             <table className="w-full border-collapse">
               <caption className="sr-only">{t.tabla}</caption>
               <thead>

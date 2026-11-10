@@ -101,6 +101,41 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 23: aceptó un menor sin apoderado';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 23 · menor de edad con apoderado'; END;
 
+  -- 25. El lead del popup de salida nunca trae demo (EDUN-271, 05_cms_crm_y_reclamaciones.sql)
+  BEGIN
+    INSERT INTO cms.leads (source, email, demo_fecha, demo_hora, consentimiento_version) VALUES ('popup','p@x.pe','2030-01-07','09:00','privacidad-v1.0');
+    RAISE EXCEPTION 'FALLO 25: aceptó un lead de popup con demo';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 25 · popup sin demo'; END;
+
+  -- 26. Reclamos: no se saltan estados y la respuesta enviada no cambia (EDUN-302)
+  INSERT INTO cms.reclamaciones (numero_expediente,tipo,nombre_reclamante,tipo_doc,numero_doc,email,producto_descripcion,descripcion,pedido,vence_en)
+  VALUES ('REC-2026-0026','reclamo','Cliente','DNI','12345678','c@x.pe','Plan Inicial',repeat('x',60),'Respuesta',current_date + 21);
+  BEGIN
+    UPDATE cms.reclamaciones SET estado = 'cerrado' WHERE numero_expediente = 'REC-2026-0026';
+    RAISE EXCEPTION 'FALLO 26: cerró un reclamo sin responderlo';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+  UPDATE cms.reclamaciones SET estado = 'respondido', respuesta_cliente = 'Respuesta enviada al cliente.', respondido_en = now() WHERE numero_expediente = 'REC-2026-0026';
+  BEGIN
+    UPDATE cms.reclamaciones SET respuesta_cliente = 'Otra respuesta' WHERE numero_expediente = 'REC-2026-0026';
+    RAISE EXCEPTION 'FALLO 26: cambió una respuesta ya enviada';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 26 · estados del reclamo y respuesta inmutable'; END;
+
+  -- 27. La sección de logos no se muestra sin logos visibles (EDUN-338, 06_cms_panel_completo.sql)
+  BEGIN
+    SET CONSTRAINTS cms.secciones_logos IMMEDIATE;
+    UPDATE cms.secciones SET visible = true WHERE clave = 'logos';
+    RAISE EXCEPTION 'FALLO 27: mostró la sección de logos vacía';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 27 · sección de logos solo con logos visibles'; END;
+  SET CONSTRAINTS cms.secciones_logos DEFERRED;
+
+  -- 28. Se conservan 5 versiones por elemento (EDUN-342)
+  FOR i IN 1..7 LOOP
+    INSERT INTO cms.versiones (seccion, entidad, entidad_id, contenido) VALUES ('prueba', 'secciones', 'prueba', jsonb_build_object('n', i));
+  END LOOP;
+  IF (SELECT count(*) FROM cms.versiones WHERE seccion = 'prueba') <> 5 THEN RAISE EXCEPTION 'FALLO 28: no podó las versiones'; END IF;
+  IF (SELECT min((contenido->>'n')::int) FROM cms.versiones WHERE seccion = 'prueba') <> 3 THEN RAISE EXCEPTION 'FALLO 28: borró versiones recientes'; END IF;
+  RAISE NOTICE 'OK 28 · 5 versiones por elemento';
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 

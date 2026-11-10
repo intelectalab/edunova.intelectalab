@@ -65,7 +65,8 @@ class ContenidoEntidades
     {
         return match ($clave) {
             'planes' => [
-                'nota_legal' => json_decode((string) DB::table('cms.config')->where('clave', 'nota_legal_precios')->value('valor'), true) ?? '',
+                // Sin nota guardada, la clave no va (el sitio usa su texto por defecto y una restauración no falla).
+                ...(($nota = json_decode((string) DB::table('cms.config')->where('clave', 'nota_legal_precios')->value('valor'), true)) ? ['nota_legal' => $nota] : []),
                 'lista' => DB::table('cms.planes_sitio')->orderBy('orden')
                     ->get(['clave', 'nombre', 'rango_texto', 'alumnos_max', 'precio_mensual', 'descripcion', 'caracteristicas', 'recomendado', 'visible', 'cta_texto'])
                     ->map(fn ($p) => [...(array) $p, 'caracteristicas' => json_decode($p->caracteristicas, true) ?: [], 'recomendado' => (bool) $p->recomendado, 'visible' => (bool) $p->visible])->all(),

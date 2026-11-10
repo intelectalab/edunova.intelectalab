@@ -3,6 +3,8 @@
 // Las pruebas de la API real están en apps/api/tests (Pest).
 import { createServer } from 'node:http';
 
+import { atenderPanel, popupLanding } from './api-simulada-panel.mjs';
+
 const PUERTO = Number(process.env.PUERTO_API_SIMULADA ?? 8199);
 const CLAVE = 'clave-de-prueba';
 
@@ -94,6 +96,9 @@ const landing = () => ({
   },
   // EDUN-306 · Contenedor de prueba: las pruebas interceptan googletagmanager.com.
   tracking: { gtm: 'GTM-PRUEBA1' },
+  // Sprint 8 · Popup de salida (solo al intentar salir) y logos (Sprint 10, sin logos).
+  popup: popupLanding,
+  logos: [],
 });
 
 // Sprint 6 · Políticas, leads y consentimientos en memoria (EDUN-267, 287, 291 y 306).
@@ -188,6 +193,7 @@ function bandeja(url) {
     indicadores: { total_mes: leadsBandeja.length, sin_contactar: contadores.nuevo, respuesta_horas: null, demos_agendadas: 0, demos_hoy: 0, pipeline_mensual: '0.00', pipeline_leads: 0 },
     ciudades: ['Arequipa', 'Lima'],
     planes: Object.entries(NOMBRE_PLAN).map(([clave, nombre]) => ({ clave, nombre })),
+    crm: { configurado: false, pendientes: 0, con_error: 0 },
   };
 }
 
@@ -255,6 +261,8 @@ createServer((req, res) => {
       fallosSeguimiento.delete(ip);
       return json(res, 200, { expediente: r.expediente, tipo: r.tipo, estado: r.estado, actualizado_en: '2026-11-09T15:20:00Z', vence_en: '2026-11-30' });
     }
+    // Sprints 8 a 10 (api-simulada-panel.mjs).
+    if (atenderPanel(req, res, datos, { json, esSuperadmin: () => Boolean(POR_TOKEN[token]?.roles_plataforma.includes('superadmin')) })) return;
     if (req.url.startsWith('/api/v1/cms/leads')) {
       if (!POR_TOKEN[token]?.roles_plataforma.includes('superadmin')) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' });
       const u = new URL(req.url, 'http://x');
