@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { moduloActivo, puede, useSesion, type Colegio } from '../sesion/contexto';
+import { Alumnos } from '../adm/Alumnos';
 import { Configuracion } from '../adm/Configuracion';
+import { Horarios } from '../adm/Horarios';
+import { Personal } from '../adm/Personal';
+import { PlanEstudios } from '../adm/PlanEstudios';
 import { ConectorMoodle } from '../mdl/ConectorMoodle';
 import { Auditoria } from '../seg/Auditoria';
 import { MiPerfil } from '../seg/MiPerfil';
@@ -21,8 +25,36 @@ const PAGINAS: Pagina[] = [
     visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.configuracion.ver'),
     pantalla: () => <Configuracion />,
   },
+  {
+    ruta: 'personal',
+    nombre: 'Personal',
+    grupo: 'Institución',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.personal.ver'),
+    pantalla: () => <Personal />,
+  },
   { ruta: 'usuarios', nombre: 'Usuarios', grupo: 'Institución', visible: (c) => puede(c, 'seg.usuarios.ver'), pantalla: () => <Usuarios /> },
   { ruta: 'auditoria', nombre: 'Auditoría', grupo: 'Institución', visible: (c) => puede(c, 'seg.auditoria.ver'), pantalla: () => <Auditoria /> },
+  {
+    ruta: 'plan',
+    nombre: 'Plan de estudios y secciones',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.plan_estudios.ver'),
+    pantalla: () => <PlanEstudios />,
+  },
+  {
+    ruta: 'horarios',
+    nombre: 'Carga docente y horarios',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.horarios.ver'),
+    pantalla: () => <Horarios />,
+  },
+  {
+    ruta: 'alumnos',
+    nombre: 'Alumnos',
+    grupo: 'Matrícula',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.alumnos.ver'),
+    pantalla: () => <Alumnos />,
+  },
   {
     ruta: 'moodle',
     nombre: 'Moodle',

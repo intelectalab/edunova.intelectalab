@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\User;
+use Database\Seeders\DemoSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 
@@ -65,4 +67,37 @@ function sembrarLeads(int $n, array $datos = []): void
         ];
     }
     dueno()->table('cms.leads')->insert($filas);
+}
+
+// ── Colegio de demostración (Sprint 12 en adelante)
+
+function demoId(): int
+{
+    return (int) dueno()->table('instituciones')->where('slug', 'smp')->value('id');
+}
+
+function directorDemo(): User
+{
+    return User::query()->where('email', 'director@demo.edunova.pe')->firstOrFail();
+}
+
+/** Usuario nuevo con un rol en el colegio demo (y contraseña, para probar el ingreso). */
+function personaDemo(string $rol, ?int $institucion = null): User
+{
+    $db = dueno();
+    $id = $db->table('users')->insertGetId([
+        'nombres' => ucfirst($rol), 'apellidos' => 'Prueba '.uniqid(), 'numero_documento' => (string) random_int(10000000, 99999999),
+        'email' => $rol.'.'.uniqid().'@gestion.prueba', 'password' => Hash::make(DemoSeeder::DEMO_PASSWORD), 'celular' => '987654321',
+    ]);
+    $db->table('membresias')->insert(['institucion_id' => $institucion ?? demoId(), 'user_id' => $id, 'rol_id' => $db->table('roles')->where('codigo', $rol)->value('id')]);
+
+    return User::query()->findOrFail($id);
+}
+
+/** Petición como $usuario (segundo factor verificado) en el colegio demo. */
+function enDemo(User $usuario, string $metodo, string $url, array $datos = [], ?int $institucion = null)
+{
+    actuarComo($usuario, true, $institucion ?? demoId());
+
+    return test()->json($metodo, '/api/v1'.$url, $datos, ['X-Institucion' => (string) ($institucion ?? demoId())]);
 }

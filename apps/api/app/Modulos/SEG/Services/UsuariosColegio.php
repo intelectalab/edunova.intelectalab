@@ -44,7 +44,7 @@ class UsuariosColegio
                 $q->where(fn ($w) => $w->whereRaw("lower(u.nombres || ' ' || u.apellidos) like ?", [$t])
                     ->orWhereRaw('lower(u.email) like ?', [$t])->orWhere('u.numero_documento', 'like', $t));
             })
-            ->orderBy('u.apellidos')->orderBy('u.nombres')
+            ->orderBy('u.apellidos')->orderBy('u.nombres')->orderBy('r.id')
             ->get(['u.id', 'u.nombres', 'u.apellidos', 'u.tipo_documento', 'u.numero_documento', 'u.email', 'u.celular', 'u.ultimo_acceso_at',
                 DB::raw('u.password is not null as tiene_password'), DB::raw('u.dos_pasos_activo_at is not null as dos_pasos'), 'r.codigo as rol', 'm.activo']);
 

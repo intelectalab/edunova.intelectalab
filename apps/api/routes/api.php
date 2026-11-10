@@ -3,7 +3,10 @@
 use App\Http\Controllers\SaludController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\ADM\Http\Controllers\AniosEscolaresController;
+use App\Modulos\ADM\Http\Controllers\HorariosController;
 use App\Modulos\ADM\Http\Controllers\InstitucionController;
+use App\Modulos\ADM\Http\Controllers\PersonalController;
+use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
@@ -74,6 +77,48 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     // Sin permiso de ruta: la policy deja pasar al personal con adm.alumnos.ver y a la familia por propiedad.
     Route::get('/alumnos/{alumno}', [AlumnosController::class, 'show'])->whereNumber('alumno');
 
+    // Sprint 13 · Estructura académica del año y alumnos (ADM).
+    Route::middleware('modulo:ADM')->group(function () {
+        // EDUN-45 / EDUN-46 · Plan de estudios, secciones y aulas.
+        Route::get('/plan-estudios', [PlanEstudiosController::class, 'show'])->middleware('permiso:adm.plan_estudios.ver');
+        Route::get('/secciones', [PlanEstudiosController::class, 'secciones'])->middleware('permiso:adm.plan_estudios.ver|adm.horarios.ver|adm.alumnos.ver');
+        Route::middleware('permiso:adm.plan_estudios.editar')->group(function () {
+            Route::post('/plan-estudios/grados', [PlanEstudiosController::class, 'generarGrados']);
+            Route::put('/plan-estudios/grados/{grado}', [PlanEstudiosController::class, 'guardarGrado'])->whereNumber('grado');
+            Route::post('/plan-estudios/copiar', [PlanEstudiosController::class, 'copiar']);
+            Route::post('/secciones', [PlanEstudiosController::class, 'guardarSeccion']);
+            Route::put('/secciones/{seccion}', [PlanEstudiosController::class, 'guardarSeccion'])->whereNumber('seccion');
+            Route::delete('/secciones/{seccion}', [PlanEstudiosController::class, 'eliminarSeccion'])->whereNumber('seccion');
+            Route::post('/secciones/copiar', [PlanEstudiosController::class, 'copiarSecciones']);
+            Route::post('/ambientes', [PlanEstudiosController::class, 'crearAmbiente']);
+        });
+
+        // EDUN-47 · Personal.
+        Route::get('/personal', [PersonalController::class, 'index'])->middleware('permiso:adm.personal.ver');
+        Route::post('/personal', [PersonalController::class, 'store'])->middleware('permiso:adm.personal.crear');
+        Route::put('/personal/{persona}', [PersonalController::class, 'update'])->whereNumber('persona')->middleware('permiso:adm.personal.editar');
+        Route::post('/personal/{persona}/invitacion', [PersonalController::class, 'invitar'])->whereNumber('persona')->middleware(['permiso:adm.personal.crear', 'permiso:seg.usuarios.crear', 'throttle:10,1']);
+
+        // EDUN-48 / EDUN-49 · Carga docente y horario.
+        Route::get('/cargas', [HorariosController::class, 'cargas'])->middleware('permiso:adm.horarios.ver');
+        Route::put('/cargas', [HorariosController::class, 'asignarCarga'])->middleware('permiso:adm.horarios.editar');
+        Route::get('/bloques-horarios', [HorariosController::class, 'bloques'])->middleware('permiso:adm.horarios.ver');
+        Route::put('/bloques-horarios', [HorariosController::class, 'guardarBloques'])->middleware('permiso:adm.horarios.editar');
+        Route::get('/horarios', [HorariosController::class, 'ver'])->middleware('permiso:adm.horarios.ver');
+        Route::put('/horarios/celda', [HorariosController::class, 'asignarCelda'])->middleware('permiso:adm.horarios.editar');
+        Route::get('/horarios/pdf', [HorariosController::class, 'pdf'])->middleware(['permiso:adm.horarios.ver', 'throttle:20,1']);
+
+        // EDUN-50 / EDUN-51 · Registro de alumnos e importación desde Excel.
+        Route::get('/alumnos/{alumno}/ficha', [AlumnosController::class, 'ficha'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
+        Route::post('/alumnos', [AlumnosController::class, 'store'])->middleware('permiso:adm.alumnos.crear');
+        Route::put('/alumnos/{alumno}', [AlumnosController::class, 'update'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.editar');
+        Route::middleware(['permiso:adm.alumnos.crear', 'permiso:adm.matricula.crear'])->group(function () {
+            Route::get('/alumnos/importar/plantilla', [AlumnosController::class, 'plantilla']);
+            Route::post('/alumnos/importar/vista-previa', [AlumnosController::class, 'vistaPrevia'])->middleware('throttle:20,1');
+            Route::post('/alumnos/importar/confirmar', [AlumnosController::class, 'confirmarImportacion'])->middleware('throttle:10,1');
+        });
+    });
+
     // EDUN-36 · Usuarios del colegio (SEG-02).
     Route::get('/usuarios', [UsuariosController::class, 'index'])->middleware('permiso:seg.usuarios.ver');
     Route::post('/usuarios', [UsuariosController::class, 'store'])->middleware(['permiso:seg.usuarios.crear', 'permiso:seg.roles.asignar', 'throttle:30,1']);
@@ -104,7 +149,7 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         });
 
         // EDUN-44 · Año escolar y periodos (ADM-02).
-        Route::get('/anios-escolares', [AniosEscolaresController::class, 'index'])->middleware('permiso:adm.configuracion.ver');
+        Route::get('/anios-escolares', [AniosEscolaresController::class, 'index'])->middleware('permiso:adm.configuracion.ver|adm.plan_estudios.ver|adm.horarios.ver|adm.alumnos.ver');
         Route::get('/anios-escolares/{anio}', [AniosEscolaresController::class, 'show'])->whereNumber('anio')->middleware('permiso:adm.configuracion.ver');
         Route::post('/anios-escolares', [AniosEscolaresController::class, 'store'])->middleware('permiso:adm.configuracion.editar');
         Route::put('/anios-escolares/{anio}', [AniosEscolaresController::class, 'update'])->whereNumber('anio')->middleware('permiso:adm.configuracion.editar');
