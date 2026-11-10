@@ -24,7 +24,11 @@ const GOOGLE = {
   connect: ['https://www.google.com/recaptcha/', 'https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com'],
 };
 
-export function politicaContenido() {
+/**
+ * @param {{ marcoPropio?: boolean }} [o] marcoPropio: la página puede mostrarse en un marco del
+ *   propio sitio (solo la vista previa del Panel CMS, EDUN-322).
+ */
+export function politicaContenido({ marcoPropio = false } = {}) {
   const directivas = {
     'default-src': ["'self'"],
     // Next.js inserta scripts en línea para hidratar; en desarrollo además usa eval.
@@ -33,9 +37,9 @@ export function politicaContenido() {
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
     'img-src': ["'self'", 'data:', 'blob:', origenMedios(), ...GOOGLE.img].filter(Boolean),
     'media-src': ["'self'", origenMedios()].filter(Boolean),
-    'frame-src': ['https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com', ...GOOGLE.frame],
+    'frame-src': ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com', ...GOOGLE.frame],
     'connect-src': ["'self'", ...GOOGLE.connect, ...(produccion ? [] : ['ws:'])],
-    'frame-ancestors': ["'none'"],
+    'frame-ancestors': [marcoPropio ? "'self'" : "'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
     'object-src': ["'none'"],
@@ -45,10 +49,11 @@ export function politicaContenido() {
     .join('; ');
 }
 
-export function cabecerasSeguridad() {
+/** @param {{ marcoPropio?: boolean }} [o] */
+export function cabecerasSeguridad({ marcoPropio = false } = {}) {
   return [
-    { key: 'Content-Security-Policy', value: politicaContenido() },
-    { key: 'X-Frame-Options', value: 'DENY' },
+    { key: 'Content-Security-Policy', value: politicaContenido({ marcoPropio }) },
+    { key: 'X-Frame-Options', value: marcoPropio ? 'SAMEORIGIN' : 'DENY' },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },

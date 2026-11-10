@@ -11,7 +11,12 @@ const nextConfig: NextConfig = {
   // EDUN-209 · CSP, HSTS (en producción) y cabeceras contra clickjacking en todas las rutas.
   poweredByHeader: false,
   async headers() {
-    return [{ source: '/:ruta*', headers: cabecerasSeguridad() }];
+    // La vista previa del CMS (EDUN-322) se muestra en un marco del propio Panel: es la única
+    // página que admite frame-ancestors 'self'. La última regla que coincide gana.
+    return [
+      { source: '/:ruta*', headers: cabecerasSeguridad() },
+      { source: '/cms/vista-previa', headers: cabecerasSeguridad({ marcoPropio: true }) },
+    ];
   },
 };
 

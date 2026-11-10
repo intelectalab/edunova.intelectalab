@@ -48,3 +48,17 @@ export async function leerEstadoPublicacion(): Promise<EstadoPublicacion | null>
     return null;
   }
 }
+
+/** Sprint 9 · Sección para una pantalla de edición: lo publicado, el borrador y sus medios. */
+export type DatosSeccion<T> = { publicado: T; borrador: T | null; medios: Record<string, { id: number; tipo: string; nombre: string; url: string; alt: string | null }> };
+
+export async function leerSeccion<T>(clave: string): Promise<DatosSeccion<T> | null> {
+  try {
+    const r = await llamarApi(`/cms/secciones/${encodeURIComponent(clave)}`, { token: await token() });
+    if (!r.ok) return null;
+    const d = (await r.json()).data;
+    return { publicado: d.publicado as T, borrador: (d.borrador ?? null) as T | null, medios: Array.isArray(d.medios) ? {} : (d.medios ?? {}) };
+  } catch {
+    return null;
+  }
+}

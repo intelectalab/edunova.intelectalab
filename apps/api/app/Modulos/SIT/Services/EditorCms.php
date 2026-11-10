@@ -21,6 +21,8 @@ use Illuminate\Validation\ValidationException;
  */
 class EditorCms
 {
+    public function __construct(private ContenidoEntidades $entidades) {}
+
     public function leer(string $clave): object
     {
         return DB::table('cms.secciones')->where('clave', $clave)->first(['clave', 'nombre', 'config', 'borrador', 'updated_at'])
@@ -31,6 +33,8 @@ class EditorCms
     {
         $reglas = ReglasSecciones::para($clave) ?? abort(404, 'Esa sección no se edita desde aquí.');
         $contenido = validator($datos, $reglas, ReglasSecciones::mensajes())->validate();
+        // Sprint 9 · Reglas entre filas de Planes, Módulos y Testimonios.
+        $this->entidades->validar($clave, $contenido);
         $actual = $this->leer($clave);
 
         DB::table('cms.secciones')->where('clave', $clave)->update([
@@ -56,8 +60,12 @@ class EditorCms
                 if ($fila->borrador === null) {
                     continue;
                 }
+                // Sprint 9 · Las listas del borrador van a sus tablas; en config quedan los textos.
+                $config = $this->entidades->maneja($clave)
+                    ? json_encode($this->entidades->aplicar($clave, json_decode($fila->borrador, true), $usuario), JSON_UNESCAPED_UNICODE)
+                    : $fila->borrador;
                 DB::table('cms.secciones')->where('clave', $clave)->update([
-                    'config' => $fila->borrador,
+                    'config' => $config,
                     'borrador' => null,
                     'updated_by' => $usuario->id,
                 ]);
@@ -78,6 +86,26 @@ class EditorCms
         }
 
         return $publicadas;
+    }
+
+    /**
+     * Lo que ve el editor: lo publicado (textos + listas de sus tablas) y el borrador, que
+     * hereda de lo publicado las listas que no traiga.
+     */
+    public function vista(string $clave): array
+    {
+        $fila = $this->leer($clave);
+        $publicado = [...(json_decode($fila->config, true) ?: []), ...$this->entidades->publicado($clave)];
+        $borrador = $fila->borrador === null ? null : [...$publicado, ...json_decode($fila->borrador, true)];
+
+        return [
+            'clave' => $fila->clave,
+            'nombre' => $fila->nombre,
+            'publicado' => $publicado,
+            'borrador' => $borrador,
+            'updated_at' => $fila->updated_at,
+            'medios' => $this->entidades->maneja($clave) ? $this->entidades->medios($borrador ?? $publicado) : [],
+        ];
     }
 
     /** Franja de estado: última publicación y si hay cambios sin publicar. */

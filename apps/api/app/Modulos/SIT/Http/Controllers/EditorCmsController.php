@@ -13,14 +13,14 @@ class EditorCmsController
 
     public function mostrar(string $clave): JsonResponse
     {
-        return response()->json(['data' => $this->presentar($this->editor->leer($clave))]);
+        return response()->json(['data' => $this->editor->vista($clave)]);
     }
 
     public function guardar(Request $request, string $clave): JsonResponse
     {
-        $fila = $this->editor->guardarBorrador($clave, (array) $request->input('contenido', []), $request->user(), $request->ip());
+        $this->editor->guardarBorrador($clave, (array) $request->input('contenido', []), $request->user(), $request->ip());
 
-        return response()->json(['data' => $this->presentar($fila), 'message' => 'Borrador guardado.']);
+        return response()->json(['data' => $this->editor->vista($clave), 'message' => 'Borrador guardado.']);
     }
 
     public function publicar(Request $request): JsonResponse
@@ -39,16 +39,5 @@ class EditorCmsController
     public function estado(): JsonResponse
     {
         return response()->json($this->editor->estado());
-    }
-
-    private function presentar(object $fila): array
-    {
-        return [
-            'clave' => $fila->clave,
-            'nombre' => $fila->nombre,
-            'publicado' => json_decode($fila->config, true),
-            'borrador' => $fila->borrador === null ? null : json_decode($fila->borrador, true),
-            'updated_at' => $fila->updated_at,
-        ];
     }
 }

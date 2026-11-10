@@ -1,20 +1,19 @@
-import { cookies } from 'next/headers';
 import { cms } from '@/contenido/provisional';
-import { COOKIE_CMS, llamarApi } from '@/lib/sesionCms';
+import { leerSeccion } from '../../../editor-acciones';
 import { EditorHero, type ContenidoHero } from './EditorHero';
 
-// EDUN-233 · Primera pantalla editable del CMS: los textos del hero. La pantalla completa de
-// «Hero y Portada» (previsualizador, color del botón, resúmenes) llega con su historia.
+// EDUN-233 / EDUN-322 · Hero y Portada: textos del hero y de la barra superior, con
+// previsualizador en vivo. Se publica con la franja «Guardar borrador / Publicar».
+export const dynamic = 'force-dynamic';
+
 export default async function HeroYPortada() {
-  const token = (await cookies()).get(COOKIE_CMS)?.value;
-  const r = await llamarApi('/cms/secciones/hero', { token }).catch(() => null);
-  const datos = r?.ok ? ((await r.json()).data as { publicado: ContenidoHero; borrador: ContenidoHero | null }) : null;
+  const [hero, barra] = await Promise.all([leerSeccion<ContenidoHero>('hero'), leerSeccion<{ aviso: string }>('barra_superior')]);
 
   return (
     <div className="px-margin-mobile md:px-margin py-space-lg flex flex-col gap-space-md">
       <h1 className="font-headline-md text-headline-md text-primary tracking-tight">{cms.hero.titulo}</h1>
-      {datos ? (
-        <EditorHero inicial={datos.borrador ?? datos.publicado} conBorrador={datos.borrador !== null} />
+      {hero && barra ? (
+        <EditorHero hero={hero.borrador ?? hero.publicado} barra={barra.borrador ?? barra.publicado} conBorrador={hero.borrador !== null || barra.borrador !== null} />
       ) : (
         <p role="alert" className="px-space-md py-space-sm rounded-lg bg-error-container text-on-error-container font-body-md text-body-md">
           {cms.hero.errorCarga}
