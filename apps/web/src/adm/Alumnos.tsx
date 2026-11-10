@@ -4,6 +4,7 @@ import { puede, useSesion } from '../sesion/contexto';
 import { Aviso, Campo, Dialogo, Titulo } from '../panel/ui';
 import { mensajeError, useAccion, useCarga } from '../panel/utilidades';
 import { useAnioEscolar } from './anios';
+import { Expediente } from './Expediente';
 import { SelectorAnio } from './SelectorAnio';
 
 type Fila = {
@@ -28,7 +29,7 @@ type Apoderado = {
   recibe_notificaciones: boolean;
 };
 type Autorizado = { nombres: string; numero_documento: string; parentesco: string; vigente_hasta: string };
-type Ficha = {
+export type Ficha = {
   id: number;
   numero_documento: string | null;
   codigo_estudiante_siagie: string | null;
@@ -41,7 +42,7 @@ type Ficha = {
   autorizados: (Autorizado & { vigente_hasta: string | null })[];
   matriculas: { anio: number; anio_escolar_id: number; seccion_id: number; seccion: string; estado: string }[];
 };
-type Seccion = { id: number; grado: string; nombre: string };
+export type Seccion = { id: number; grado: string; nombre: string };
 type FilaImportada = { fila: number; datos: Record<string, string | null> & { apoderado: { nombres: string; apellidos: string } | null }; errores: string[] };
 type Vista = { token: string; total: number; validas: number; con_errores: number; filas: FilaImportada[] };
 
@@ -59,7 +60,7 @@ const PARENTESCOS: Record<string, string> = {
 };
 const NUEVO_APODERADO: Apoderado = { numero_documento: '', apellidos: '', nombres: '', parentesco: 'madre', celular: '', email: '', es_responsable_pago: false, puede_recoger: true, recibe_notificaciones: true };
 
-function FormAlumno({ ficha, anio, secciones, alTerminar }: { ficha: Ficha | null; anio: number; secciones: Seccion[]; alTerminar: () => void }) {
+export function FormAlumno({ ficha, anio, secciones, alTerminar }: { ficha: Ficha | null; anio: number; secciones: Seccion[]; alTerminar: () => void }) {
   const { pedir, estado } = useSesion();
   const puedeMatricular = puede(estado!.colegio_activo, 'adm.matricula.crear');
   const puedeGuardar = puede(estado!.colegio_activo, ficha ? 'adm.alumnos.editar' : 'adm.alumnos.crear');
@@ -220,13 +221,6 @@ function FormAlumno({ ficha, anio, secciones, alTerminar }: { ficha: Ficha | nul
       )}
     </form>
   );
-}
-
-function Ficha({ id, anio, secciones, alTerminar }: { id: number; anio: number; secciones: Seccion[]; alTerminar: () => void }) {
-  const { pedir } = useSesion();
-  const { datos, error } = useCarga(() => pedir<Ficha>(`/alumnos/${id}/ficha`), [id]);
-  if (!datos) return <Aviso tipo="error">{error}</Aviso>;
-  return <FormAlumno ficha={datos} anio={anio} secciones={secciones} alTerminar={alTerminar} />;
 }
 
 function Importar({ anio, alTerminar }: { anio: number; alTerminar: () => void }) {
@@ -438,7 +432,7 @@ export function Alumnos() {
         <Dialogo titulo={dialogo.tipo === 'importar' ? 'Importar alumnos desde Excel' : dialogo.tipo === 'nuevo' ? 'Registrar alumno' : 'Ficha del alumno'} alCerrar={() => setDialogo(null)}>
           {dialogo.tipo === 'importar' && <Importar anio={anio} alTerminar={cerrar} />}
           {dialogo.tipo === 'nuevo' && <FormAlumno ficha={null} anio={anio} secciones={secciones.datos?.data ?? []} alTerminar={cerrar} />}
-          {dialogo.tipo === 'ficha' && dialogo.id && <Ficha id={dialogo.id} anio={anio} secciones={secciones.datos?.data ?? []} alTerminar={cerrar} />}
+          {dialogo.tipo === 'ficha' && dialogo.id && <Expediente id={dialogo.id} anio={anio} secciones={secciones.datos?.data ?? []} alCambiar={recargar} />}
         </Dialogo>
       )}
     </>

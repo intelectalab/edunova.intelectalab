@@ -101,3 +101,6 @@ function enDemo(User $usuario, string $metodo, string $url, array $datos = [], ?
 
     return test()->json($metodo, '/api/v1'.$url, $datos, ['X-Institucion' => (string) ($institucion ?? demoId())]);
 }
+
+/** PNG de 64×64 (las pruebas no dependen de la extensión GD). */
+const LOGO_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAT0lEQVR42u3PQQkAAAgEsCtiJfMbxwi+hcEKLNXzWgQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQELgsKmTEtqQeZBAAAAABJRU5ErkJggg==';

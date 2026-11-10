@@ -5,6 +5,7 @@ use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\ADM\Http\Controllers\AniosEscolaresController;
 use App\Modulos\ADM\Http\Controllers\HorariosController;
 use App\Modulos\ADM\Http\Controllers\InstitucionController;
+use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
@@ -13,6 +14,7 @@ use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
 use App\Modulos\SEG\Http\Controllers\DosPasosController;
+use App\Modulos\SEG\Http\Controllers\FamiliaController;
 use App\Modulos\SEG\Http\Controllers\InvitacionesController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SEG\Http\Controllers\UsuariosController;
@@ -112,11 +114,39 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/alumnos/{alumno}/ficha', [AlumnosController::class, 'ficha'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
         Route::post('/alumnos', [AlumnosController::class, 'store'])->middleware('permiso:adm.alumnos.crear');
         Route::put('/alumnos/{alumno}', [AlumnosController::class, 'update'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.editar');
+        // Sprint 14 · Ficha completa, matrícula, movimientos, carné, consentimientos y familias.
+        Route::get('/alumnos/{alumno}/expediente', [MatriculasController::class, 'expediente'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
+        Route::post('/alumnos/{alumno}/apoderados/{apoderado}/invitacion', [MatriculasController::class, 'invitarApoderado'])->whereNumber(['alumno', 'apoderado'])->middleware(['permiso:adm.alumnos.editar', 'throttle:20,1']);
+        Route::post('/alumnos/{alumno}/foto', [MatriculasController::class, 'foto'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.editar');
+        Route::get('/alumnos/{alumno}/carne', [MatriculasController::class, 'carne'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
+        Route::post('/alumnos/{alumno}/carne', [MatriculasController::class, 'regenerarCarne'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.editar');
+        Route::get('/carnes/pdf', [MatriculasController::class, 'carnesPdf'])->middleware(['permiso:adm.alumnos.ver', 'throttle:20,1']);
+        Route::get('/carnes/{codigo}', [MatriculasController::class, 'buscarCarne'])->where('codigo', '[A-Za-z0-9]{6,24}')
+            ->middleware('permiso:adm.alumnos.ver|cal.asistencia.registrar|por.ingresos.registrar|cod.comedor.gestionar');
+        Route::get('/condiciones-economicas', [MatriculasController::class, 'condiciones'])->middleware('permiso:adm.matricula.ver');
+        Route::post('/condiciones-economicas', [MatriculasController::class, 'publicarCondiciones'])->middleware('permiso:adm.matricula.editar');
+        Route::post('/matriculas', [MatriculasController::class, 'store'])->middleware('permiso:adm.matricula.crear');
+        Route::get('/matriculas/{matricula}/constancia', [MatriculasController::class, 'constancia'])->whereNumber('matricula')->middleware(['permiso:adm.matricula.ver', 'throttle:30,1']);
+        Route::post('/matriculas/{matricula}/retiro', [MatriculasController::class, 'retiro'])->whereNumber('matricula')->middleware('permiso:adm.matricula.retirar');
+        Route::post('/matriculas/{matricula}/cambio-seccion', [MatriculasController::class, 'cambioSeccion'])->whereNumber('matricula')->middleware('permiso:adm.matricula.editar');
+        Route::get('/siagie/pendientes', [MatriculasController::class, 'pendientesSiagie'])->middleware('permiso:sia.nomina.importar|sia.plantillas.validar');
+        Route::post('/siagie/pendientes/{pendiente}/atendido', [MatriculasController::class, 'atenderPendiente'])->whereNumber('pendiente')->middleware('permiso:sia.nomina.importar|sia.plantillas.validar');
+        Route::get('/consentimientos', [MatriculasController::class, 'consentimientos'])->middleware('permiso:seg.consentimientos.ver');
+        Route::post('/consentimientos', [MatriculasController::class, 'registrarConsentimiento'])->middleware('permiso:seg.consentimientos.registrar');
+        Route::post('/consentimientos/textos', [MatriculasController::class, 'publicarTexto'])->middleware('permiso:seg.consentimientos.registrar');
+
         Route::middleware(['permiso:adm.alumnos.crear', 'permiso:adm.matricula.crear'])->group(function () {
             Route::get('/alumnos/importar/plantilla', [AlumnosController::class, 'plantilla']);
             Route::post('/alumnos/importar/vista-previa', [AlumnosController::class, 'vistaPrevia'])->middleware('throttle:20,1');
             Route::post('/alumnos/importar/confirmar', [AlumnosController::class, 'confirmarImportacion'])->middleware('throttle:10,1');
         });
+    });
+
+    // Familias y alumnos en la app (propiedad: solo sus hijos o él mismo).
+    Route::prefix('me')->group(function () {
+        Route::get('/familia', [FamiliaController::class, 'familia']);
+        Route::post('/consentimientos', [FamiliaController::class, 'consentir'])->middleware('throttle:30,1');
+        Route::get('/carne/{alumno}', [FamiliaController::class, 'carne'])->whereNumber('alumno');
     });
 
     // EDUN-36 · Usuarios del colegio (SEG-02).

@@ -3,6 +3,8 @@ import { moduloActivo, puede, useSesion, type Colegio } from '../sesion/contexto
 import { Alumnos } from '../adm/Alumnos';
 import { Configuracion } from '../adm/Configuracion';
 import { Horarios } from '../adm/Horarios';
+import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
+import { MisHijos } from '../familia/MisHijos';
 import { Personal } from '../adm/Personal';
 import { PlanEstudios } from '../adm/PlanEstudios';
 import { ConectorMoodle } from '../mdl/ConectorMoodle';
@@ -54,6 +56,34 @@ const PAGINAS: Pagina[] = [
     grupo: 'Matrícula',
     visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.alumnos.ver'),
     pantalla: () => <Alumnos />,
+  },
+  {
+    ruta: 'condiciones',
+    nombre: 'Condiciones económicas',
+    grupo: 'Matrícula',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.matricula.ver'),
+    pantalla: () => <CondicionesEconomicas />,
+  },
+  {
+    ruta: 'consentimientos',
+    nombre: 'Consentimientos',
+    grupo: 'Matrícula',
+    visible: (c) => puede(c, 'seg.consentimientos.ver'),
+    pantalla: () => <ConsentimientosColegio />,
+  },
+  {
+    ruta: 'siagie',
+    nombre: 'Pendientes SIAGIE',
+    grupo: 'Matrícula',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'sia.nomina.importar', 'sia.plantillas.validar'),
+    pantalla: () => <PendientesSiagie />,
+  },
+  {
+    ruta: 'familia',
+    nombre: 'Mis hijos',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado'),
+    pantalla: () => <MisHijos />,
   },
   {
     ruta: 'moodle',

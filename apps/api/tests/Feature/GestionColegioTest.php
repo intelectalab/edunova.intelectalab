@@ -22,9 +22,6 @@ use Illuminate\Support\Facades\Storage;
 
 const CLAVE_GC = DemoSeeder::DEMO_PASSWORD;
 
-/** PNG de 64×64 (las pruebas no dependen de la extensión GD). */
-const LOGO_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAT0lEQVR42u3PQQkAAAgEsCtiJfMbxwi+hcEKLNXzWgQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQELgsKmTEtqQeZBAAAAABJRU5ErkJggg==';
-
 function altaValida(array $cambios = []): array
 {
     $n = random_int(1000000, 8999999);

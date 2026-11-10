@@ -3,6 +3,7 @@
 namespace App\Modulos\ADM\Services;
 
 use App\Modulos\Compartido\ContextoInstitucion;
+use App\Modulos\SEG\Services\ActivacionFamilias;
 use App\Modulos\SEG\Services\Auditoria;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
@@ -24,7 +25,10 @@ class RegistroAlumnos
 
     public const CAMPOS_ALUMNO = ['codigo_estudiante_siagie', 'tipo_documento', 'numero_documento', 'apellido_paterno', 'apellido_materno', 'nombres', 'sexo', 'fecha_nacimiento'];
 
-    public function __construct(private Auditoria $auditoria) {}
+    /** @var list<array<string, mixed>> invitaciones enviadas a los apoderados en el último guardado (EDUN-37) */
+    public array $invitaciones = [];
+
+    public function __construct(private Auditoria $auditoria, private ActivacionFamilias $familias) {}
 
     /** @param array{buscar?: string|null, anio_escolar_id?: int|null, seccion_id?: int|null, estado?: string|null} $filtros */
     /** @param  Builder|list<int>|null  $soloIds  alumnos que el usuario puede ver (null: todos) */
@@ -136,6 +140,9 @@ class RegistroAlumnos
 
                 $despues = $this->ficha($id);
                 $this->auditoria->registrar($antes ? 'alumno_editado' : 'alumno_registrado', 'alumnos', $id, $antes ? self::resumen($antes) : null, self::resumen($despues));
+                // EDUN-37 · Al final (si algo falla antes, no sale ninguna invitación): los apoderados
+                // con correo o celular reciben su acceso a Edunova.
+                $this->invitaciones = $this->activarApoderados($vinculados);
 
                 return $id;
             });
@@ -177,6 +184,19 @@ class RegistroAlumnos
         );
 
         return (int) $apoderadoId;
+    }
+
+    /**
+     * Activa a los apoderados que aún no tienen usuario.
+     *
+     * @param  list<int>  $apoderados
+     * @return list<array<string, mixed>>
+     */
+    public function activarApoderados(array $apoderados): array
+    {
+        $sinUsuario = DB::table('apoderados')->whereIn('id', $apoderados)->whereNull('user_id')->pluck('id');
+
+        return $sinUsuario->map(fn ($a) => $this->familias->activar((int) $a, auth()->user()))->filter()->values()->all();
     }
 
     /** Matrícula en una sección del año (una por año), respetando las vacantes. */

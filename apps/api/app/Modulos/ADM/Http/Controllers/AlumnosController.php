@@ -59,7 +59,7 @@ class AlumnosController
         }
         $id = $this->registro->guardar($d);
 
-        return response()->json($this->registro->ficha($id), 201);
+        return response()->json($this->registro->ficha($id) + ['invitaciones' => $this->registro->invitaciones], 201);
     }
 
     public function update(Request $request, int $alumno, Autorizacion $autorizacion): JsonResponse
@@ -71,7 +71,7 @@ class AlumnosController
         }
         $this->registro->guardar($d, $alumno);
 
-        return response()->json($this->registro->ficha($alumno));
+        return response()->json($this->registro->ficha($alumno) + ['invitaciones' => $this->registro->invitaciones]);
     }
 
     public function plantilla(Request $request, ImportacionAlumnos $importacion): BinaryFileResponse

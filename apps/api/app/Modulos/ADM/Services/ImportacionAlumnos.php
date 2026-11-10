@@ -125,14 +125,14 @@ class ImportacionAlumnos
         return ['token' => $token, 'total' => count($filas), 'validas' => $validas, 'con_errores' => count($filas) - $validas, 'filas' => $filas];
     }
 
-    /** @return array{alumnos_nuevos: int, alumnos_existentes: int, matriculas: int, apoderados: int, omitidas: int} */
+    /** @return array{alumnos_nuevos: int, alumnos_existentes: int, matriculas: int, apoderados: int, invitados: int, omitidas: int} */
     public function confirmar(string $token, int $usuarioId): array
     {
         $guardado = Cache::get(self::clave($token));
         if (! $guardado || $guardado['usuario'] !== $usuarioId) {
             throw ValidationException::withMessages(['token' => ['La vista previa venció. Vuelve a subir el archivo.']]);
         }
-        $r = ['alumnos_nuevos' => 0, 'alumnos_existentes' => 0, 'matriculas' => 0, 'apoderados' => 0, 'omitidas' => 0];
+        $r = ['alumnos_nuevos' => 0, 'alumnos_existentes' => 0, 'matriculas' => 0, 'apoderados' => 0, 'invitados' => 0, 'omitidas' => 0];
         DB::transaction(function () use ($guardado, &$r) {
             $institucion = ContextoInstitucion::requerido();
             foreach ($guardado['filas'] as $f) {
@@ -154,8 +154,11 @@ class ImportacionAlumnos
                     $r['alumnos_nuevos']++;
                 }
                 if ($d['apoderado']) {
-                    $this->registro->vincularApoderado($alumnoId, $d['apoderado']);
+                    $apoderado = $this->registro->vincularApoderado($alumnoId, $d['apoderado']);
                     $r['apoderados']++;
+                    // EDUN-37 · Los que tienen correo reciben la invitación; con solo celular,
+                    // queda el acceso creado y la secretaría envía el enlace desde la ficha.
+                    $r['invitados'] += count(array_filter($this->registro->activarApoderados([$apoderado]), fn ($i) => $i['canal'] === 'correo'));
                 }
                 if (! $d['ya_matriculado']) {
                     $this->registro->matricular($alumnoId, $d['seccion_id'], $d['alumno_id'] ? 'ratificacion' : 'nuevo');
