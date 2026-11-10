@@ -3,7 +3,7 @@
 // Las pruebas de la API real están en apps/api/tests (Pest).
 import { createServer } from 'node:http';
 
-import { atenderPanel, popupLanding } from './api-simulada-panel.mjs';
+import { atenderPanel, CHATBOT, estado, popupLanding } from './api-simulada-panel.mjs';
 
 const PUERTO = Number(process.env.PUERTO_API_SIMULADA ?? 8199);
 const CLAVE = 'clave-de-prueba';
@@ -21,6 +21,9 @@ const MODULOS = NOMBRES.map((nombre, i) => ({
   etiqueta: i < 6 ? `Etiqueta ${i + 1}` : null,
   en_grid: i < 6,
   imagen: i === 0 ? { url: '/favicon.ico', alt: 'Vista de matrículas', ancho: 1200, alto: 800 } : null,
+  // Sprint 11 · Detalle en /funcionalidades.
+  descripcion_larga: i === 0 ? 'Matrícula en línea con documentos, pagos y vacantes en un solo flujo.' : null,
+  beneficios: i === 0 ? ['Menos colas en secretaría', 'Vacantes al día'] : [],
 }));
 
 // Contenido publicado de la landing; las pruebas lo cambian con POST /__publicar.
@@ -80,7 +83,14 @@ const landing = () => ({
   ],
   videos: [{ id: 1, titulo: 'Recorrido general', descripcion: 'Panel de dirección.', proveedor: 'youtube', embed_url: 'https://www.youtube-nocookie.com/embed/abc123', duracion_seg: 270, miniatura: null, miniatura_alt: null }],
   seo: { titulo: 'Edunova · Gestión escolar', descripcion: 'Software de gestión escolar para colegios privados del Perú.', canonical: null, robots: 'index,follow', keywords: ['gestión escolar'], og_titulo: 'Edunova', og_descripcion: 'Gestión escolar integral.', og_imagen: null },
-  faq: [{ pregunta: '¿Funciona con SIAGIE?', respuesta: 'Exporta las actas en el formato de MINEDU.' }],
+  faq: [
+    { pregunta: '¿Funciona con SIAGIE?', respuesta: 'Exporta las actas en el formato de MINEDU.', categoria: 'SIAGIE' },
+    { pregunta: '¿Cómo se cobran las pensiones?', respuesta: 'Con boletas electrónicas y recordatorios.', categoria: 'Pagos' },
+    { pregunta: '¿Incluye la migración de datos?', respuesta: 'Sí, el equipo ayuda a migrar.', categoria: null },
+  ],
+  // Sprint 11 · Videos por módulo y chatbot (se activa con POST /__chatbot).
+  videos_modulos: [{ id: 9, modulo_clave: 'm1', titulo: 'Matrícula en 2 minutos', descripcion: null, proveedor: 'youtube', embed_url: 'https://www.youtube-nocookie.com/embed/abc123', duracion_seg: 120, miniatura: null, miniatura_alt: null }],
+  chatbot: estado.chatbotActivo ? CHATBOT : null,
   testimonios: [{ id: 1, nombre: null, cargo: 'Directora', institucion: 'Colegio particular · Arequipa', texto: 'Cerramos el bimestre sin pasar notas a mano.', calificacion: 5, es_ejemplo: true, avatar: null }],
   menu: {
     principal: [

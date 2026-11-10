@@ -1,0 +1,9 @@
+# EDUN-206 · Monitoreo: salud, 5xx, cola atascada y disponibilidad del sitio.
+[Unit]
+Description=Edunova: vigilancia (salud, errores y cola)
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/edunova/infra/vps/vigilar.sh
+TimeoutStartSec=120

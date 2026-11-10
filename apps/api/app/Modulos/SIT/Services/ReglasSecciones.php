@@ -46,6 +46,10 @@ class ReglasSecciones
                 'lista.*.imagen_id' => ['nullable', 'integer', 'min:1'],
                 'lista.*.en_grid' => ['required', 'boolean'],
                 'lista.*.visible' => ['required', 'boolean'],
+                // EDUN-347 · Detalle en /funcionalidades.
+                'lista.*.descripcion_larga' => ['nullable', 'string', 'max:2000'],
+                'lista.*.beneficios' => ['sometimes', 'array', 'max:8'],
+                'lista.*.beneficios.*' => ['nullable', 'string', 'max:120'],
             ],
             'planes' => [
                 'insignia' => ['required', 'string', 'max:40'],
@@ -131,6 +135,37 @@ class ReglasSecciones
                 'mantenimiento.mensaje' => ['nullable', 'required_if:mantenimiento.activo,true', 'string', 'max:300'],
                 'mantenimiento.vuelta' => ['nullable', 'date_format:Y-m-d\TH:i'],
             ],
+            // EDUN-371 / SIT-007 · Preguntas frecuentes (cms.faq).
+            '_faq' => [
+                'lista' => ['present', 'array', 'max:100'],
+                'lista.*.id' => ['nullable', 'integer', 'min:1', 'distinct'],
+                'lista.*.pregunta' => ['required', 'string', 'max:200'],
+                'lista.*.respuesta' => ['required', 'string', 'max:2000'],
+                'lista.*.categoria' => ['nullable', 'string', 'max:60'],
+                'lista.*.visible' => ['required', 'boolean'],
+            ],
+            // EDUN-375 / SIT-008 · Chatbot: modo flujo o WhatsApp, horario y nodos del flujo.
+            '_chatbot' => [
+                'activo' => ['required', 'boolean'],
+                'modo' => ['required', Rule::in(['flujo', 'whatsapp'])],
+                'titulo' => ['required', 'string', 'max:60'],
+                'saludo' => ['required', 'string', 'max:300'],
+                'fuera_horario' => ['required', 'string', 'max:300'],
+                'whatsapp_mensaje' => ['nullable', 'string', 'max:200'],
+                'horario' => ['required', 'array'],
+                'horario.dias' => ['required', 'array', 'min:1', 'max:7'],
+                'horario.dias.*' => ['integer', 'between:1,7', 'distinct'],
+                'horario.desde' => ['required', 'date_format:H:i'],
+                'horario.hasta' => ['required', 'date_format:H:i', 'after:horario.desde'],
+                'nodos' => ['present', 'array', 'max:40'],
+                'nodos.*.tipo' => ['required', Rule::in(['mensaje', 'opciones', 'captura', 'url', 'whatsapp', 'fin'])],
+                'nodos.*.texto' => ['required', 'string', 'max:500'],
+                'nodos.*.url' => ['nullable', 'string', 'max:300', 'regex:#^(https://|/(?!/))#'],
+                'nodos.*.siguiente' => ['nullable', 'integer', 'min:0'],
+                'nodos.*.opciones' => ['sometimes', 'array', 'max:6'],
+                'nodos.*.opciones.*.texto' => ['required', 'string', 'max:60'],
+                'nodos.*.opciones.*.destino' => ['required', 'integer', 'min:0'],
+            ],
             // EDUN-338 / SIT-060 · Logos de clientes («Confían en Edunova»).
             'logos' => [
                 'titulo' => ['required', 'string', 'max:80'],
@@ -178,6 +213,9 @@ class ReglasSecciones
             'mantenimiento.vuelta.date_format' => 'Fecha y hora no válidas.',
             'lista.*.sitio_web.url' => 'Escribe la dirección completa del sitio (https://…).',
             'espera_seg.max' => 'Máximo 600 segundos.',
+            'horario.hasta.after' => 'La hora de cierre debe ser posterior a la de apertura.',
+            'horario.dias.required' => 'Elige al menos un día de atención.',
+            'nodos.*.url.regex' => 'Usa una dirección https o una ruta del sitio (/…).',
             'inactividad_seg.max' => 'Máximo 600 segundos.',
         ];
     }

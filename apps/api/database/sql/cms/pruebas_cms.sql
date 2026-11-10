@@ -136,6 +136,19 @@ DO $$ BEGIN
   IF (SELECT min((contenido->>'n')::int) FROM cms.versiones WHERE seccion = 'prueba') <> 3 THEN RAISE EXCEPTION 'FALLO 28: borró versiones recientes'; END IF;
   RAISE NOTICE 'OK 28 · 5 versiones por elemento';
 
+  -- 29. Demo larga: la urgencia es una de la lista (EDUN-359, 07_cms_paginas_y_canales.sql)
+  BEGIN
+    INSERT INTO cms.leads (source, email, consentimiento_version, urgencia) VALUES ('landing','u@x.pe','privacidad-v1.0','ayer');
+    RAISE EXCEPTION 'FALLO 29: aceptó una urgencia desconocida';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 29 · urgencia de la demo'; END;
+
+  -- 30. Un solo flujo de chatbot activo (EDUN-375)
+  INSERT INTO cms.chatbot_flujos (nombre, activo) VALUES ('Flujo A', true);
+  BEGIN
+    INSERT INTO cms.chatbot_flujos (nombre, activo) VALUES ('Flujo B', true);
+    RAISE EXCEPTION 'FALLO 30: aceptó dos flujos activos';
+  EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'OK 30 · un solo flujo de chatbot activo'; END;
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 

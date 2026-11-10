@@ -103,7 +103,7 @@ export default async function Inicio() {
         ))}
       </main>
       {s.footer && <Pie datos={s.footer} config={c} enlaces={datos.menu.footer} />}
-      <Conversion gtm={datos.tracking?.gtm ?? null} popup={datos.popup ?? null} />
+      <Conversion tracking={datos.tracking ?? null} popup={datos.popup ?? null} chatbot={datos.chatbot ?? null} />
     </>
   );
 }

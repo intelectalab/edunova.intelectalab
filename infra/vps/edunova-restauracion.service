@@ -1,0 +1,11 @@
+# EDUN-205 · Prueba mensual: restaura el último respaldo en una base aparte y lo verifica.
+[Unit]
+Description=Edunova: prueba mensual de restauración del respaldo
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/edunova/infra/vps/probar-restauracion.sh
+TimeoutStartSec=3600
+Nice=10

@@ -2,6 +2,8 @@
 
 namespace App\Modulos\SIT\Http\Controllers;
 
+use App\Modulos\SIT\Services\ContenidoEntidades;
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -41,10 +43,15 @@ class LandingController
                 'videos' => $this->videos(),
                 'testimonios' => $this->testimonios((bool) $config->get('testimonios_solo_4_estrellas')),
                 'seo' => $this->seo('inicio'),
-                'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(20)->get(['pregunta', 'respuesta']),
+                // EDUN-371 · Todas las visibles, con su categoría (página /preguntas-frecuentes).
+                'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(100)->get(['pregunta', 'respuesta', 'categoria']),
                 'tracking' => $this->tracking(),
                 'popup' => $this->popup(),
                 'logos' => $this->logos(),
+                // EDUN-347 · Videos por módulo para /funcionalidades.
+                'videos_modulos' => $this->videosModulos(),
+                // EDUN-375 · Chatbot (configuración pública y flujo).
+                'chatbot' => $this->chatbot($config->get('whatsapp')),
             ])->header('Cache-Control', 'public, max-age=60');
         });
     }
@@ -74,7 +81,7 @@ class LandingController
             ->leftJoin('cms.medios as i', 'i.id', '=', 'm.imagen_id')
             ->where('m.visible', true)->where('m.estado', 'publicado')
             ->orderBy('m.orden')
-            ->get(['m.clave', 'm.nombre', 'm.icono', 'm.descripcion', 'm.etiqueta', 'm.en_grid', 'i.url', 'i.alt', 'i.ancho', 'i.alto'])
+            ->get(['m.clave', 'm.nombre', 'm.icono', 'm.descripcion', 'm.etiqueta', 'm.en_grid', 'm.descripcion_larga', 'm.beneficios', 'i.url', 'i.alt', 'i.ancho', 'i.alto'])
             ->map(fn ($m) => [
                 'clave' => $m->clave,
                 'nombre' => $m->nombre,
@@ -82,6 +89,8 @@ class LandingController
                 'descripcion' => $m->descripcion,
                 'etiqueta' => $m->etiqueta,
                 'en_grid' => (bool) $m->en_grid,
+                'descripcion_larga' => $m->descripcion_larga,
+                'beneficios' => json_decode((string) $m->beneficios, true) ?: [],
                 'imagen' => $m->url ? ['url' => $m->url, 'alt' => $m->alt, 'ancho' => $m->ancho, 'alto' => $m->alto] : null,
             ]);
     }
@@ -117,16 +126,13 @@ class LandingController
     }
 
     /**
-     * EDUN-306 · Contenedor de Google Tag Manager, si está activo y con un ID real. El sitio solo
-     * lo carga cuando el visitante acepta analítica o marketing (Consent Mode v2). El ID de GTM
-     * es público (va en el HTML); el resto de cms.tracking no sale de la API.
+     * EDUN-306 / EDUN-403 · IDs de tracking válidos y activos (GTM, GA4, Meta, LinkedIn, Clarity y
+     * la verificación de Search Console). Son públicos (van en el HTML); el sitio solo carga cada
+     * etiqueta con el consentimiento de cookies que corresponde (Consent Mode v2).
      */
     private function tracking(): array
     {
-        $gtm = DB::table('cms.tracking')->where('nombre', 'gtm')->where('activo', true)->value('valor');
-        $gtm = is_string($gtm) ? strtoupper(trim($gtm)) : '';
-
-        return ['gtm' => preg_match('/^GTM-[A-Z0-9]{4,10}$/', $gtm) && $gtm !== 'GTM-XXXXXXX' ? $gtm : null];
+        return Integraciones::trackingPublico();
     }
 
     /** EDUN-271 · Popup de salida: textos, qué dato pide y cuándo se muestra (null si está apagado). */
@@ -145,6 +151,27 @@ class LandingController
             'inactividad_seg' => (int) $p->inactividad_seg,
             'frecuencia' => $p->frecuencia,
         ] : null;
+    }
+
+    /** EDUN-347 · Videos visibles asociados a un módulo. */
+    private function videosModulos(): Collection
+    {
+        return DB::table('cms.videos as v')->leftJoin('cms.medios as m', 'm.id', '=', 'v.thumbnail_id')
+            ->where('v.visible', true)->whereNotNull('v.modulo_clave')->orderBy('v.orden')
+            ->get(['v.id', 'v.modulo_clave', 'v.titulo', 'v.descripcion', 'v.proveedor', 'v.embed_url', 'v.duracion_seg', 'm.url as miniatura', 'm.alt as miniatura_alt']);
+    }
+
+    /** EDUN-375 · Chatbot: null si está apagado; el número de WhatsApp sale de Configuración general. */
+    private function chatbot(mixed $whatsapp): ?array
+    {
+        $c = ContenidoEntidades::chatbotPublicado();
+        if (! $c['activo']) {
+            return null;
+        }
+        $numero = preg_replace('/\D/', '', is_string($whatsapp) ? $whatsapp : '');
+        $numero = strlen($numero) === 9 ? "51{$numero}" : $numero;
+
+        return [...$c, 'whatsapp' => strlen($numero) >= 9 ? $numero : null];
     }
 
     /** EDUN-338 · Logos autorizados y visibles («Confían en Edunova»), en el orden del CMS. */

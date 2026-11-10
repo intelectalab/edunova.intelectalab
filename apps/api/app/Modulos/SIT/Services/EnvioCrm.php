@@ -17,7 +17,7 @@ use Throwable;
  *
  * Cada lead nuevo deja una fila en cms.leads_pendientes (la bandeja de salida) en la misma
  * transacción en que se registra, y un trabajo en la cola lo envía al webhook del CRM
- * (services.crm.url): POST JSON con token Bearer y la clave de idempotencia «edunova-lead-{id}»,
+ * (Panel CMS · Integraciones o CRM_WEBHOOK_URL): POST JSON con token Bearer y la clave de idempotencia «edunova-lead-{id}»,
  * para que un reintento no duplique el lead. Si falla, se reintenta a los 1, 5, 15 y 60 minutos;
  * al quinto intento fallido queda «con error» hasta que alguien lo sincronice desde la bandeja.
  * Sin CRM configurado no se intenta nada: el lead espera en la bandeja de salida.
@@ -31,7 +31,7 @@ class EnvioCrm
 
     public function configurado(): bool
     {
-        return filled(config('services.crm.url'));
+        return filled(Integraciones::crm()['url']);
     }
 
     /**
@@ -65,11 +65,12 @@ class EnvioCrm
         }
 
         try {
+            $crm = Integraciones::crm();
             $r = Http::timeout((int) config('services.crm.timeout', 10))
                 ->acceptJson()
                 ->withHeaders(['Idempotency-Key' => "edunova-lead-{$leadId}"])
-                ->when(filled(config('services.crm.token')), fn ($h) => $h->withToken((string) config('services.crm.token')))
-                ->post((string) config('services.crm.url'), json_decode($pendiente->payload, true));
+                ->when(filled($crm['token']), fn ($h) => $h->withToken((string) $crm['token']))
+                ->post((string) $crm['url'], json_decode($pendiente->payload, true));
             $r->throw();
         } catch (Throwable $e) {
             $intentos = $pendiente->intentos + 1;
@@ -169,6 +170,8 @@ class EnvioCrm
             'ciudad' => $l['ciudad'] ?? null,
             'alumnos' => isset($l['alumnos']) ? (int) $l['alumnos'] : null,
             'plan_interes' => $l['plan_interes'] ?? null,
+            'sistema_actual' => $l['sistema_actual'] ?? null,
+            'urgencia' => $l['urgencia'] ?? null,
             'demo' => ! empty($l['demo_fecha']) ? ['fecha' => $l['demo_fecha'], 'hora' => $hora ? substr((string) $hora, 0, 5) : null, 'zona_horaria' => 'America/Lima'] : null,
             'mensaje' => $l['mensaje'] ?? null,
             'pagina' => $l['page_url'] ?? null,

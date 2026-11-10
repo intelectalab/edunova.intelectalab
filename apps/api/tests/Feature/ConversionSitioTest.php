@@ -243,7 +243,7 @@ it('la landing entrega el ID de GTM solo si está activo y no es el de ejemplo',
     $antes = propietario()->table('cms.tracking')->where('nombre', 'gtm')->first(['valor', 'activo']);
     try {
         propietario()->table('cms.tracking')->where('nombre', 'gtm')->update(['valor' => 'GTM-XXXXXXX', 'activo' => true]);
-        expect($this->getJson('/api/v1/sitio/landing')->json('tracking'))->toBe(['gtm' => null]);
+        expect($this->getJson('/api/v1/sitio/landing')->json('tracking.gtm'))->toBeNull();
 
         propietario()->table('cms.tracking')->where('nombre', 'gtm')->update(['valor' => 'GTM-AB12CD3', 'activo' => false]);
         expect($this->getJson('/api/v1/sitio/landing')->json('tracking.gtm'))->toBeNull();

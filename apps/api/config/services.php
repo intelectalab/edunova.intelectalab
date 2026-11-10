@@ -46,6 +46,11 @@ return [
         'url' => env('SITIO_URL', env('APP_URL')),
     ],
 
+    // EDUN-206 · Alertas del monitoreo (webhook tipo Slack/Teams/Discord: POST JSON {text}).
+    'alertas' => [
+        'webhook' => env('ALERTAS_WEBHOOK_URL'),
+    ],
+
     // EDUN-275 · CRM que recibe los leads (webhook genérico: POST JSON con token Bearer).
     // Sin URL no se envía nada: los leads quedan en cms.leads_pendientes hasta configurarlo.
     'crm' => [

@@ -1,0 +1,11 @@
+# EDUN-205 · Respaldo diario cifrado de la base y de los archivos, fuera del servidor.
+[Unit]
+Description=Edunova: respaldo diario cifrado (base y archivos)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/edunova/infra/vps/respaldar.sh
+TimeoutStartSec=3600
+Nice=10

@@ -12,6 +12,7 @@ use App\Modulos\SIT\Http\Controllers\PanelCmsController;
 use App\Modulos\SIT\Http\Controllers\ReclamacionesCmsController;
 use App\Modulos\SIT\Http\Controllers\ReclamacionesController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
+use App\Modulos\SIT\Http\Controllers\SitioCanalesController;
 use App\Modulos\SIT\Http\Controllers\SitioLegalController;
 use Illuminate\Support\Facades\Route;
 
@@ -68,6 +69,9 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::get('/seo/{slug}', [PanelCmsController::class, 'seo'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
     Route::put('/seo/{slug}', [PanelCmsController::class, 'guardarSeo'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
     Route::get('/politicas', [PanelCmsController::class, 'politicas']);
+    // EDUN-403 · Tracking e integraciones (las claves nunca se devuelven).
+    Route::get('/integraciones', [PanelCmsController::class, 'integraciones']);
+    Route::put('/integraciones', [PanelCmsController::class, 'guardarIntegraciones']);
     Route::post('/politicas/{tipo}', [PanelCmsController::class, 'publicarPolitica'])->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies']);
 
     // EDUN-302 · Gestión de reclamaciones.
@@ -90,9 +94,14 @@ Route::prefix('sitio')->group(function () {
         // EDUN-271 · Popup de salida.
         Route::post('/leads/popup', [SitioLegalController::class, 'leadPopup']);
         Route::post('/consentimientos/cookies', [SitioLegalController::class, 'cookies']);
+        // EDUN-375 · Contacto dejado en el chatbot.
+        Route::post('/chatbot/lead', [SitioCanalesController::class, 'leadChatbot']);
         // EDUN-294 · Libro de Reclamaciones virtual.
         Route::post('/reclamaciones', [ReclamacionesController::class, 'store']);
     });
+    // EDUN-363 · Blog desde WordPress (ya limpio y guardado por la API).
+    Route::get('/blog', [SitioCanalesController::class, 'blog'])->middleware('throttle:publico');
+    Route::get('/blog/{slug}', [SitioCanalesController::class, 'articulo'])->where('slug', '[a-z0-9][a-z0-9-]{0,199}')->middleware('throttle:publico');
     // EDUN-298 · Seguimiento: el límite de consultas fallidas lo aplica el controlador.
     Route::get('/reclamaciones/seguimiento', [ReclamacionesController::class, 'seguimiento'])->middleware(['visitante', 'throttle:publico']);
 });

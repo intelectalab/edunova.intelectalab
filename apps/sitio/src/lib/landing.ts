@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Tracking } from './consentimiento';
 import type { ConfigPopup } from './popupSalida';
 import { API_URL } from './sesionCms';
 
@@ -22,6 +23,9 @@ export type ModuloWeb = {
   etiqueta: string | null;
   en_grid: boolean;
   imagen: { url: string; alt: string | null; ancho: number | null; alto: number | null } | null;
+  /** EDUN-347 · Detalle en /funcionalidades. */
+  descripcion_larga?: string | null;
+  beneficios?: string[];
 };
 
 export type SeccionModulos = { insignia: string; titulo: string; descripcion: string | null; boton_ver: string; boton_ocultar: string };
@@ -93,15 +97,33 @@ export type Landing = {
   videos: Video[];
   testimonios: Testimonio[];
   seo: Seo | null;
-  faq: { pregunta: string; respuesta: string }[];
+  faq: { pregunta: string; respuesta: string; categoria?: string | null }[];
   config: Record<string, string | number | boolean | null>;
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
   /** EDUN-306 · Contenedor de GTM; solo se carga con consentimiento de analítica o marketing. */
-  tracking?: { gtm: string | null };
+  tracking?: Tracking;
   /** EDUN-271 · Popup de salida (null si está apagado en el CMS). */
   popup?: ConfigPopup | null;
   /** EDUN-338 · Logos autorizados y visibles. */
   logos?: LogoCliente[];
+  /** EDUN-347 · Videos por módulo (/funcionalidades). */
+  videos_modulos?: (Video & { modulo_clave: string })[];
+  /** EDUN-375 · Chatbot (null si está apagado). */
+  chatbot?: Chatbot | null;
+};
+
+/** EDUN-375 · Configuración pública del chatbot y su flujo (destinos = posiciones en «nodos»). */
+export type NodoChatbot = { tipo: 'mensaje' | 'opciones' | 'captura' | 'url' | 'whatsapp' | 'fin'; texto: string; url: string | null; siguiente: number | null; opciones: { texto: string; destino: number }[] };
+export type Chatbot = {
+  activo: boolean;
+  modo: 'flujo' | 'whatsapp';
+  titulo: string;
+  saludo: string;
+  fuera_horario: string;
+  whatsapp_mensaje: string | null;
+  horario: { dias: number[]; desde: string; hasta: string };
+  nodos: NodoChatbot[];
+  whatsapp: string | null;
 };
 
 /** EDUN-399 · El sitio está en mantenimiento si el CMS lo activó. */

@@ -84,7 +84,7 @@ type PropsCampo = {
   error?: string;
   max?: number;
   filas?: number;
-  tipo?: 'text' | 'number' | 'date';
+  tipo?: 'text' | 'number' | 'date' | 'time';
   ayuda?: string;
   inputMode?: 'decimal' | 'numeric';
   requerido?: boolean;

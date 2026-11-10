@@ -1,5 +1,6 @@
 <?php
 
+use App\Modulos\Compartido\Monitoreo\LimpiarDatosSensibles;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -60,6 +61,8 @@ return [
 
         'single' => [
             'driver' => 'single',
+            // EDUN-206 · Sin contraseñas, tokens ni documentos en los registros.
+            'tap' => [LimpiarDatosSensibles::class],
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
@@ -67,6 +70,8 @@ return [
 
         'daily' => [
             'driver' => 'daily',
+            // EDUN-206 · Sin contraseñas, tokens ni documentos en los registros.
+            'tap' => [LimpiarDatosSensibles::class],
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => env('LOG_DAILY_DAYS', 14),

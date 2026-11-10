@@ -2,39 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Modulos\Compartido\Monitoreo\Monitoreo;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
-use Throwable;
 
 /**
- * Ruta de salud de la API: confirma que la base de datos y Redis responden.
- * La amplía EDUN-206 (monitoreo y alertas).
+ * EDUN-206 · Ruta de salud: base de datos, Redis y cola. Pública y sin datos sensibles (ni
+ * versiones, ni mensajes de error, ni nombres de servidores): solo «ok» o «falla».
  */
 class SaludController extends Controller
 {
-    public function __invoke(): JsonResponse
+    public function __invoke(Monitoreo $monitoreo): JsonResponse
     {
-        $servicios = [
-            'base_de_datos' => $this->probar(fn () => DB::select('select version() as v')[0]->v),
-            'redis' => $this->probar(fn () => Redis::connection()->ping() ? 'ok' : 'sin respuesta'),
-        ];
+        $salud = $monitoreo->salud();
 
-        $ok = collect($servicios)->every(fn ($s) => $s['ok']);
-
-        return response()->json([
-            'estado' => $ok ? 'ok' : 'degradado',
-            'version' => app()->version(),
-            'servicios' => $servicios,
-        ], $ok ? 200 : 503);
-    }
-
-    private function probar(callable $prueba): array
-    {
-        try {
-            return ['ok' => true, 'detalle' => (string) $prueba()];
-        } catch (Throwable $e) {
-            return ['ok' => false, 'detalle' => class_basename($e)];
-        }
+        return response()->json($salud, $salud['estado'] === 'ok' ? 200 : 503)->header('Cache-Control', 'no-store');
     }
 }

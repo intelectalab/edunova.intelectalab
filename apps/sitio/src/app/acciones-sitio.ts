@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { demo, popupSalida, reclamos, seguimiento } from '@/contenido/provisional';
+import { chatbot, demo, popupSalida, reclamos, seguimiento } from '@/contenido/provisional';
 import { API_URL } from '@/lib/sesionCms';
 
 /*
@@ -35,6 +35,9 @@ export type SolicitudDemo = {
   ciudad: string | null;
   alumnos: number;
   plan_interes: string | null;
+  /** EDUN-359 · Solo en el formulario largo /demo. */
+  sistema_actual?: string | null;
+  urgencia?: string | null;
   demo_fecha: string;
   demo_hora: string;
   consentimiento: boolean;
@@ -63,6 +66,8 @@ export async function solicitarDemo(s: SolicitudDemo): Promise<ResultadoDemo> {
       ciudad: s.ciudad,
       alumnos: s.alumnos,
       plan_interes: s.plan_interes || null,
+      ...(s.sistema_actual ? { sistema_actual: s.sistema_actual.slice(0, 80) } : {}),
+      ...(s.urgencia ? { urgencia: s.urgencia } : {}),
       demo_fecha: s.demo_fecha,
       demo_hora: s.demo_hora,
       consentimiento: s.consentimiento === true,
@@ -108,6 +113,28 @@ export async function registrarLeadPopup(s: LeadPopup): Promise<{ ok: true } | {
     return { ok: false, error: (Object.values(cuerpo.errors)[0] as string[])[0] ?? popupSalida.errorIncompleto, campos: Object.keys(cuerpo.errors) };
   }
   return { ok: false, error: r.status === 429 ? String(cuerpo?.message ?? popupSalida.errorConexion) : popupSalida.errorConexion, campos: [] };
+}
+
+/** EDUN-375 · Contacto dejado en el chatbot (POST /api/v1/sitio/chatbot/lead). */
+export async function registrarLeadChatbot(d: { nombre: string; email: string; telefono: string; consentimiento: boolean; recorrido: string[]; page_url: string | null; sitio_web: string }): Promise<{ ok: true } | { ok: false; error: string; campos: string[] }> {
+  let r: Response;
+  try {
+    r = await enviar('/sitio/chatbot/lead', {
+      nombre: d.nombre?.trim() || null,
+      email: d.email?.trim() || null,
+      telefono: d.telefono?.trim() || null,
+      consentimiento: d.consentimiento === true,
+      recorrido: (d.recorrido ?? []).slice(0, 40).map((x) => String(x).slice(0, 300)),
+      page_url: d.page_url?.slice(0, 500) ?? null,
+      ...(d.sitio_web ? { sitio_web: d.sitio_web } : {}),
+    });
+  } catch {
+    return { ok: false, error: chatbot.error, campos: [] };
+  }
+  if (r.status === 201) return { ok: true };
+  const cuerpo = await r.json().catch(() => ({}));
+  if (r.status === 422 && cuerpo?.errors) return { ok: false, error: (Object.values(cuerpo.errors)[0] as string[])[0] ?? chatbot.faltan, campos: Object.keys(cuerpo.errors) };
+  return { ok: false, error: chatbot.error, campos: [] };
 }
 
 /** EDUN-306 · Copia de la elección del banner de cookies (auditoría). Si falla, no molesta al visitante. */

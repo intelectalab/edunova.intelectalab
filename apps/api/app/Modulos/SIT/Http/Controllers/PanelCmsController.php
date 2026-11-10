@@ -4,6 +4,7 @@ namespace App\Modulos\SIT\Http\Controllers;
 
 use App\Modulos\SIT\Services\AuditoriaCms;
 use App\Modulos\SIT\Services\EditorCms;
+use App\Modulos\SIT\Services\Integraciones;
 use App\Modulos\SIT\Services\PanelCms;
 use App\Modulos\SIT\Services\SeoYPoliticasCms;
 use Carbon\CarbonImmutable;
@@ -20,6 +21,7 @@ use Illuminate\Validation\Rule;
  *   GET  /cms/usuarios                          EDUN-407 (solo lectura)
  *   GET  /cms/seo, GET|PUT /cms/seo/{slug}      EDUN-314
  *   GET  /cms/politicas, POST /cms/politicas/{tipo}  EDUN-395
+ *   GET|PUT /cms/integraciones                  EDUN-403
  * La auditoría no tiene rutas de edición ni de borrado (y la base la hace inmutable).
  */
 class PanelCmsController
@@ -29,7 +31,20 @@ class PanelCmsController
         private AuditoriaCms $auditoria,
         private EditorCms $editor,
         private SeoYPoliticasCms $seo,
+        private Integraciones $integraciones,
     ) {}
+
+    public function integraciones(): JsonResponse
+    {
+        return response()->json(['data' => $this->integraciones->vista()])->header('Cache-Control', 'no-store');
+    }
+
+    public function guardarIntegraciones(Request $request): JsonResponse
+    {
+        $d = $request->validate(Integraciones::reglas(), Integraciones::mensajes());
+
+        return response()->json(['data' => $this->integraciones->guardar($d, $request->user(), $request->ip()), 'message' => 'Integraciones actualizadas.']);
+    }
 
     public function dashboard(): JsonResponse
     {

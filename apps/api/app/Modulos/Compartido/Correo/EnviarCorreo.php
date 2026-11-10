@@ -2,6 +2,7 @@
 
 namespace App\Modulos\Compartido\Correo;
 
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -40,6 +41,9 @@ class EnviarCorreo implements ShouldQueue
         if (! $fila || $fila->estado !== 'en_cola') {
             return;
         }
+
+        // EDUN-403 · SMTP configurado desde el Panel CMS (si lo hay) antes de enviar.
+        Integraciones::aplicarSmtp();
 
         if (CorreoTransaccional::estaSuprimido($this->destinatario)) {
             $db->table('correos_bitacora')->where('id', $this->bitacoraId)->update(['estado' => 'suprimido']);

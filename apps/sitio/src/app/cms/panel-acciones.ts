@@ -146,3 +146,31 @@ export async function leerPoliticasCms() {
 export async function publicarPolitica(tipo: string, d: { version: string; vigente_desde: string; contenido: string; revision_pendiente: boolean }) {
   return escribir<PoliticaCms>(`/cms/politicas/${encodeURIComponent(tipo)}`, 'POST', d);
 }
+
+// --- Tracking e integraciones (EDUN-403) ----------------------------------------------------
+
+type ClaveGuardada = { configurado: boolean };
+export type IntegracionesCms = {
+  tracking: Record<'gtm' | 'ga4' | 'meta_pixel' | 'linkedin' | 'clarity' | 'search_console', { valor: string | null; activo: boolean }>;
+  crm: { url: string | null; token: ClaveGuardada };
+  smtp: { host: string | null; puerto: number; usuario: string | null; cifrado: string; remitente: string | null; clave: ClaveGuardada };
+  ia: { proveedor: string | null; clave: ClaveGuardada };
+  wordpress: { url: string | null };
+};
+
+/** Lo que se envía: las claves van como texto nuevo o null para mantenerlas; *_borrar las elimina. */
+export type CambiosIntegraciones = {
+  tracking: IntegracionesCms['tracking'];
+  crm: { url: string | null; token: string | null; token_borrar: boolean };
+  smtp: { host: string | null; puerto: number; usuario: string | null; cifrado: string; remitente: string | null; clave: string | null; clave_borrar: boolean };
+  ia: { proveedor: string | null; clave: string | null; clave_borrar: boolean };
+  wordpress: { url: string | null };
+};
+
+export async function leerIntegraciones() {
+  return (await leer<{ data: IntegracionesCms }>('/cms/integraciones'))?.data ?? null;
+}
+
+export async function guardarIntegraciones(d: CambiosIntegraciones) {
+  return escribir<IntegracionesCms>('/cms/integraciones', 'PUT', d);
+}

@@ -17,6 +17,8 @@ class SolicitudDemoRequest extends FormRequest
 
     public const PLANES = ['inicial', 'crecimiento', 'integral', 'institucional'];
 
+    public const URGENCIAS = ['inmediata', 'este_mes', 'proximo_trimestre', 'explorando'];
+
     public function authorize(): bool
     {
         return true;
@@ -37,6 +39,9 @@ class SolicitudDemoRequest extends FormRequest
             'ciudad' => ['nullable', 'string', 'max:80'],
             'alumnos' => ['required', 'integer', 'min:1', 'max:100000'],
             'plan_interes' => ['nullable', Rule::in(self::PLANES)],
+            // EDUN-359 · Formulario largo /demo: sistema actual y urgencia (opcionales).
+            'sistema_actual' => ['nullable', 'string', 'max:80'],
+            'urgencia' => ['nullable', Rule::in(self::URGENCIAS)],
             'demo_fecha' => ['required', 'date_format:Y-m-d', $this->diaHabilDesdeManana(...)],
             'demo_hora' => ['required', Rule::in(self::HORAS)],
             'consentimiento' => ['accepted'],
@@ -60,6 +65,7 @@ class SolicitudDemoRequest extends FormRequest
             'demo_fecha.required' => 'Elige el día de la demo en el calendario.',
             'demo_hora.*' => 'Elige una de las horas disponibles.',
             'plan_interes.in' => 'Elige un plan de la lista.',
+            'urgencia.in' => 'Elige una opción de la lista.',
             'sitio_web.prohibited' => 'No pudimos registrar la solicitud.',
         ];
     }

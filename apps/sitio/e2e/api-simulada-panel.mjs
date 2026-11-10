@@ -6,6 +6,43 @@
 const hoy = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 
 export const leadsPopup = [];
+export const leadsChatbot = [];
+/** Estado que cambian las pruebas (POST /__chatbot). */
+export const estado = { chatbotActivo: false };
+
+// Sprint 11 · Chatbot de prueba: siempre «en horario» (todos los días, todo el día).
+export const CHATBOT = {
+  activo: true,
+  modo: 'flujo',
+  titulo: 'Asistente de Edunova',
+  saludo: '¡Hola! ¿En qué te ayudamos?',
+  fuera_horario: 'Ahora estamos fuera de horario.',
+  whatsapp_mensaje: 'Hola, quiero información',
+  horario: { dias: [1, 2, 3, 4, 5, 6, 7], desde: '00:00', hasta: '23:59' },
+  whatsapp: '51987654321',
+  nodos: [
+    { tipo: 'opciones', texto: '¿Qué necesitas?', url: null, siguiente: null, opciones: [{ texto: 'Ver precios', destino: 1 }, { texto: 'Hablar con un asesor', destino: 2 }] },
+    { tipo: 'url', texto: 'Aquí están los planes.', url: '/planes', siguiente: null, opciones: [] },
+    { tipo: 'captura', texto: 'Déjanos tu contacto y te escribimos.', url: null, siguiente: null, opciones: [] },
+  ],
+};
+
+// Blog de prueba (lo que la API ya trajo y limpió de WordPress).
+const ARTICULOS = [
+  { slug: 'como-elegir-un-sistema-escolar', titulo: 'Cómo elegir un sistema escolar', resumen: 'Cinco preguntas antes de decidir.', imagen_url: null, publicado_en: '2026-11-01T15:00:00Z', autor_wp: 'Equipo Edunova', categoria: 'gestion', categoria_nombre: 'Gestión', contenido: '<h2>Primero</h2><p>Define qué necesitas.</p>', actualizado_wp: null },
+  { slug: 'pensiones-sin-morosidad', titulo: 'Pensiones sin morosidad', resumen: 'Recordatorios que funcionan.', imagen_url: null, publicado_en: '2026-10-01T15:00:00Z', autor_wp: null, categoria: 'pagos', categoria_nombre: 'Pagos', contenido: '<p>Recordatorios.</p>', actualizado_wp: null },
+];
+
+/** El listado no lleva el contenido completo. */
+const resumenArticulo = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => k !== 'contenido' && k !== 'actualizado_wp'));
+
+const integraciones = {
+  tracking: Object.fromEntries(['gtm', 'ga4', 'meta_pixel', 'linkedin', 'clarity', 'search_console'].map((k) => [k, { valor: null, activo: false }])),
+  crm: { url: null, token: { configurado: false } },
+  smtp: { host: null, puerto: 587, usuario: null, cifrado: 'tls', remitente: null, clave: { configurado: false } },
+  ia: { proveedor: null, clave: { configurado: false } },
+  wordpress: { url: 'https://blog.ejemplo.test' },
+};
 
 export const popupLanding = {
   titulo: '¿Te vas sin ver Edunova en acción?',
@@ -35,6 +72,8 @@ const secciones = {
   },
   logos: { nombre: 'Logos de clientes', publicado: { titulo: 'Confían en Edunova', velocidad: 30, columnas: 5, mostrar: false, lista: [] } },
   _popup: { nombre: 'Popup de salida', publicado: { activo: true, titulo: popupLanding.titulo, texto: popupLanding.texto, imagen_id: null, cta: popupLanding.cta, campo: 'ambos', espera_seg: 30, inactividad_seg: 45, frecuencia: 'sesion' } },
+  _faq: { nombre: 'Preguntas frecuentes', publicado: { lista: [{ id: 1, pregunta: '¿Funciona con SIAGIE?', respuesta: 'Exporta las actas.', categoria: 'SIAGIE', visible: true }] } },
+  _chatbot: { nombre: 'Chatbot', publicado: { activo: false, modo: 'whatsapp', titulo: 'Asistente de Edunova', saludo: '¡Hola!', fuera_horario: 'Fuera de horario.', whatsapp_mensaje: null, horario: { dias: [1, 2, 3, 4, 5], desde: '08:00', hasta: '18:00' }, nodos: [] } },
   _config: {
     nombre: 'Configuración general',
     publicado: { razon_social: null, ruc: null, direccion: null, telefono_central: null, whatsapp: null, email_contacto: null, email_reclamaciones: null, horario_soporte: null, mantenimiento: { activo: false, mensaje: null, vuelta: null } },
@@ -120,10 +159,42 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
     return json(res, 201, { message: 'Datos registrados.', consentimiento_version: 'privacidad-v1.0' }), true;
   }
   if (req.method === 'GET' && ruta === '/__popup') return json(res, 200, leadsPopup), true;
+  if (req.method === 'POST' && ruta === '/__chatbot') {
+    estado.chatbotActivo = cuerpo().activo === true;
+    return json(res, 200, estado), true;
+  }
+  if (req.method === 'GET' && ruta === '/__chatbot') return json(res, 200, leadsChatbot), true;
+
+  // EDUN-375 · Contacto del chatbot.
+  if (req.method === 'POST' && ruta === '/api/v1/sitio/chatbot/lead') {
+    const d = cuerpo();
+    if (!d.email && !d.telefono) return json(res, 422, { message: 'Escribe tu correo o tu WhatsApp.', errors: { email: ['Escribe tu correo o tu WhatsApp.'] } }), true;
+    if (d.consentimiento !== true) return json(res, 422, { message: 'x', errors: { consentimiento: ['Debes aceptar la Política de Privacidad.'] } }), true;
+    leadsChatbot.push(d);
+    return json(res, 201, { message: 'Datos registrados.' }), true;
+  }
+
+  // EDUN-363 · Blog.
+  if (req.method === 'GET' && ruta === '/api/v1/sitio/blog') {
+    const cat = url.searchParams.get('categoria');
+    return json(res, 200, {
+      configurado: true,
+      categorias: [{ slug: 'gestion', nombre: 'Gestión' }, { slug: 'pagos', nombre: 'Pagos' }],
+      data: ARTICULOS.filter((a) => !cat || a.categoria === cat).map(resumenArticulo),
+      pagina: 1,
+      paginas: 1,
+    }), true;
+  }
+  const slug = /^\/api\/v1\/sitio\/blog\/([a-z0-9-]+)$/.exec(ruta)?.[1];
+  if (req.method === 'GET' && slug) {
+    const a = ARTICULOS.find((x) => x.slug === slug);
+    if (!a) return json(res, 404, { message: 'No encontramos ese artículo.' }), true;
+    return json(res, 200, { ...a, relacionados: ARTICULOS.filter((x) => x.slug !== slug).map(resumenArticulo) }), true;
+  }
   if (req.method === 'GET' && ruta === '/__publicaciones') return json(res, 200, publicaciones), true;
 
   if (!ruta.startsWith('/api/v1/cms/')) return false;
-  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas)/;
+  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas|integraciones)/;
   if (!protegidas.test(ruta)) return false;
   if (!esSuperadmin()) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' }), true;
 
@@ -241,6 +312,17 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
     if ((d.meta_titulo ?? '').length > 70) return json(res, 422, { message: 'x', errors: { meta_titulo: ['El título admite hasta 70 caracteres.'] } }), true;
     Object.assign(seoInicio, d, { updated_at: new Date().toISOString() });
     return json(res, 200, { data: seoInicio, message: 'Metadatos actualizados.' }), true;
+  }
+
+  // EDUN-403 · Tracking e integraciones (las claves nunca se devuelven).
+  if (ruta === '/api/v1/cms/integraciones') {
+    if (req.method === 'GET') return json(res, 200, { data: integraciones }), true;
+    const d = cuerpo();
+    const ga4 = d.tracking?.ga4?.valor;
+    if (ga4 && !/^G-[A-Z0-9]{6,12}$/.test(ga4)) return json(res, 422, { message: 'x', errors: { 'tracking.ga4.valor': ['El ID de GA4 tiene la forma G-XXXXXXXXXX.'] } }), true;
+    integraciones.tracking = d.tracking;
+    integraciones.crm = { url: d.crm.url, token: { configurado: d.crm.token_borrar ? false : Boolean(d.crm.token) || integraciones.crm.token.configurado } };
+    return json(res, 200, { data: integraciones, message: 'Integraciones actualizadas.' }), true;
   }
 
   // EDUN-395 · Políticas.

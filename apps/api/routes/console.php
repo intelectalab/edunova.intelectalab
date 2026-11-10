@@ -2,6 +2,7 @@
 
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
+use App\Modulos\Compartido\Monitoreo\Monitoreo;
 use App\Modulos\SEG\Services\AlmacenArchivos;
 use App\Modulos\SIT\Services\BibliotecaMedios;
 use Illuminate\Filesystem\AwsS3V3Adapter;
@@ -36,3 +37,11 @@ Artisan::command('correo:probar {email}', function (string $email) {
     $id = app(CorreoTransaccional::class)->enviar(new CorreoDePrueba, $email, 'prueba');
     $this->info("Correo en cola (bitácora #{$id}).");
 })->purpose('Envía un correo de prueba por la cola');
+
+// EDUN-206 · Revisión del monitoreo (la corre edunova-vigilancia.timer cada 5 minutos en el VPS).
+Artisan::command('monitoreo:revisar', function (Monitoreo $monitoreo) {
+    $problemas = $monitoreo->revisar();
+    $problemas === [] ? $this->info('Todo en orden.') : $this->warn(implode(PHP_EOL, $problemas));
+
+    return $problemas === [] ? 0 : 1;
+})->purpose('Revisa la salud, los 5xx y la cola, y avisa al equipo técnico si algo falla');

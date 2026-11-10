@@ -1,0 +1,11 @@
+# EDUN-205 · Todos los días a las 03:30 (hora del servidor).
+[Unit]
+Description=Edunova: respaldo diario
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

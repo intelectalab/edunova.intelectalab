@@ -24,6 +24,8 @@ export function metadatosLanding(datos: Landing | null): Metadata {
     description: descripcion,
     keywords: seo?.keywords?.length ? seo.keywords : undefined,
     alternates: { canonical: seo?.canonical ?? '/' },
+    // EDUN-403 · Verificación de Search Console desde Tracking e integraciones.
+    verification: datos?.tracking?.search_console ? { google: datos.tracking.search_console } : undefined,
     robots: permitir ? { index: true, follow: true } : { index: false, follow: (seo?.robots ?? 'index,follow').endsWith(',follow') },
     openGraph: {
       type: 'website',
@@ -104,4 +106,16 @@ export function jsonLdLanding(datos: Landing): object[] {
 /** Serializa JSON-LD sin permitir cerrar la etiqueta <script> desde el contenido. */
 export function scriptJsonLd(bloque: object): string {
   return JSON.stringify(bloque).replace(/</g, '\\u003c');
+}
+
+/** Sprint 11 · Metadatos de una página pública secundaria (funcionalidades, planes, blog…). */
+export function metadatosPagina(titulo: string, descripcion: string, ruta: string, indexar = true): Metadata {
+  const completo = `${titulo} · Edunova`;
+  return {
+    title: completo,
+    description: descripcion,
+    alternates: { canonical: ruta },
+    robots: indexable() && indexar ? { index: true, follow: true } : { index: false, follow: true },
+    openGraph: { type: 'website', locale: 'es_PE', url: ruta, siteName: 'Edunova', title: completo, description: descripcion },
+  };
 }

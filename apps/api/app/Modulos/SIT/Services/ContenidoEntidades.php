@@ -28,7 +28,14 @@ use Illuminate\Validation\ValidationException;
  */
 class ContenidoEntidades
 {
-    public const CLAVES = ['planes', 'modulos', 'testimonios', 'logos', '_estructura', '_popup', '_config'];
+    public const CLAVES = ['planes', 'modulos', 'testimonios', 'logos', '_estructura', '_popup', '_config', '_faq', '_chatbot'];
+
+    /** Chatbot sin configurar: apagado, con textos neutros para empezar. */
+    public const CHATBOT_VACIO = [
+        'activo' => false, 'modo' => 'whatsapp', 'titulo' => 'Asistente de Edunova', 'saludo' => '¡Hola! ¿En qué te ayudamos?',
+        'fuera_horario' => 'Ahora estamos fuera de horario. Déjanos tu correo o WhatsApp y te escribimos.',
+        'whatsapp_mensaje' => null, 'horario' => ['dias' => [1, 2, 3, 4, 5], 'desde' => '08:00', 'hasta' => '18:00'],
+    ];
 
     /** Claves del borrador que no son textos de la sección. */
     private const EXTRAS = ['lista', 'complementos', 'nota_legal', 'mostrar'];
@@ -75,8 +82,8 @@ class ContenidoEntidades
             ],
             'modulos' => [
                 'lista' => DB::table('cms.modulos_web')->orderBy('orden')
-                    ->get(['clave', 'nombre', 'icono', 'descripcion', 'etiqueta', 'imagen_id', 'en_grid', 'visible'])
-                    ->map(fn ($m) => [...(array) $m, 'en_grid' => (bool) $m->en_grid, 'visible' => (bool) $m->visible])->all(),
+                    ->get(['clave', 'nombre', 'icono', 'descripcion', 'etiqueta', 'imagen_id', 'en_grid', 'visible', 'descripcion_larga', 'beneficios'])
+                    ->map(fn ($m) => [...(array) $m, 'en_grid' => (bool) $m->en_grid, 'visible' => (bool) $m->visible, 'beneficios' => json_decode((string) $m->beneficios, true) ?: []])->all(),
             ],
             'testimonios' => [
                 'lista' => DB::table('cms.testimonios')->orderBy('orden')->orderBy('id')
@@ -101,6 +108,9 @@ class ContenidoEntidades
             ],
             '_popup' => $this->popupPublicado(),
             '_config' => $this->configPublicada(),
+            '_faq' => ['lista' => DB::table('cms.faq')->orderBy('orden')->orderBy('id')->get(['id', 'pregunta', 'respuesta', 'categoria', 'visible'])
+                ->map(fn ($f) => [...(array) $f, 'visible' => (bool) $f->visible])->all()],
+            '_chatbot' => self::chatbotPublicado(),
             default => [],
         };
     }
@@ -160,6 +170,7 @@ class ContenidoEntidades
             'testimonios' => isset($c['lista']) ? $this->erroresTestimonios($c) : [],
             'logos' => $this->erroresLogos($c),
             '_estructura' => $this->erroresEstructura($c),
+            '_chatbot' => $this->erroresChatbot($c),
             '_popup' => ! empty($c['imagen_id']) && ! DB::table('cms.medios')->where('id', $c['imagen_id'])->whereIn('tipo', ['imagen', 'svg'])->exists()
                 ? ['imagen_id' => 'Elige una imagen de la Biblioteca de medios.'] : [],
             default => [],
@@ -183,6 +194,8 @@ class ContenidoEntidades
             '_estructura' => $this->aplicarEstructura($c),
             '_popup' => $this->aplicarPopup($c),
             '_config' => $this->aplicarConfig($c),
+            '_faq' => $this->aplicarFaq($c),
+            '_chatbot' => $this->aplicarChatbot($c),
             default => null,
         };
 
@@ -401,6 +414,8 @@ class ContenidoEntidades
                 'descripcion' => $m['descripcion'],
                 'etiqueta' => $m['etiqueta'] ?? null,
                 'imagen_id' => $m['imagen_id'] ?? null,
+                'descripcion_larga' => isset($m['descripcion_larga']) && trim($m['descripcion_larga']) !== '' ? trim($m['descripcion_larga']) : null,
+                'beneficios' => json_encode(array_values(array_filter(array_map(fn ($b) => trim((string) $b), $m['beneficios'] ?? []))), JSON_UNESCAPED_UNICODE),
                 'en_grid' => (bool) $m['en_grid'],
                 'visible' => (bool) $m['visible'],
                 'orden' => $i + 1,
@@ -475,6 +490,115 @@ class ContenidoEntidades
             } else {
                 DB::table('cms.testimonios')->insert($fila);
             }
+        }
+    }
+
+    // --- Preguntas frecuentes (EDUN-371) -------------------------------------------------
+
+    private function aplicarFaq(array $c): void
+    {
+        $lista = array_values($c['lista'] ?? []);
+        $conservar = collect($lista)->pluck('id')->filter()->all();
+        DB::table('cms.faq')->whereNotIn('id', $conservar ?: [0])->delete();
+        foreach ($lista as $i => $f) {
+            $fila = [
+                'pregunta' => trim($f['pregunta']),
+                'respuesta' => trim($f['respuesta']),
+                'categoria' => isset($f['categoria']) && trim($f['categoria']) !== '' ? trim($f['categoria']) : null,
+                'visible' => (bool) $f['visible'],
+                'orden' => $i + 1,
+            ];
+            empty($f['id']) ? DB::table('cms.faq')->insert($fila) : DB::table('cms.faq')->where('id', $f['id'])->update($fila);
+        }
+    }
+
+    // --- Chatbot (EDUN-375) --------------------------------------------------------------
+
+    /** Configuración (cms.config.chatbot) y nodos del flujo activo, con los destinos como posiciones. */
+    public static function chatbotPublicado(): array
+    {
+        $config = json_decode((string) DB::table('cms.config')->where('clave', 'chatbot')->value('valor'), true) ?: [];
+        $flujo = DB::table('cms.chatbot_flujos')->where('activo', true)->value('id');
+        $nodos = $flujo ? DB::table('cms.chatbot_nodos')->where('flujo_id', $flujo)->orderBy('orden')->get() : collect();
+        $posicion = $nodos->pluck('id')->flip();
+
+        return [
+            ...self::CHATBOT_VACIO,
+            ...array_intersect_key($config, self::CHATBOT_VACIO),
+            'nodos' => $nodos->map(function ($n) use ($posicion) {
+                $contenido = json_decode((string) $n->contenido, true) ?: [];
+
+                return [
+                    'tipo' => $n->tipo,
+                    'texto' => $contenido['texto'] ?? '',
+                    'url' => $contenido['url'] ?? null,
+                    'siguiente' => $n->siguiente_id !== null ? ($posicion[$n->siguiente_id] ?? null) : null,
+                    'opciones' => collect(json_decode((string) $n->opciones, true) ?: [])->map(fn ($o) => ['texto' => $o['texto'], 'destino' => $posicion[$o['destino_id']] ?? 0])->values()->all(),
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    private function erroresChatbot(array $c): array
+    {
+        $e = [];
+        $nodos = $c['nodos'] ?? [];
+        $total = count($nodos);
+        if (($c['activo'] ?? false) && ($c['modo'] ?? '') === 'flujo' && $total === 0) {
+            $e['nodos'] = 'El modo flujo necesita al menos un mensaje.';
+        }
+        foreach ($nodos as $i => $n) {
+            if (isset($n['siguiente']) && $n['siguiente'] !== null && $n['siguiente'] >= $total) {
+                $e["nodos.{$i}.siguiente"] = 'Ese paso no existe.';
+            }
+            foreach ($n['opciones'] ?? [] as $k => $o) {
+                if ($o['destino'] >= $total) {
+                    $e["nodos.{$i}.opciones.{$k}.destino"] = 'Ese paso no existe.';
+                }
+            }
+            if ($n['tipo'] === 'opciones' && empty($n['opciones'])) {
+                $e["nodos.{$i}.opciones"] = 'Agrega al menos una opción.';
+            }
+            if ($n['tipo'] === 'url' && empty($n['url'])) {
+                $e["nodos.{$i}.url"] = 'Indica a qué página lleva.';
+            }
+        }
+        if (($c['modo'] ?? '') === 'whatsapp' && ($c['activo'] ?? false) && ! $this->whatsappConfigurado()) {
+            $e['modo'] = 'Primero carga el número de WhatsApp en Configuración general.';
+        }
+
+        return $e;
+    }
+
+    private function whatsappConfigurado(): bool
+    {
+        $w = json_decode((string) DB::table('cms.config')->where('clave', 'whatsapp')->value('valor'), true);
+
+        return is_string($w) && strlen(preg_replace('/\D/', '', $w)) >= 9;
+    }
+
+    private function aplicarChatbot(array $c): void
+    {
+        DB::table('cms.config')->updateOrInsert(['clave' => 'chatbot'], ['valor' => json_encode(array_intersect_key($c, self::CHATBOT_VACIO), JSON_UNESCAPED_UNICODE)]);
+
+        $flujo = DB::table('cms.chatbot_flujos')->where('activo', true)->value('id')
+            ?? DB::table('cms.chatbot_flujos')->insertGetId(['nombre' => 'Principal', 'activo' => true]);
+        DB::table('cms.chatbot_nodos')->where('flujo_id', $flujo)->delete();
+
+        // Dos pasos: primero los nodos (para tener sus ids) y luego los enlaces entre ellos.
+        $nodos = array_values($c['nodos'] ?? []);
+        $ids = [];
+        foreach ($nodos as $i => $n) {
+            $ids[$i] = DB::table('cms.chatbot_nodos')->insertGetId([
+                'flujo_id' => $flujo, 'tipo' => $n['tipo'], 'orden' => $i + 1,
+                'contenido' => json_encode(array_filter(['texto' => $n['texto'], 'url' => $n['url'] ?? null]), JSON_UNESCAPED_UNICODE),
+            ]);
+        }
+        foreach ($nodos as $i => $n) {
+            DB::table('cms.chatbot_nodos')->where('id', $ids[$i])->update([
+                'siguiente_id' => isset($n['siguiente']) && $n['siguiente'] !== null ? ($ids[$n['siguiente']] ?? null) : null,
+                'opciones' => empty($n['opciones']) ? null : json_encode(array_map(fn ($o) => ['texto' => $o['texto'], 'destino_id' => $ids[$o['destino']] ?? null], $n['opciones']), JSON_UNESCAPED_UNICODE),
+            ]);
         }
     }
 }

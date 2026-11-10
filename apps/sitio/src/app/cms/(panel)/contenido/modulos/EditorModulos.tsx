@@ -15,6 +15,9 @@ export type ModuloCms = {
   imagen_id: number | null;
   en_grid: boolean;
   visible: boolean;
+  /** EDUN-347 · Detalle en /funcionalidades. */
+  descripcion_larga?: string | null;
+  beneficios?: string[];
 };
 export type SeccionModulosCms = {
   insignia: string;
@@ -27,6 +30,7 @@ export type SeccionModulosCms = {
 
 const TEXTOS = ['insignia', 'titulo', 'descripcion', 'boton_ver', 'boton_ocultar'] as const;
 export const MAX_GRID = 6;
+const SALTO = String.fromCharCode(10);
 const nulo = (v: string) => (v.trim() === '' ? null : v);
 
 /**
@@ -92,6 +96,25 @@ export function EditorModulos({ inicial, medios, conBorrador }: { inicial: Secci
                       <Campo etiqueta={t.modulo.descripcion.etiqueta} max={t.modulo.descripcion.max} filas={2} valor={m.descripcion} error={err('descripcion')} onCambio={(x) => setModulo(i, { descripcion: x })} />
                     </div>
                     <Campo etiqueta={t.modulo.etiqueta.etiqueta} max={t.modulo.etiqueta.max} valor={m.etiqueta ?? ''} error={err('etiqueta')} onCambio={(x) => setModulo(i, { etiqueta: nulo(x) })} />
+                    <div className="md:col-span-2">
+                      <Campo
+                        etiqueta={t.modulo.descripcionLarga.etiqueta}
+                        max={t.modulo.descripcionLarga.max}
+                        filas={4}
+                        valor={m.descripcion_larga ?? ''}
+                        error={err('descripcion_larga')}
+                        onCambio={(x) => setModulo(i, { descripcion_larga: nulo(x) })}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Campo
+                        etiqueta={t.modulo.beneficios}
+                        filas={4}
+                        valor={(m.beneficios ?? []).join(SALTO)}
+                        error={err('beneficios') ?? Object.entries(e).find(([k]) => k.startsWith(`lista.${i}.beneficios.`))?.[1]}
+                        onCambio={(x) => setModulo(i, { beneficios: x.split(SALTO).slice(0, 8) })}
+                      />
+                    </div>
                     <div className="flex flex-col gap-space-xs">
                       <span className="font-label-lg text-label-lg text-on-surface">{t.modulo.imagen}</span>
                       <Miniatura medio={m.imagen_id ? conocidos[m.imagen_id] : undefined} onQuitar={m.imagen_id ? () => setModulo(i, { imagen_id: null }) : undefined} />

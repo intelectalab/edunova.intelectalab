@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 // EDUN-233 · La API llama aquí al publicar desde el CMS para que la landing se actualice al
 // instante (si falla, el ISR de 5 minutos la renueva igual). Protegido con un secreto compartido.
-const PERMITIDAS = new Set(['landing', 'politicas']);
+const PERMITIDAS = new Set(['landing', 'politicas', 'blog']);
 
 function secretoValido(recibido: string | null): boolean {
   const esperado = process.env.REVALIDAR_SECRETO;

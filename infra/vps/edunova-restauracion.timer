@@ -1,0 +1,10 @@
+# EDUN-205 · El primer domingo de cada mes a las 05:00.
+[Unit]
+Description=Edunova: prueba mensual de restauración
+
+[Timer]
+OnCalendar=Sun *-*-01..07 05:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

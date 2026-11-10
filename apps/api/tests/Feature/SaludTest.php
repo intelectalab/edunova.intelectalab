@@ -11,7 +11,10 @@ class SaludTest extends TestCase
         $this->getJson('/api/v1/salud')
             ->assertOk()
             ->assertJsonPath('estado', 'ok')
-            ->assertJsonPath('servicios.base_de_datos.ok', true)
-            ->assertJsonPath('servicios.redis.ok', true);
+            ->assertJsonPath('servicios.base_de_datos', 'ok')
+            ->assertJsonPath('servicios.redis', 'ok')
+            ->assertJsonPath('servicios.cola', 'ok')
+            // EDUN-206 · Sin datos sensibles: ni versiones ni detalles de los servicios.
+            ->assertJsonMissingPath('version');
     }
 }

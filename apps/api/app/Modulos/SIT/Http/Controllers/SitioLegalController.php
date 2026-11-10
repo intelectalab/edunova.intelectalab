@@ -51,6 +51,8 @@ class SitioLegalController
             'ciudad' => isset($d['ciudad']) && trim($d['ciudad']) !== '' ? trim($d['ciudad']) : null,
             'alumnos' => (int) $d['alumnos'],
             'plan_interes' => $d['plan_interes'] ?? null,
+            'sistema_actual' => isset($d['sistema_actual']) && trim($d['sistema_actual']) !== '' ? trim($d['sistema_actual']) : null,
+            'urgencia' => $d['urgencia'] ?? null,
             'demo_fecha' => $d['demo_fecha'],
             'demo_hora' => $d['demo_hora'],
             'mensaje' => $origen ? "Demo solicitada desde: {$origen}" : null,

@@ -22,6 +22,10 @@ const GOOGLE = {
   frame: ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'],
   img: ['https://www.googletagmanager.com', 'https://*.google-analytics.com'],
   connect: ['https://www.google.com/recaptcha/', 'https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://*.analytics.google.com'],
+  // EDUN-403 · Meta Pixel, LinkedIn Insight y Microsoft Clarity (también solo con consentimiento).
+  scriptExtra: ['https://connect.facebook.net', 'https://snap.licdn.com', 'https://www.clarity.ms', 'https://scripts.clarity.ms'],
+  imgExtra: ['https://www.facebook.com', 'https://px.ads.linkedin.com', 'https://*.clarity.ms'],
+  connectExtra: ['https://www.facebook.com', 'https://px.ads.linkedin.com', 'https://*.clarity.ms'],
 };
 
 /**
@@ -32,13 +36,13 @@ export function politicaContenido({ marcoPropio = false } = {}) {
   const directivas = {
     'default-src': ["'self'"],
     // Next.js inserta scripts en línea para hidratar; en desarrollo además usa eval.
-    'script-src': ["'self'", "'unsafe-inline'", ...GOOGLE.script, ...(produccion ? [] : ["'unsafe-eval'"])],
+    'script-src': ["'self'", "'unsafe-inline'", ...GOOGLE.script, ...GOOGLE.scriptExtra, ...(produccion ? [] : ["'unsafe-eval'"])],
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
-    'img-src': ["'self'", 'data:', 'blob:', origenMedios(), ...GOOGLE.img].filter(Boolean),
+    'img-src': ["'self'", 'data:', 'blob:', 'https:', origenMedios(), ...GOOGLE.img, ...GOOGLE.imgExtra].filter(Boolean),
     'media-src': ["'self'", origenMedios()].filter(Boolean),
     'frame-src': ["'self'", 'https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://player.vimeo.com', ...GOOGLE.frame],
-    'connect-src': ["'self'", ...GOOGLE.connect, ...(produccion ? [] : ['ws:'])],
+    'connect-src': ["'self'", ...GOOGLE.connect, ...GOOGLE.connectExtra, ...(produccion ? [] : ['ws:'])],
     'frame-ancestors': [marcoPropio ? "'self'" : "'none'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
