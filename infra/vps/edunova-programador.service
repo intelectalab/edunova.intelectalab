@@ -1,0 +1,12 @@
+# Sprint 15 · Programador de Laravel: alertas de SLA cada 5 minutos (EDUN-31) y avisos y
+# suspensiones por falta de pago cada día a las 07:00 (EDUN-28). Ver routes/console.php.
+[Unit]
+Description=Edunova: tareas programadas (php artisan schedule:run)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+WorkingDirectory=/var/www/edunova/apps/api
+ExecStart=/usr/bin/php artisan schedule:run --no-interaction
+TimeoutStartSec=300

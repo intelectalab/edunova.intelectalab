@@ -72,6 +72,13 @@ class AlmacenArchivos
         );
     }
 
+    /** URL firmada para cualquier ruta del almacenamiento (p. ej. exportaciones de la plataforma). */
+    public static function urlTemporalDeRuta(string $disco, string $ruta, string $nombre, int $minutos): string
+    {
+        return self::discoFirmas($disco)->temporaryUrl($ruta, now()->addMinutes($minutos),
+            ['ResponseContentDisposition' => 'attachment; filename="'.addcslashes($nombre, '"\\').'"']);
+    }
+
     /**
      * Disco con el que se firman las URL. La firma de S3 (SigV4) incluye el host, así que no
      * sirve reemplazarlo después de firmar: si hay un endpoint público distinto del interno

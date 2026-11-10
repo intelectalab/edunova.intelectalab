@@ -4,6 +4,9 @@ import { useRuta } from '../panel/ruta';
 import { Aviso, Campo, Titulo } from '../panel/ui';
 import { fecha, useAccion, useCarga } from '../panel/utilidades';
 import '../panel/panel.css';
+import { CumplimientoSla, MesaAyuda } from './MesaAyuda';
+import { Exportaciones, ListaImplementacion, Suspension } from './OperacionColegio';
+import { ParametrosLegales } from './Parametros';
 
 type Fila = {
   id: number;
@@ -21,6 +24,7 @@ type Catalogos = { planes: { codigo: string; nombre: string }[]; modulos: { codi
 type Modulo = { codigo: string; nombre: string; tipo: string; activo: boolean; fijo: boolean };
 type Detalle = {
   id: number;
+  suspension_programada: string | null;
   nombre: string;
   subdominio: string;
   estado: string;
@@ -51,6 +55,7 @@ function Lista() {
   const { pedir } = useSesion();
   const [buscar, setBuscar] = useState('');
   const { datos, error, cargando } = useCarga(() => pedir<{ data: Fila[] }>(`/plataforma/instituciones${buscar ? `?buscar=${encodeURIComponent(buscar)}` : ''}`), [buscar]);
+  const parametros = useCarga(() => pedir<{ sin_confirmar: number }>('/plataforma/parametros-legales'));
   return (
     <>
       <Titulo migas="Plataforma" titulo="Colegios" descripcion="Colegios clientes con su plan, aula elegida y módulos extra.">
@@ -58,7 +63,12 @@ function Lista() {
           + Dar de alta un colegio
         </a>
       </Titulo>
-      <div className="tarjeta">
+      {(parametros.datos?.sin_confirmar ?? 0) > 0 && (
+        <Aviso tipo="ambar">
+          Hay {parametros.datos!.sin_confirmar} parámetros legales vigentes sin confirmar. <a href="#/parametros">Revisarlos</a>
+        </Aviso>
+      )}
+      <div className="tarjeta" style={{ marginTop: 12 }}>
         <div className="filtros">
           <Campo etiqueta="Buscar">
             <input placeholder="Nombre, subdominio, código modular o RUC" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
@@ -285,7 +295,7 @@ function Alta() {
 function Ficha({ id }: { id: number }) {
   const { pedir, estado } = useSesion();
   const esSuperadmin = estado!.roles_plataforma.includes('superadmin');
-  const { datos, setDatos, error } = useCarga(() => pedir<Detalle>(`/plataforma/instituciones/${id}`), [id]);
+  const { datos, setDatos, error, recargar } = useCarga(() => pedir<Detalle>(`/plataforma/instituciones/${id}`), [id]);
   const accion = useAccion();
   if (!datos) return <Aviso tipo="error">{error}</Aviso>;
 
@@ -381,6 +391,9 @@ function Ficha({ id }: { id: number }) {
             ))}
           </div>
         </div>
+        <ListaImplementacion id={id} estado={datos.estado} alCambiar={recargar} />
+        {esSuperadmin && <Suspension id={id} estado={datos.estado} programada={datos.suspension_programada} alCambiar={recargar} />}
+        {esSuperadmin && <Exportaciones id={id} />}
       </div>
     </>
   );
@@ -391,7 +404,12 @@ export function Consola() {
   const { estado, salir } = useSesion();
   useRuta();
   const partes = window.location.hash.replace(/^#\/?/, '').split('/');
-  const pantalla = partes[1] === 'nuevo' ? <Alta /> : partes[1] && /^\d+$/.test(partes[1]) ? <Ficha id={Number(partes[1])} /> : <Lista />;
+  const seccion = partes[0] || 'colegios';
+  const pantalla =
+    seccion === 'soporte' ? <MesaAyuda /> :
+    seccion === 'sla' ? <CumplimientoSla /> :
+    seccion === 'parametros' ? <ParametrosLegales /> :
+    partes[1] === 'nuevo' ? <Alta /> : partes[1] && /^\d+$/.test(partes[1]) ? <Ficha id={Number(partes[1])} /> : <Lista />;
 
   return (
     <div className="marco">
@@ -405,7 +423,7 @@ export function Consola() {
         </div>
         <nav aria-label="Menú de plataforma">
           <div className="lateral-grupo">Plataforma</div>
-          <a href="#/colegios" aria-current={partes[1] ? undefined : 'page'}>
+          <a href="#/colegios" aria-current={seccion === 'colegios' && !partes[1] ? 'page' : undefined}>
             Colegios
           </a>
           {estado!.roles_plataforma.includes('superadmin') && (
@@ -413,6 +431,17 @@ export function Consola() {
               Alta de colegio
             </a>
           )}
+          <div className="lateral-grupo">Soporte</div>
+          <a href="#/soporte" aria-current={seccion === 'soporte' ? 'page' : undefined}>
+            Mesa de ayuda
+          </a>
+          <a href="#/sla" aria-current={seccion === 'sla' ? 'page' : undefined}>
+            Cumplimiento SLA
+          </a>
+          <div className="lateral-grupo">Normativa</div>
+          <a href="#/parametros" aria-current={seccion === 'parametros' ? 'page' : undefined}>
+            Parámetros legales
+          </a>
         </nav>
         <div className="lateral-pie">
           <span>

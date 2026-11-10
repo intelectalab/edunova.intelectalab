@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { moduloActivo, puede, useSesion, type Colegio } from '../sesion/contexto';
+import { Admision } from '../adm/Admision';
 import { Alumnos } from '../adm/Alumnos';
 import { Configuracion } from '../adm/Configuracion';
 import { Horarios } from '../adm/Horarios';
 import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
 import { MisHijos } from '../familia/MisHijos';
+import { SoporteColegio } from '../pla/SoporteColegio';
 import { Personal } from '../adm/Personal';
 import { PlanEstudios } from '../adm/PlanEstudios';
 import { ConectorMoodle } from '../mdl/ConectorMoodle';
@@ -58,6 +60,13 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <Alumnos />,
   },
   {
+    ruta: 'admision',
+    nombre: 'Admisión',
+    grupo: 'Matrícula',
+    visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.admision.ver'),
+    pantalla: () => <Admision />,
+  },
+  {
     ruta: 'condiciones',
     nombre: 'Condiciones económicas',
     grupo: 'Matrícula',
@@ -92,6 +101,7 @@ const PAGINAS: Pagina[] = [
     visible: (c) => moduloActivo(c, 'MDL') && puede(c, 'mdl.conector.ver'),
     pantalla: () => <ConectorMoodle />,
   },
+  { ruta: 'soporte', nombre: 'Soporte', grupo: 'Cuenta', visible: (c) => puede(c, 'pla.tickets.ver'), pantalla: () => <SoporteColegio /> },
   { ruta: 'perfil', nombre: 'Mi perfil y seguridad', grupo: 'Cuenta', visible: () => true, pantalla: () => <MiPerfil /> },
 ];
 

@@ -224,6 +224,8 @@ class RegistroAlumnos
             'institucion_id' => ContextoInstitucion::requerido(), 'alumno_id' => $alumnoId, 'anio_escolar_id' => $seccion->anio_escolar_id,
             'seccion_id' => $seccionId, 'tipo' => $tipo, 'estado' => 'matriculado', 'origen' => $origen,
         ]);
+        // EDUN-53 · Si vino de admisión, el postulante pasa a «matriculado».
+        Admision::alMatricular($alumnoId);
     }
 
     private static function resumen(array $f): array

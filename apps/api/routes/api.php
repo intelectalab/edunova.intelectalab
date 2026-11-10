@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SaludController;
+use App\Modulos\ADM\Http\Controllers\AdmisionController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
 use App\Modulos\ADM\Http\Controllers\AniosEscolaresController;
 use App\Modulos\ADM\Http\Controllers\HorariosController;
@@ -11,6 +12,8 @@ use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
+use App\Modulos\PLA\Http\Controllers\OperacionController;
+use App\Modulos\PLA\Http\Controllers\SoporteController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
 use App\Modulos\SEG\Http\Controllers\DosPasosController;
@@ -65,10 +68,31 @@ Route::middleware(['auth:sanctum', 'plataforma'])->prefix('plataforma')->group(f
     Route::get('/catalogos', [InstitucionesPlataformaController::class, 'catalogos']);
     Route::get('/instituciones', [InstitucionesPlataformaController::class, 'index']);
     Route::get('/instituciones/{institucion}', [InstitucionesPlataformaController::class, 'show'])->whereNumber('institucion');
+    // EDUN-29 / EDUN-31 / EDUN-32 · Mesa de ayuda con SLA.
+    Route::get('/tickets', [SoporteController::class, 'index']);
+    Route::get('/tickets/{ticket}', [SoporteController::class, 'show'])->whereNumber('ticket');
+    Route::post('/tickets/{ticket}/mensajes', [SoporteController::class, 'responder'])->whereNumber('ticket');
+    Route::patch('/tickets/{ticket}', [SoporteController::class, 'actualizar'])->whereNumber('ticket');
+    Route::get('/sla/cumplimiento', [SoporteController::class, 'cumplimiento']);
+    // EDUN-30 · Parámetros legales (lectura para el staff; cambios, superadmin).
+    Route::get('/parametros-legales', [OperacionController::class, 'parametros']);
+    // EDUN-212 · Lista de implementación.
+    Route::get('/instituciones/{institucion}/checklist', [OperacionController::class, 'checklist'])->whereNumber('institucion');
     Route::middleware('plataforma:superadmin')->group(function () {
         Route::post('/instituciones', [InstitucionesPlataformaController::class, 'store'])->middleware('throttle:20,1');
         Route::put('/instituciones/{institucion}/modulos/{modulo}', [InstitucionesPlataformaController::class, 'modulo'])->whereNumber('institucion')->where('modulo', '[A-Za-z]{2,10}');
         Route::put('/instituciones/{institucion}/aula', [InstitucionesPlataformaController::class, 'aula'])->whereNumber('institucion');
+        Route::post('/parametros-legales', [OperacionController::class, 'guardarParametro']);
+        Route::patch('/parametros-legales/{parametro}', [OperacionController::class, 'confirmarParametro'])->whereNumber('parametro');
+        Route::put('/instituciones/{institucion}/checklist/{paso}', [OperacionController::class, 'marcarPaso'])->whereNumber('institucion')->where('paso', '[a-z_]+');
+        // EDUN-28 · Suspensión por falta de pago y reactivación (y activar al terminar la implementación).
+        Route::put('/instituciones/{institucion}/estado', [OperacionController::class, 'cambiarEstado'])->whereNumber('institucion');
+        Route::post('/instituciones/{institucion}/suspension', [OperacionController::class, 'programarSuspension'])->whereNumber('institucion');
+        Route::delete('/instituciones/{institucion}/suspension', [OperacionController::class, 'cancelarSuspension'])->whereNumber('institucion');
+        // EDUN-34 · Exportación completa.
+        Route::get('/instituciones/{institucion}/exportaciones', [OperacionController::class, 'exportaciones'])->whereNumber('institucion');
+        Route::post('/instituciones/{institucion}/exportaciones', [OperacionController::class, 'exportar'])->whereNumber('institucion')->middleware('throttle:5,1');
+        Route::get('/instituciones/{institucion}/exportaciones/{exportacion}/enlace', [OperacionController::class, 'descargarExportacion'])->whereNumber(['institucion', 'exportacion']);
         Route::post('/instituciones/{institucion}/promotores/{usuario}/invitacion', [InstitucionesPlataformaController::class, 'reinvitar'])->whereNumber(['institucion', 'usuario'])->middleware('throttle:10,1');
     });
 });
@@ -114,6 +138,18 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/alumnos/{alumno}/ficha', [AlumnosController::class, 'ficha'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
         Route::post('/alumnos', [AlumnosController::class, 'store'])->middleware('permiso:adm.alumnos.crear');
         Route::put('/alumnos/{alumno}', [AlumnosController::class, 'update'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.editar');
+        // EDUN-53 · Admisión por etapas.
+        Route::get('/admision', [AdmisionController::class, 'tablero'])->middleware('permiso:adm.admision.ver');
+        Route::get('/admision/postulantes/{postulante}/historia', [AdmisionController::class, 'historia'])->whereNumber('postulante')->middleware('permiso:adm.admision.ver');
+        Route::post('/admision/postulantes', [AdmisionController::class, 'store'])->middleware('permiso:adm.admision.crear');
+        Route::middleware('permiso:adm.admision.editar')->group(function () {
+            Route::post('/admision/procesos', [AdmisionController::class, 'proceso']);
+            Route::put('/admision/vacantes', [AdmisionController::class, 'vacantes']);
+            Route::patch('/admision/postulantes/{postulante}/etapa', [AdmisionController::class, 'etapa'])->whereNumber('postulante');
+            Route::post('/admision/postulantes/{postulante}/entrevistas', [AdmisionController::class, 'entrevista'])->whereNumber('postulante');
+        });
+        Route::post('/admision/postulantes/{postulante}/convertir', [AdmisionController::class, 'convertir'])->whereNumber('postulante')->middleware(['permiso:adm.admision.editar', 'permiso:adm.alumnos.crear']);
+
         // Sprint 14 · Ficha completa, matrícula, movimientos, carné, consentimientos y familias.
         Route::get('/alumnos/{alumno}/expediente', [MatriculasController::class, 'expediente'])->whereNumber('alumno')->middleware('permiso:adm.alumnos.ver');
         Route::post('/alumnos/{alumno}/apoderados/{apoderado}/invitacion', [MatriculasController::class, 'invitarApoderado'])->whereNumber(['alumno', 'apoderado'])->middleware(['permiso:adm.alumnos.editar', 'throttle:20,1']);
@@ -139,6 +175,17 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
             Route::get('/alumnos/importar/plantilla', [AlumnosController::class, 'plantilla']);
             Route::post('/alumnos/importar/vista-previa', [AlumnosController::class, 'vistaPrevia'])->middleware('throttle:20,1');
             Route::post('/alumnos/importar/confirmar', [AlumnosController::class, 'confirmarImportacion'])->middleware('throttle:10,1');
+        });
+    });
+
+    // EDUN-33 · Soporte desde el colegio (director y promotor).
+    Route::middleware('permiso:pla.tickets.ver')->prefix('soporte/tickets')->group(function () {
+        Route::get('/', [SoporteController::class, 'misTickets']);
+        Route::get('/{ticket}', [SoporteController::class, 'miTicket'])->whereNumber('ticket');
+        Route::middleware('permiso:pla.tickets.crear')->group(function () {
+            Route::post('/', [SoporteController::class, 'crear'])->middleware('throttle:20,1');
+            Route::post('/{ticket}/mensajes', [SoporteController::class, 'responderColegio'])->whereNumber('ticket');
+            Route::post('/{ticket}/calificacion', [SoporteController::class, 'calificar'])->whereNumber('ticket');
         });
     });
 

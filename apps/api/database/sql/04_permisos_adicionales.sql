@@ -13,3 +13,9 @@ INSERT INTO rol_permiso (rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r, permisos p
 WHERE r.codigo IN ('superadmin', 'promotor', 'director', 'psicologia') AND p.codigo = 'seg.archivos.confidenciales'
 ON CONFLICT DO NOTHING;
+
+-- Sprint 15 · El director y el promotor piden soporte desde el colegio (PLA-08 / EDUN-33).
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id FROM roles r, permisos p
+WHERE r.codigo IN ('promotor', 'director') AND p.codigo IN ('pla.tickets.ver', 'pla.tickets.crear')
+ON CONFLICT DO NOTHING;

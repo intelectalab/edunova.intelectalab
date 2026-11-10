@@ -60,6 +60,13 @@ class Auditoria
         'carne_regenerado' => 'Carné regenerado',
         'foto_alumno' => 'Foto del alumno cambiada',
         'salud_consultada' => 'Ficha de salud consultada',
+        'postulante_convertido' => 'Postulante convertido en alumno',
+        'suspension_programada' => 'Suspensión programada',
+        'suspension_cancelada' => 'Suspensión cancelada',
+        'colegio_suspendido' => 'Colegio suspendido',
+        'colegio_reactivado' => 'Colegio reactivado',
+        'colegio_activado' => 'Colegio activado',
+        'checklist_marcado' => 'Paso de implementación marcado',
     ];
 
     /**

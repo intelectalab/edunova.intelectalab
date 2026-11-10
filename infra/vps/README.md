@@ -60,3 +60,17 @@ Guarda `RESPALDO_CLAVE` también fuera del servidor: sin ella los respaldos no s
 install -m 644 infra/vps/edunova-vigilancia.* /etc/systemd/system/
 systemctl daemon-reload && systemctl enable --now edunova-vigilancia.timer
 ```
+
+## Programador de tareas (Sprint 15)
+
+`edunova-programador.timer` corre `php artisan schedule:run` cada minuto como `www-data`:
+
+- `soporte:vigilar-sla` cada 5 minutos: avisa al staff los tickets al 75 % del plazo y escala los vencidos (EDUN-31).
+- `plataforma:suspensiones` cada día a las 07:00 (Lima): avisos de 7 y 3 días al promotor y suspensiones programadas (EDUN-28).
+
+Instalación (una vez, como root):
+
+```sh
+install -m 644 infra/vps/edunova-programador.* /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now edunova-programador.timer
+```

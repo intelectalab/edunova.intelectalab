@@ -92,7 +92,7 @@ class ConsolaInstituciones
             'id' => (int) $i->id, 'nombre' => $i->nombre, 'razon_social' => $i->razon_social, 'ruc' => $i->ruc, 'slug' => $i->slug,
             'subdominio' => ($i->subdominio ?? $i->slug).'.'.config('edunova.dominio_colegios'),
             'codigo_modular' => $i->codigo_modular, 'ugel' => $i->ugel, 'dre' => $i->dre, 'nivel_educativo' => $i->nivel_educativo,
-            'estado' => $i->estado, 'creado' => $i->created_at,
+            'estado' => $i->estado, 'creado' => $i->created_at, 'suspension_programada' => $i->suspension_programada ?? null,
             'servicios' => $db->table('servicios_educativos')->where('institucion_id', $id)->orderBy('id')->get(['nivel', 'codigo_modular', 'anexo']),
             'suscripcion' => $s ? [
                 'plan' => $db->table('planes')->where('id', $s->plan_id)->value('codigo'), 'fecha_inicio' => $s->fecha_inicio,

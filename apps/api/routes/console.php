@@ -3,11 +3,14 @@
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
+use App\Modulos\PLA\Services\MesaDeAyuda;
+use App\Modulos\PLA\Services\Suspensiones;
 use App\Modulos\SEG\Services\AlmacenArchivos;
 use App\Modulos\SIT\Services\BibliotecaMedios;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
@@ -45,3 +48,19 @@ Artisan::command('monitoreo:revisar', function (Monitoreo $monitoreo) {
 
     return $problemas === [] ? 0 : 1;
 })->purpose('Revisa la salud, los 5xx y la cola, y avisa al equipo técnico si algo falla');
+
+// EDUN-31 · Alerta al 75 % del plazo y escalamiento de los tickets vencidos.
+Artisan::command('soporte:vigilar-sla', function (CorreoTransaccional $correo) {
+    $r = MesaDeAyuda::plataforma()->vigilar($correo);
+    $this->info("Alertas: {$r['alertas']} · escalados: {$r['escalados']}");
+})->purpose('Avisa al staff de los tickets al 75 % del plazo y escala los vencidos');
+
+// EDUN-28 · Avisos de 7 y 3 días al promotor y suspensiones programadas para hoy.
+Artisan::command('plataforma:suspensiones', function (Suspensiones $suspensiones) {
+    $r = $suspensiones->procesar();
+    $this->info("Avisos: {$r['avisos']} · suspendidos: {$r['suspendidos']}");
+})->purpose('Envía los avisos de suspensión y suspende los colegios con fecha vencida');
+
+// En el VPS, edunova-programador.timer corre «php artisan schedule:run» cada minuto.
+Schedule::command('soporte:vigilar-sla')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('plataforma:suspensiones')->dailyAt('07:00')->timezone('America/Lima');

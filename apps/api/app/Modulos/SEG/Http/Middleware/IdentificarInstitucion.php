@@ -35,6 +35,12 @@ class IdentificarInstitucion
             ContextoInstitucion::fijar((int) $institucion);
             $this->autorizacion->olvidar();
 
+            // EDUN-28 · Colegio suspendido o dado de baja: nadie trabaja ahí (aviso neutro).
+            $estado = DB::table('instituciones')->where('id', (int) $institucion)->value('estado');
+            if (in_array($estado, ['suspendido', 'baja'], true)) {
+                return response()->json(['message' => 'El servicio de tu colegio no está disponible por el momento. Comunícate con el colegio.', 'codigo' => 'colegio_no_disponible'], 403);
+            }
+
             $usuario = $request->user();
             if ($usuario && ! $this->autorizacion->esMiembro($usuario)) {
                 return response()->json(['message' => 'No perteneces a este colegio.'], 403);
