@@ -49,6 +49,12 @@ export type SeccionCasos = { insignia: string; titulo: string; descripcion: stri
 export type SeccionTestimonios = { insignia: string; titulo: string; leyenda_ejemplo: string };
 export type SeccionVideos = { insignia: string; titulo: string; descripcion: string | null; boton_demo: string };
 export type SeccionCtaFinal = { insignia: string | null; titulo: string; descripcion: string | null; boton: string; beneficios: string[] };
+/** EDUN-338 · «Confían en Edunova»: título, segundos por vuelta del carrusel y logos visibles a la vez. */
+export type SeccionLogos = { titulo: string; velocidad: number; columnas: number };
+export type LogoCliente = { nombre: string; sitio_web: string | null; logo: { url: string; ancho: number | null; alto: number | null } };
+/** EDUN-399 · Modo mantenimiento (cms.config.mantenimiento). */
+export type Mantenimiento = { activo: boolean; mensaje: string | null; vuelta: string | null };
+
 export type SeccionFooter = { descripcion: string; derechos: string; moneda: string };
 
 export type Seo = {
@@ -77,6 +83,7 @@ export type Landing = {
     videos?: SeccionVideos;
     cta_final?: SeccionCtaFinal;
     footer?: SeccionFooter;
+    logos?: SeccionLogos;
   };
   modulos: ModuloWeb[];
   planes: Plan[];
@@ -93,7 +100,15 @@ export type Landing = {
   tracking?: { gtm: string | null };
   /** EDUN-271 · Popup de salida (null si está apagado en el CMS). */
   popup?: ConfigPopup | null;
+  /** EDUN-338 · Logos autorizados y visibles. */
+  logos?: LogoCliente[];
 };
+
+/** EDUN-399 · El sitio está en mantenimiento si el CMS lo activó. */
+export function mantenimiento(datos: Landing | null): Mantenimiento | null {
+  const m = datos?.config.mantenimiento as unknown as Mantenimiento | null | undefined;
+  return m && m.activo ? m : null;
+}
 
 export const REVALIDAR_SEGUNDOS = 300;
 

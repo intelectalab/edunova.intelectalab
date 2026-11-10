@@ -13,6 +13,8 @@ export type ConfigPopup = {
   espera_seg: number;
   inactividad_seg: number;
   frecuencia: 'sesion' | 'dia' | 'siempre';
+  /** EDUN-391 · Imagen opcional de la Biblioteca de medios. */
+  imagen?: { url: string; alt: string } | null;
 };
 
 export const CLAVE_VISTO = 'edunova_popup_visto';

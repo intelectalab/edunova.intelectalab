@@ -36,14 +36,47 @@ class EditorCms
         // Sprint 9 · Reglas entre filas de Planes, Módulos y Testimonios.
         $this->entidades->validar($clave, $contenido);
         $actual = $this->leer($clave);
+        $antes = $this->vista($clave);
 
         DB::table('cms.secciones')->where('clave', $clave)->update([
             'borrador' => json_encode($contenido, JSON_UNESCAPED_UNICODE),
             'updated_by' => $usuario->id,
         ]);
-        $this->auditar($usuario, $clave, 'borrador', "{$actual->nombre} · borrador guardado", $actual->borrador ?? $actual->config, $contenido, $ip);
+        // Fotos completas (textos + listas) para poder restaurar desde la auditoría (SIT-061).
+        $this->auditar($usuario, $clave, 'borrador', "{$actual->nombre} · borrador guardado", $antes['borrador'] ?? $antes['publicado'], $contenido, $ip);
 
         return $this->leer($clave);
+    }
+
+    /**
+     * EDUN-342 / SIT-061 · «Restaurar el valor anterior» de un registro de auditoría de una
+     * sección: lo deja como borrador (no publica) y registra «restaurado».
+     */
+    public function restaurar(int $auditoriaId, User $usuario, ?string $ip): array
+    {
+        $a = DB::table('cms.auditoria')->where('id', $auditoriaId)->first() ?? abort(404, 'No encontramos ese registro.');
+        if ($a->entidad !== 'secciones' || $a->valor_antes === null || ! in_array($a->accion, ['borrador', 'publicado', 'restaurado'], true)) {
+            throw ValidationException::withMessages(['auditoria' => 'Este cambio no se puede restaurar desde aquí.']);
+        }
+        $clave = $a->entidad_id;
+        $reglas = ReglasSecciones::para($clave) ?? throw ValidationException::withMessages(['auditoria' => 'Esta sección no se edita desde el panel.']);
+        $anterior = json_decode($a->valor_antes, true);
+        $validador = validator(is_array($anterior) ? $anterior : [], $reglas, ReglasSecciones::mensajes());
+        if ($validador->fails()) {
+            throw ValidationException::withMessages(['auditoria' => 'El valor anterior ya no cumple las reglas actuales de la sección; edítalo a mano.']);
+        }
+        $contenido = $validador->validated();
+        $this->entidades->validar($clave, $contenido);
+        $fila = $this->leer($clave);
+        $antes = $this->vista($clave);
+
+        DB::table('cms.secciones')->where('clave', $clave)->update([
+            'borrador' => json_encode($contenido, JSON_UNESCAPED_UNICODE),
+            'updated_by' => $usuario->id,
+        ]);
+        $this->auditar($usuario, $clave, 'restaurado', "{$fila->nombre} · valor anterior restaurado como borrador", $antes['borrador'] ?? $antes['publicado'], $contenido, $ip);
+
+        return $this->vista($clave);
     }
 
     /** @param  list<string>  $claves */
@@ -60,6 +93,7 @@ class EditorCms
                 if ($fila->borrador === null) {
                     continue;
                 }
+                $antes = [...(json_decode($fila->config, true) ?: []), ...$this->entidades->publicado($clave)];
                 // Sprint 9 · Las listas del borrador van a sus tablas; en config quedan los textos.
                 $config = $this->entidades->maneja($clave)
                     ? json_encode($this->entidades->aplicar($clave, json_decode($fila->borrador, true), $usuario), JSON_UNESCAPED_UNICODE)
@@ -76,7 +110,7 @@ class EditorCms
                     'contenido' => $fila->borrador,
                     'publicado_por' => $usuario->id,
                 ]);
-                $this->auditar($usuario, $clave, 'publicado', "{$fila->nombre} · publicado", $fila->config, json_decode($fila->borrador, true), $ip);
+                $this->auditar($usuario, $clave, 'publicado', "{$fila->nombre} · publicado", $antes, json_decode($fila->borrador, true), $ip);
                 $publicadas[] = $clave;
             }
         });
@@ -138,8 +172,13 @@ class EditorCms
         ]);
     }
 
-    /** Revalida la landing en el sitio Next.js. No bloquea la publicación si el sitio no responde. */
-    private function revalidarSitio(): void
+    /**
+     * Revalida el sitio Next.js (landing y políticas: los datos legales de Configuración general
+     * aparecen en las políticas). No bloquea la publicación si el sitio no responde.
+     *
+     * @param  list<string>  $etiquetas
+     */
+    public function revalidarSitio(array $etiquetas = ['landing', 'politicas']): void
     {
         $url = config('services.sitio.revalidar_url');
         $secreto = config('services.sitio.revalidar_secreto');
@@ -147,7 +186,7 @@ class EditorCms
             return;
         }
         try {
-            Http::timeout(3)->withHeaders(['X-Edunova-Revalidar' => $secreto])->post($url, ['etiquetas' => ['landing']])->throw();
+            Http::timeout(3)->withHeaders(['X-Edunova-Revalidar' => $secreto])->post($url, ['etiquetas' => $etiquetas])->throw();
         } catch (\Throwable $e) {
             Log::warning('No se pudo revalidar el sitio; se actualizará con el ISR de 5 minutos.', ['error' => $e->getMessage()]);
         }

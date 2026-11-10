@@ -16,6 +16,8 @@ class LandingController
     private const CONFIG_PUBLICA = [
         'razon_social', 'ruc', 'direccion', 'telefono_central', 'whatsapp', 'email_contacto', 'horario_soporte',
         'nota_legal_precios', 'descuento_anual_pct', 'selector_anual_visible', 'testimonios_solo_4_estrellas',
+        // EDUN-399 · Modo mantenimiento (activo, mensaje y fecha estimada de vuelta).
+        'mantenimiento',
     ];
 
     public function __invoke(): JsonResponse
@@ -42,6 +44,7 @@ class LandingController
                 'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(20)->get(['pregunta', 'respuesta']),
                 'tracking' => $this->tracking(),
                 'popup' => $this->popup(),
+                'logos' => $this->logos(),
             ])->header('Cache-Control', 'public, max-age=60');
         });
     }
@@ -129,10 +132,11 @@ class LandingController
     /** EDUN-271 · Popup de salida: textos, qué dato pide y cuándo se muestra (null si está apagado). */
     private function popup(): ?array
     {
-        $p = DB::table('cms.popup_config')->where('id', 1)->where('activo', true)
-            ->first(['headline', 'subheadline', 'cta_texto', 'capture_field', 'delay_seg', 'inactividad_seg', 'frecuencia']);
+        $p = DB::table('cms.popup_config as p')->leftJoin('cms.medios as m', 'm.id', '=', 'p.imagen_id')->where('p.id', 1)->where('p.activo', true)
+            ->first(['p.headline', 'p.subheadline', 'p.cta_texto', 'p.capture_field', 'p.delay_seg', 'p.inactividad_seg', 'p.frecuencia', 'm.url as imagen', 'm.alt as imagen_alt']);
 
         return $p ? [
+            'imagen' => $p->imagen ? ['url' => $p->imagen, 'alt' => $p->imagen_alt ?? ''] : null,
             'titulo' => $p->headline,
             'texto' => $p->subheadline,
             'cta' => $p->cta_texto,
@@ -141,6 +145,15 @@ class LandingController
             'inactividad_seg' => (int) $p->inactividad_seg,
             'frecuencia' => $p->frecuencia,
         ] : null;
+    }
+
+    /** EDUN-338 · Logos autorizados y visibles («Confían en Edunova»), en el orden del CMS. */
+    private function logos(): Collection
+    {
+        return DB::table('cms.clientes as c')->join('cms.medios as m', 'm.id', '=', 'c.logo_id')
+            ->where('c.visible', true)->where('c.autorizacion_uso_logo', true)->orderBy('c.orden')->orderBy('c.id')
+            ->get(['c.nombre', 'c.sitio_web', 'm.url', 'm.ancho', 'm.alto'])
+            ->map(fn ($l) => ['nombre' => $l->nombre, 'sitio_web' => $l->sitio_web, 'logo' => ['url' => $l->url, 'ancho' => $l->ancho, 'alto' => $l->alto]]);
     }
 
     /** EDUN-311 · SEO publicado de una página, con la imagen Open Graph de la Biblioteca. */

@@ -8,6 +8,7 @@ use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
 use App\Modulos\SIT\Http\Controllers\MediosCmsController;
+use App\Modulos\SIT\Http\Controllers\PanelCmsController;
 use App\Modulos\SIT\Http\Controllers\ReclamacionesCmsController;
 use App\Modulos\SIT\Http\Controllers\ReclamacionesController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
@@ -56,6 +57,18 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     // EDUN-282 · Exportar (CSV) y sincronizar con el CRM.
     Route::get('/leads/exportar', [LeadsCmsController::class, 'exportar'])->middleware('throttle:30,1');
     Route::post('/leads/sincronizar', [LeadsCmsController::class, 'sincronizar'])->middleware('throttle:10,1');
+
+    // Sprint 10 · Dashboard, auditoría y restauración, usuarios, SEO y políticas.
+    Route::get('/dashboard', [PanelCmsController::class, 'dashboard']);
+    Route::get('/auditoria', [PanelCmsController::class, 'auditoria']);
+    Route::get('/auditoria/exportar', [PanelCmsController::class, 'exportarAuditoria'])->middleware('throttle:30,1');
+    Route::post('/auditoria/{registro}/restaurar', [PanelCmsController::class, 'restaurar'])->whereNumber('registro');
+    Route::get('/usuarios', [PanelCmsController::class, 'usuarios']);
+    Route::get('/seo', [PanelCmsController::class, 'paginasSeo']);
+    Route::get('/seo/{slug}', [PanelCmsController::class, 'seo'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
+    Route::put('/seo/{slug}', [PanelCmsController::class, 'guardarSeo'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
+    Route::get('/politicas', [PanelCmsController::class, 'politicas']);
+    Route::post('/politicas/{tipo}', [PanelCmsController::class, 'publicarPolitica'])->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies']);
 
     // EDUN-302 · Gestión de reclamaciones.
     Route::get('/reclamaciones', [ReclamacionesCmsController::class, 'index']);

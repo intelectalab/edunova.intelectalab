@@ -4,6 +4,7 @@ namespace App\Modulos\SIT\Services;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +14,12 @@ use Illuminate\Validation\ValidationException;
  *   planes       → cms.planes_sitio, cms.precios_complementos y cms.config.nota_legal_precios (EDUN-326)
  *   modulos      → cms.modulos_web (EDUN-330)
  *   testimonios  → cms.testimonios (EDUN-334)
+ * Sprint 10:
+ *   logos        → cms.clientes y la visibilidad de la sección (EDUN-338)
+ *   _estructura  → orden y visibilidad de cms.secciones (EDUN-387)
+ *   _popup       → cms.popup_config (EDUN-391)
+ *   _config      → datos legales y de contacto en cms.config y modo mantenimiento (EDUN-399)
+ * Las secciones «_…» son internas del panel: siempre ocultas y sin textos propios.
  *
  * El borrador vive en cms.secciones.borrador junto con los textos (mismo flujo de la franja
  * «Guardar borrador / Publicar», versiones y auditoría de EditorCms). Al publicar, las listas
@@ -21,12 +28,32 @@ use Illuminate\Validation\ValidationException;
  */
 class ContenidoEntidades
 {
-    public const CLAVES = ['planes', 'modulos', 'testimonios'];
+    public const CLAVES = ['planes', 'modulos', 'testimonios', 'logos', '_estructura', '_popup', '_config'];
 
     /** Claves del borrador que no son textos de la sección. */
-    private const EXTRAS = ['lista', 'complementos', 'nota_legal'];
+    private const EXTRAS = ['lista', 'complementos', 'nota_legal', 'mostrar'];
+
+    /** Datos de cms.config que se editan en Configuración general (EDUN-399). */
+    public const CONFIG_GENERAL = ['razon_social', 'ruc', 'direccion', 'telefono_central', 'whatsapp', 'email_contacto', 'email_reclamaciones', 'horario_soporte'];
+
+    public const MANTENIMIENTO_VACIO = ['activo' => false, 'mensaje' => null, 'vuelta' => null];
+
+    /** Secciones internas del panel (clave con «_»): no son parte de la landing. */
+    public static function esInterna(string $clave): bool
+    {
+        return str_starts_with($clave, '_');
+    }
+
+    /** Secciones de la landing, sin las internas del panel. */
+    private static function seccionesLanding(): Builder
+    {
+        return DB::table('cms.secciones')->whereRaw("left(clave, 1) <> '_'");
+    }
 
     public const MAX_GRID = 6;
+
+    /** El hero y el footer (enlace obligatorio al Libro de Reclamaciones) siempre se muestran. */
+    public const NO_OCULTABLES = ['hero', 'footer'];
 
     public function maneja(string $clave): bool
     {
@@ -61,8 +88,49 @@ class ContenidoEntidades
                         'visible' => (bool) $t->visible,
                     ])->all(),
             ],
+            'logos' => [
+                'mostrar' => (bool) DB::table('cms.secciones')->where('clave', 'logos')->value('visible'),
+                'lista' => DB::table('cms.clientes')->orderBy('orden')->orderBy('id')
+                    ->get(['id', 'nombre', 'logo_id', 'sitio_web', 'autorizacion_uso_logo', 'visible'])
+                    ->map(fn ($c) => ['id' => $c->id, 'nombre' => $c->nombre, 'logo_id' => $c->logo_id, 'sitio_web' => $c->sitio_web, 'autorizado' => (bool) $c->autorizacion_uso_logo, 'visible' => (bool) $c->visible])->all(),
+            ],
+            '_estructura' => [
+                'lista' => self::seccionesLanding()->orderBy('orden')->orderBy('id')
+                    ->get(['clave', 'nombre', 'visible'])->map(fn ($x) => [...(array) $x, 'visible' => (bool) $x->visible])->all(),
+            ],
+            '_popup' => $this->popupPublicado(),
+            '_config' => $this->configPublicada(),
             default => [],
         };
+    }
+
+    private function popupPublicado(): array
+    {
+        $p = DB::table('cms.popup_config')->where('id', 1)->first();
+
+        return $p ? [
+            'activo' => (bool) $p->activo,
+            'titulo' => $p->headline,
+            'texto' => $p->subheadline,
+            'imagen_id' => $p->imagen_id,
+            'cta' => $p->cta_texto,
+            'campo' => $p->capture_field,
+            'espera_seg' => (int) $p->delay_seg,
+            'inactividad_seg' => (int) $p->inactividad_seg,
+            'frecuencia' => $p->frecuencia,
+        ] : ['activo' => false, 'titulo' => '', 'texto' => null, 'imagen_id' => null, 'cta' => '', 'campo' => 'ambos', 'espera_seg' => 30, 'inactividad_seg' => 45, 'frecuencia' => 'sesion'];
+    }
+
+    private function configPublicada(): array
+    {
+        $c = DB::table('cms.config')->whereIn('clave', [...self::CONFIG_GENERAL, 'mantenimiento'])->pluck('valor', 'clave')
+            ->map(fn ($v) => json_decode((string) $v, true));
+        $m = $c->get('mantenimiento');
+
+        return [
+            ...collect(self::CONFIG_GENERAL)->mapWithKeys(fn ($k) => [$k => is_scalar($c->get($k)) ? (string) $c->get($k) : null])->all(),
+            'mantenimiento' => [...self::MANTENIMIENTO_VACIO, ...(is_array($m) ? $m : [])],
+        ];
     }
 
     /**
@@ -72,8 +140,8 @@ class ContenidoEntidades
      */
     public function medios(array $contenido): array
     {
-        $ids = collect($contenido['lista'] ?? [])->flatMap(fn ($x) => [$x['imagen_id'] ?? null, $x['avatar_id'] ?? null, $x['consentimiento_doc_id'] ?? null])
-            ->filter()->unique()->values();
+        $ids = collect($contenido['lista'] ?? [])->flatMap(fn ($x) => [$x['imagen_id'] ?? null, $x['avatar_id'] ?? null, $x['consentimiento_doc_id'] ?? null, $x['logo_id'] ?? null])
+            ->push($contenido['imagen_id'] ?? null)->filter()->unique()->values();
         if ($ids->isEmpty()) {
             return [];
         }
@@ -85,13 +153,14 @@ class ContenidoEntidades
     /** Reglas entre filas que el validador no expresa. */
     public function validar(string $clave, array $c): void
     {
-        if (! isset($c['lista']) && ! isset($c['complementos'])) {
-            return;
-        }
         $errores = match ($clave) {
-            'planes' => $this->erroresPlanes($c),
-            'modulos' => $this->erroresModulos($c),
-            'testimonios' => $this->erroresTestimonios($c),
+            'planes' => isset($c['lista']) || isset($c['complementos']) ? $this->erroresPlanes($c) : [],
+            'modulos' => isset($c['lista']) ? $this->erroresModulos($c) : [],
+            'testimonios' => isset($c['lista']) ? $this->erroresTestimonios($c) : [],
+            'logos' => $this->erroresLogos($c),
+            '_estructura' => $this->erroresEstructura($c),
+            '_popup' => ! empty($c['imagen_id']) && ! DB::table('cms.medios')->where('id', $c['imagen_id'])->whereIn('tipo', ['imagen', 'svg'])->exists()
+                ? ['imagen_id' => 'Elige una imagen de la Biblioteca de medios.'] : [],
             default => [],
         };
         if ($errores !== []) {
@@ -109,10 +178,129 @@ class ContenidoEntidades
             'planes' => $this->aplicarPlanes($c, $usuario),
             'modulos' => $this->aplicarModulos($c, $usuario),
             'testimonios' => $this->aplicarTestimonios($c, $usuario),
+            'logos' => $this->aplicarLogos($c),
+            '_estructura' => $this->aplicarEstructura($c),
+            '_popup' => $this->aplicarPopup($c),
+            '_config' => $this->aplicarConfig($c),
             default => null,
         };
 
-        return Arr::except($c, self::EXTRAS);
+        // Las secciones internas no guardan textos: todo vive en sus tablas.
+        return self::esInterna($clave) ? [] : Arr::except($c, self::EXTRAS);
+    }
+
+    // --- Logos de clientes (EDUN-338) ----------------------------------------------------
+
+    private function erroresLogos(array $c): array
+    {
+        $e = [];
+        $lista = collect($c['lista'] ?? []);
+        $logos = DB::table('cms.medios')->whereIn('id', $lista->pluck('logo_id')->filter())->whereIn('tipo', ['imagen', 'svg'])->pluck('id')->all();
+        $existentes = DB::table('cms.clientes')->whereIn('id', $lista->pluck('id')->filter())->pluck('id')->all();
+        foreach ($lista as $i => $l) {
+            if (! in_array($l['logo_id'], $logos)) {
+                $e["lista.{$i}.logo_id"] = 'Elige el logo (SVG o PNG) de la Biblioteca de medios.';
+            }
+            if (! empty($l['id']) && ! in_array($l['id'], $existentes)) {
+                $e["lista.{$i}.id"] = 'Ese logo ya no existe. Recarga la página.';
+            }
+            // Un logo solo es visible con autorización de uso (CHECK de cms.clientes).
+            if ($l['visible'] && ! $l['autorizado']) {
+                $e["lista.{$i}.visible"] = 'Solo se muestra un logo con autorización de uso del colegio.';
+            }
+        }
+        $visibles = isset($c['lista']) ? $lista->where('visible', true)->count() : DB::table('cms.clientes')->where('visible', true)->count();
+        if (! empty($c['mostrar']) && $visibles === 0) {
+            $e['mostrar'] = 'La sección necesita al menos un logo autorizado y visible.';
+        }
+
+        return $e;
+    }
+
+    private function aplicarLogos(array $c): void
+    {
+        if (isset($c['lista'])) {
+            $lista = array_values($c['lista']);
+            $conservar = collect($lista)->pluck('id')->filter()->all();
+            DB::table('cms.clientes')->whereNotIn('id', $conservar ?: [0])->delete();
+            foreach ($lista as $i => $l) {
+                $fila = [
+                    'nombre' => $l['nombre'],
+                    'logo_id' => $l['logo_id'],
+                    'sitio_web' => $l['sitio_web'] ?? null,
+                    'autorizacion_uso_logo' => (bool) $l['autorizado'],
+                    'visible' => (bool) $l['visible'],
+                    'orden' => $i + 1,
+                ];
+                empty($l['id']) ? DB::table('cms.clientes')->insert($fila) : DB::table('cms.clientes')->where('id', $l['id'])->update($fila);
+            }
+        }
+        if (array_key_exists('mostrar', $c)) {
+            DB::table('cms.secciones')->where('clave', 'logos')->update(['visible' => (bool) $c['mostrar']]);
+        }
+    }
+
+    // --- Orden de la landing (EDUN-387) --------------------------------------------------
+
+    private function erroresEstructura(array $c): array
+    {
+        $existentes = self::seccionesLanding()->pluck('clave')->sort()->values()->all();
+        $enviadas = collect($c['lista'] ?? [])->pluck('clave')->sort()->values()->all();
+        if ($enviadas !== $existentes) {
+            return ['lista' => 'La lista debe tener las mismas secciones: aquí se ordenan y se ocultan, no se crean ni se borran.'];
+        }
+        foreach ($c['lista'] as $i => $s) {
+            if (in_array($s['clave'], self::NO_OCULTABLES, true) && ! $s['visible']) {
+                return ["lista.{$i}.visible" => $s['clave'] === 'footer'
+                    ? 'El footer no se puede ocultar: lleva el enlace obligatorio al Libro de Reclamaciones.'
+                    : 'La portada (hero) no se puede ocultar.'];
+            }
+            if ($s['clave'] === 'logos' && $s['visible'] && ! DB::table('cms.clientes')->where('visible', true)->exists()) {
+                return ["lista.{$i}.visible" => 'La sección de logos necesita al menos un logo autorizado y visible.'];
+            }
+        }
+
+        return [];
+    }
+
+    private function aplicarEstructura(array $c): void
+    {
+        foreach (array_values($c['lista']) as $i => $s) {
+            DB::table('cms.secciones')->where('clave', $s['clave'])->update(['orden' => $i + 1, 'visible' => (bool) $s['visible']]);
+        }
+    }
+
+    // --- Popup de salida (EDUN-391) ------------------------------------------------------
+
+    private function aplicarPopup(array $c): void
+    {
+        DB::table('cms.popup_config')->updateOrInsert(['id' => 1], [
+            'activo' => (bool) $c['activo'],
+            'headline' => $c['titulo'],
+            'subheadline' => $c['texto'] ?? null,
+            'imagen_id' => $c['imagen_id'] ?? null,
+            'cta_texto' => $c['cta'],
+            'capture_field' => $c['campo'],
+            'delay_seg' => (int) $c['espera_seg'],
+            'inactividad_seg' => (int) $c['inactividad_seg'],
+            'frecuencia' => $c['frecuencia'],
+        ]);
+    }
+
+    // --- Configuración general y mantenimiento (EDUN-399) --------------------------------
+
+    private function aplicarConfig(array $c): void
+    {
+        foreach (self::CONFIG_GENERAL as $clave) {
+            $valor = isset($c[$clave]) && trim((string) $c[$clave]) !== '' ? trim((string) $c[$clave]) : null;
+            DB::table('cms.config')->updateOrInsert(['clave' => $clave], ['valor' => json_encode($valor, JSON_UNESCAPED_UNICODE)]);
+        }
+        $m = [...self::MANTENIMIENTO_VACIO, ...($c['mantenimiento'] ?? [])];
+        DB::table('cms.config')->updateOrInsert(['clave' => 'mantenimiento'], ['valor' => json_encode([
+            'activo' => (bool) $m['activo'],
+            'mensaje' => $m['mensaje'] ?: null,
+            'vuelta' => $m['vuelta'] ?: null,
+        ], JSON_UNESCAPED_UNICODE)]);
     }
 
     // --- Planes (EDUN-326) ---------------------------------------------------------------

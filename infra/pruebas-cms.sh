@@ -18,6 +18,7 @@ $P -d $BASE -f - < "$SQL/cms/01_cms_esquema.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/03_cms_conversion.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/04_cms_reclamos_y_bandeja.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/05_cms_crm_y_reclamaciones.sql" > /dev/null
+$P -d $BASE -f - < "$SQL/cms/06_cms_panel_completo.sql" > /dev/null
 $P -d $BASE -f - < "$SQL/cms/02_cms_semillas_base.sql" > /dev/null
 SALIDA=$($P -d $BASE -f - < "$SQL/cms/pruebas_cms.sql" 2>&1) || { echo "$SALIDA"; exit 1; }
 echo "$SALIDA" | grep -E "OK|PASARON|FALLO" | sed 's/^.*NOTICE: *//'

@@ -98,6 +98,53 @@ class ReglasSecciones
                 'lista.*.consentimiento_doc_id' => ['nullable', 'integer', 'min:1'],
                 'lista.*.visible' => ['required', 'boolean'],
             ],
+            // EDUN-387 / SIT-020 · Orden y visibilidad de las secciones de la landing.
+            '_estructura' => [
+                'lista' => ['required', 'array', 'min:1', 'max:30'],
+                'lista.*.clave' => ['required', 'string', 'max:40', 'distinct'],
+                'lista.*.visible' => ['required', 'boolean'],
+            ],
+            // EDUN-391 / SIT-025 · Popup de salida (cms.popup_config).
+            '_popup' => [
+                'activo' => ['required', 'boolean'],
+                'titulo' => ['required', 'string', 'max:100'],
+                'texto' => ['nullable', 'string', 'max:200'],
+                'imagen_id' => ['nullable', 'integer', 'min:1'],
+                'cta' => ['required', 'string', 'max:40'],
+                'campo' => ['required', Rule::in(['email', 'telefono', 'ambos'])],
+                'espera_seg' => ['required', 'integer', 'min:0', 'max:600'],
+                'inactividad_seg' => ['required', 'integer', 'min:0', 'max:600'],
+                'frecuencia' => ['required', Rule::in(['sesion', 'dia', 'siempre'])],
+            ],
+            // EDUN-399 / SIT-062 · Datos legales y de contacto (cms.config) y modo mantenimiento.
+            '_config' => [
+                'razon_social' => ['nullable', 'string', 'max:160'],
+                'ruc' => ['nullable', 'regex:/^(10|15|17|20)\d{9}$/'],
+                'direccion' => ['nullable', 'string', 'max:250'],
+                'telefono_central' => ['nullable', 'regex:/^\+?[0-9 ()-]{6,20}$/'],
+                'whatsapp' => ['nullable', 'regex:/^\+?[0-9 ()-]{9,20}$/'],
+                'email_contacto' => ['nullable', 'email:rfc', 'max:160'],
+                'email_reclamaciones' => ['nullable', 'email:rfc', 'max:160'],
+                'horario_soporte' => ['nullable', 'string', 'max:120'],
+                'mantenimiento' => ['required', 'array'],
+                'mantenimiento.activo' => ['required', 'boolean'],
+                'mantenimiento.mensaje' => ['nullable', 'required_if:mantenimiento.activo,true', 'string', 'max:300'],
+                'mantenimiento.vuelta' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            ],
+            // EDUN-338 / SIT-060 · Logos de clientes («Confían en Edunova»).
+            'logos' => [
+                'titulo' => ['required', 'string', 'max:80'],
+                'velocidad' => ['required', 'integer', 'min:10', 'max:120'],
+                'columnas' => ['required', 'integer', 'min:3', 'max:8'],
+                'mostrar' => ['sometimes', 'boolean'],
+                'lista' => ['sometimes', 'array', 'max:40'],
+                'lista.*.id' => ['nullable', 'integer', 'min:1', 'distinct'],
+                'lista.*.nombre' => ['required', 'string', 'max:120'],
+                'lista.*.logo_id' => ['required', 'integer', 'min:1'],
+                'lista.*.sitio_web' => ['nullable', 'url:https,http', 'max:300'],
+                'lista.*.autorizado' => ['required', 'boolean'],
+                'lista.*.visible' => ['required', 'boolean'],
+            ],
             default => null,
         };
     }
@@ -123,6 +170,15 @@ class ReglasSecciones
             'lista.*.consentimiento_fecha.before_or_equal' => 'La fecha del consentimiento no puede ser futura.',
             'lista.*.consentimiento_fecha.date_format' => 'Fecha no válida.',
             'lista.max' => 'Demasiados elementos en la lista.',
+            'ruc.regex' => 'El RUC tiene 11 dígitos y empieza con 10, 15, 17 o 20.',
+            'telefono_central.regex' => 'Escribe un teléfono válido.',
+            'whatsapp.regex' => 'Escribe un número de WhatsApp válido (con código de país si es posible).',
+            'email' => 'Escribe un correo válido.',
+            'mantenimiento.mensaje.required_if' => 'Escribe el mensaje que verán los visitantes durante el mantenimiento.',
+            'mantenimiento.vuelta.date_format' => 'Fecha y hora no válidas.',
+            'lista.*.sitio_web.url' => 'Escribe la dirección completa del sitio (https://…).',
+            'espera_seg.max' => 'Máximo 600 segundos.',
+            'inactividad_seg.max' => 'Máximo 600 segundos.',
         ];
     }
 }

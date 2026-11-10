@@ -132,6 +132,10 @@ export function PopupSalida({ config }: { config: ConfigPopup }) {
         </div>
       ) : (
         <form noValidate onSubmit={enviar} className="flex flex-col gap-space-sm" data-popup-salida>
+          {config.imagen && (
+            // eslint-disable-next-line @next/next/no-img-element -- imagen de la Biblioteca (bucket del sitio)
+            <img src={config.imagen.url} alt={config.imagen.alt} className="w-full max-h-40 object-contain rounded-lg" />
+          )}
           {config.texto && <p className="font-body-md text-body-md text-secondary">{config.texto}</p>}
           {pideEmail && (
             <label className={ETIQUETA}>
