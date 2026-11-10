@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Icono, Modal } from '@/componentes/base';
-import { registrarEvento } from '@/lib/consentimiento';
+import { registrarEvento } from '@/lib/analitica';
 import { duracion } from '@/lib/formato';
 import type { SeccionVideos, Video } from '@/lib/landing';
 import { Encabezado } from './Encabezado';

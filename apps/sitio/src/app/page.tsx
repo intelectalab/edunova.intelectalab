@@ -68,7 +68,7 @@ export default async function Inicio() {
         {s.cta_final && <CtaFinal datos={s.cta_final} telefono={c.telefono_central} />}
       </main>
       {s.footer && <Pie datos={s.footer} config={c} enlaces={datos.menu.footer} />}
-      <Conversion gtm={datos.tracking?.gtm ?? null} />
+      <Conversion gtm={datos.tracking?.gtm ?? null} popup={datos.popup ?? null} />
     </>
   );
 }

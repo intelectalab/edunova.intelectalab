@@ -9,14 +9,14 @@ type Props = {
   titulo: string;
   /** Texto accesible del botón de cierre (sale del CMS). */
   etiquetaCerrar: string;
-  /** Ancho máximo: md (videos), lg (políticas) o xl (demo con calendario). */
-  ancho?: 'md' | 'lg' | 'xl';
+  /** Ancho máximo: sm (popup de salida), md (videos), lg (políticas) o xl (demo con calendario). */
+  ancho?: 'sm' | 'md' | 'lg' | 'xl';
   /** Contenido junto al título (por ejemplo, la versión de una política). */
   subtitulo?: ReactNode;
   children: ReactNode;
 };
 
-const ANCHOS = { md: 'max-w-2xl', lg: 'max-w-3xl', xl: 'max-w-4xl' } as const;
+const ANCHOS = { sm: 'max-w-lg', md: 'max-w-2xl', lg: 'max-w-3xl', xl: 'max-w-4xl' } as const;
 
 // Ventanas abiertas, de abajo arriba: solo la de arriba atiende Escape y Tab
 // (la política se abre encima de la solicitud de demo).

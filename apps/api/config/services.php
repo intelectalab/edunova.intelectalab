@@ -46,6 +46,14 @@ return [
         'url' => env('SITIO_URL', env('APP_URL')),
     ],
 
+    // EDUN-275 · CRM que recibe los leads (webhook genérico: POST JSON con token Bearer).
+    // Sin URL no se envía nada: los leads quedan en cms.leads_pendientes hasta configurarlo.
+    'crm' => [
+        'url' => env('CRM_WEBHOOK_URL'),
+        'token' => env('CRM_WEBHOOK_TOKEN'),
+        'timeout' => (int) env('CRM_WEBHOOK_TIMEOUT', 10),
+    ],
+
     // EDUN-294 · reCAPTCHA v3 del Libro de Reclamaciones (sin secreto, no se exige).
     'recaptcha' => [
         'secreto' => env('RECAPTCHA_SECRETO'),

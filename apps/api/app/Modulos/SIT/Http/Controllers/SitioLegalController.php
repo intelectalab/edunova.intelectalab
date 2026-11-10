@@ -3,6 +3,7 @@
 namespace App\Modulos\SIT\Http\Controllers;
 
 use App\Modulos\SIT\Http\Middleware\VisitanteSitio;
+use App\Modulos\SIT\Http\Requests\LeadPopupRequest;
 use App\Modulos\SIT\Http\Requests\SolicitudDemoRequest;
 use App\Modulos\SIT\Services\Politicas;
 use App\Modulos\SIT\Services\RegistroConsentimientos;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Rule;
  * Sprint 6 · Rutas públicas de conversión y legal (TRASPASO §8):
  *   GET  /sitio/politicas/{tipo}           versión vigente (EDUN-287)
  *   POST /sitio/leads                      demo con calendario y consentimiento (EDUN-267, EDUN-291)
+ *   POST /sitio/leads/popup                correo o WhatsApp del popup de salida (EDUN-271)
  *   POST /sitio/consentimientos/cookies    preferencias del banner (EDUN-306)
  */
 class SitioLegalController
@@ -67,6 +69,29 @@ class SitioLegalController
             'email' => mb_strtolower(trim($d['email'])),
             'consentimiento_version' => $lead['consentimiento_version'],
         ], 201);
+    }
+
+    public function leadPopup(LeadPopupRequest $request): JsonResponse
+    {
+        $d = $request->validated();
+        if (empty($d['email']) && empty($d['telefono'])) {
+            return response()->json(['message' => 'Escribe tu correo o tu WhatsApp.', 'errors' => ['email' => ['Escribe tu correo o tu WhatsApp.']]], 422);
+        }
+
+        $lead = $this->registro->registrarLead([
+            'source' => 'popup',
+            'email' => $d['email'] ?? null,
+            'telefono' => $d['telefono'] ?? null,
+            'mensaje' => 'Pidió información desde el popup de salida',
+            'page_url' => $d['page_url'] ?? null,
+            'utm_source' => $d['utm_source'] ?? null,
+            'utm_medium' => $d['utm_medium'] ?? null,
+            'utm_campaign' => $d['utm_campaign'] ?? null,
+            'utm_content' => $d['utm_content'] ?? null,
+            'utm_term' => $d['utm_term'] ?? null,
+        ], VisitanteSitio::ip($request), VisitanteSitio::agente($request));
+
+        return response()->json(['message' => 'Datos registrados.', 'consentimiento_version' => $lead['consentimiento_version']], 201);
     }
 
     public function cookies(Request $request): JsonResponse

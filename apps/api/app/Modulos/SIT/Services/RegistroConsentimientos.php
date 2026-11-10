@@ -9,6 +9,8 @@ use Illuminate\Validation\ValidationException;
  * EDUN-291 / SIT-054 y EDUN-306 / SIT-055 · Prueba de cada consentimiento (Ley N.° 29733):
  * tipo, versión vigente de la política al momento del envío, lead, IP, navegador y fecha.
  *
+ * Cada lead queda además en la bandeja de salida al CRM (EDUN-275).
+ *
  * El público solo inserta (RLS): no puede leer leads ni consentimientos, por eso el id del lead
  * se toma de la secuencia antes de insertar en vez de usar RETURNING.
  */
@@ -16,7 +18,7 @@ class RegistroConsentimientos
 {
     public const CATEGORIAS_COOKIES = ['esenciales', 'analitica', 'marketing', 'personalizacion'];
 
-    public function __construct(private Politicas $politicas) {}
+    public function __construct(private Politicas $politicas, private EnvioCrm $crm) {}
 
     /**
      * Guarda el lead y su consentimiento en la misma transacción.
@@ -40,6 +42,8 @@ class RegistroConsentimientos
                 'ip' => $ip,
                 'user_agent' => $agente,
             ]);
+            // EDUN-275 · Bandeja de salida al CRM, en la misma transacción.
+            $this->crm->encolar([...$lead, 'id' => $id, 'consentimiento_version' => $version]);
 
             return ['id' => $id, 'consentimiento_version' => $version];
         });

@@ -8,6 +8,7 @@ use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
 use App\Modulos\SIT\Http\Controllers\MediosCmsController;
+use App\Modulos\SIT\Http\Controllers\ReclamacionesCmsController;
 use App\Modulos\SIT\Http\Controllers\ReclamacionesController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use App\Modulos\SIT\Http\Controllers\SitioLegalController;
@@ -52,6 +53,15 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     // EDUN-278 · Bandeja de solicitudes.
     Route::get('/leads', [LeadsCmsController::class, 'index']);
     Route::patch('/leads/{lead}', [LeadsCmsController::class, 'update'])->whereNumber('lead');
+    // EDUN-282 · Exportar (CSV) y sincronizar con el CRM.
+    Route::get('/leads/exportar', [LeadsCmsController::class, 'exportar'])->middleware('throttle:30,1');
+    Route::post('/leads/sincronizar', [LeadsCmsController::class, 'sincronizar'])->middleware('throttle:10,1');
+
+    // EDUN-302 · Gestión de reclamaciones.
+    Route::get('/reclamaciones', [ReclamacionesCmsController::class, 'index']);
+    Route::get('/reclamaciones/{reclamacion}', [ReclamacionesCmsController::class, 'show'])->whereNumber('reclamacion');
+    Route::patch('/reclamaciones/{reclamacion}', [ReclamacionesCmsController::class, 'update'])->whereNumber('reclamacion');
+    Route::get('/reclamaciones/{reclamacion}/adjuntos/{indice}', [ReclamacionesCmsController::class, 'adjunto'])->whereNumber(['reclamacion', 'indice']);
 });
 
 // Sitio público (sin sesión): solo contenido publicado.
@@ -64,6 +74,8 @@ Route::prefix('sitio')->group(function () {
         ->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies'])->middleware('throttle:publico');
     Route::middleware(['visitante', 'throttle:formularios'])->group(function () {
         Route::post('/leads', [SitioLegalController::class, 'lead']);
+        // EDUN-271 · Popup de salida.
+        Route::post('/leads/popup', [SitioLegalController::class, 'leadPopup']);
         Route::post('/consentimientos/cookies', [SitioLegalController::class, 'cookies']);
         // EDUN-294 · Libro de Reclamaciones virtual.
         Route::post('/reclamaciones', [ReclamacionesController::class, 'store']);

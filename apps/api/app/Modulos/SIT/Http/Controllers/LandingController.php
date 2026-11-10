@@ -41,6 +41,7 @@ class LandingController
                 'seo' => $this->seo('inicio'),
                 'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(20)->get(['pregunta', 'respuesta']),
                 'tracking' => $this->tracking(),
+                'popup' => $this->popup(),
             ])->header('Cache-Control', 'public, max-age=60');
         });
     }
@@ -123,6 +124,23 @@ class LandingController
         $gtm = is_string($gtm) ? strtoupper(trim($gtm)) : '';
 
         return ['gtm' => preg_match('/^GTM-[A-Z0-9]{4,10}$/', $gtm) && $gtm !== 'GTM-XXXXXXX' ? $gtm : null];
+    }
+
+    /** EDUN-271 · Popup de salida: textos, qué dato pide y cuándo se muestra (null si está apagado). */
+    private function popup(): ?array
+    {
+        $p = DB::table('cms.popup_config')->where('id', 1)->where('activo', true)
+            ->first(['headline', 'subheadline', 'cta_texto', 'capture_field', 'delay_seg', 'inactividad_seg', 'frecuencia']);
+
+        return $p ? [
+            'titulo' => $p->headline,
+            'texto' => $p->subheadline,
+            'cta' => $p->cta_texto,
+            'campo' => $p->capture_field,
+            'espera_seg' => (int) $p->delay_seg,
+            'inactividad_seg' => (int) $p->inactividad_seg,
+            'frecuencia' => $p->frecuencia,
+        ] : null;
     }
 
     /** EDUN-311 · SEO publicado de una página, con la imagen Open Graph de la Biblioteca. */

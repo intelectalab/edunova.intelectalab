@@ -1,4 +1,5 @@
 import 'server-only';
+import type { ConfigPopup } from './popupSalida';
 import { API_URL } from './sesionCms';
 
 // Contenido publicado de la landing (GET /api/v1/sitio/landing). ISR de 5 minutos y etiqueta
@@ -90,6 +91,8 @@ export type Landing = {
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
   /** EDUN-306 · Contenedor de GTM; solo se carga con consentimiento de analítica o marketing. */
   tracking?: { gtm: string | null };
+  /** EDUN-271 · Popup de salida (null si está apagado en el CMS). */
+  popup?: ConfigPopup | null;
 };
 
 export const REVALIDAR_SEGUNDOS = 300;

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, useTransition, type FormEvent
 import { solicitarDemo } from '@/app/acciones-sitio';
 import { Icono, Modal } from '@/componentes/base';
 import { demo as t } from '@/contenido/provisional';
+import { marcarConvertido } from '@/lib/popupSalida';
 import { hoyLima, mesCalendario, mesInicial, textoFecha } from '@/lib/calendario';
-import { registrarEvento } from '@/lib/consentimiento';
+import { registrarEvento } from '@/lib/analitica';
 
 const PLANES = new Set(t.planes.map((p) => p.valor));
 const CLAVE_UTM = 'edunova_utm';
@@ -111,7 +112,10 @@ export function SolicitarDemo() {
     const f = e.currentTarget;
     const malos = new Set([...f.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[required]')].filter((c) => !c.checkValidity()).map((c) => c.name));
     setInvalidos(malos);
-    if (malos.size > 0) return setError(t.errorIncompleto);
+    if (malos.size > 0) {
+      registrarEvento('form_error', { source: 'demo', campos: [...malos] });
+      return setError(t.errorIncompleto);
+    }
     if (!fecha || !hora) return setError(t.errorCalendario);
     setError(null);
 
@@ -137,11 +141,13 @@ export function SolicitarDemo() {
     iniciar(async () => {
       const r = await solicitarDemo(solicitud);
       if (!r.ok) {
+        registrarEvento('form_error', { source: 'demo', campos: r.campos });
         setInvalidos(new Set(r.campos));
         setError(r.error);
         return;
       }
       registrarEvento('form_submit', { source: 'demo', plan: solicitud.plan_interes ?? '', utm_source: solicitud.utm.utm_source ?? '', utm_campaign: solicitud.utm.utm_campaign ?? '' });
+      marcarConvertido();
       registrarEvento('demo_request', { plan: solicitud.plan_interes ?? '', alumnos: solicitud.alumnos });
       setListo({
         nombre: solicitud.nombre.split(/\s+/)[0],

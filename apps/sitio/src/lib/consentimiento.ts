@@ -87,8 +87,5 @@ try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(CLAVE_COOKIES)})||'nu
 })();`;
 }
 
-/** Evento de analítica en el dataLayer (TRASPASO §10). Sin GTM cargado, no sale del navegador. */
-export function registrarEvento(evento: string, parametros: Record<string, unknown> = {}): void {
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event: evento, ...parametros });
-}
+// EDUN-318 · Los eventos de analítica viven en lib/analitica (con limpieza de datos personales).
+export { registrarEvento } from './analitica';

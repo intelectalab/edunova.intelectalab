@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
  */
 class BandejaLeads
 {
+    public function __construct(private EnvioCrm $crm) {}
+
     public const POR_PAGINA = 10;
 
     public const ESTADOS = ['nuevo' => 'Nuevo', 'contactado' => 'Contactado', 'en_proceso' => 'En proceso', 'ganado' => 'Ganado', 'perdido' => 'Perdido'];
@@ -40,8 +42,9 @@ class BandejaLeads
                 'l.id', 'l.nombre', 'l.cargo', 'l.email', 'l.telefono', 'l.colegio', 'l.ciudad', 'l.alumnos', 'l.plan_interes',
                 'p.nombre as plan_nombre', 'p.precio_mensual', 'l.estado', 'l.source', 'l.demo_fecha', 'l.demo_hora', 'l.mensaje',
                 'l.utm_source', 'l.utm_medium', 'l.utm_campaign', 'l.page_url', 'l.created_at', 'l.primer_contacto_en',
+                'l.crm_enviado_en', 'lp.intentos as crm_intentos', 'lp.ultimo_error as crm_error',
             ])
-            ->map(fn ($l) => [...(array) $l, 'demo_hora' => $l->demo_hora ? substr($l->demo_hora, 0, 5) : null]);
+            ->map(fn ($l) => [...(array) $l, 'demo_hora' => $l->demo_hora ? substr($l->demo_hora, 0, 5) : null, 'crm' => self::estadoCrm($l)]);
 
         return [
             'data' => $filas,
@@ -53,7 +56,93 @@ class BandejaLeads
             'indicadores' => $this->indicadores(),
             'ciudades' => DB::table('cms.leads')->whereNotNull('ciudad')->where('ciudad', '<>', '')->distinct()->orderBy('ciudad')->pluck('ciudad'),
             'planes' => DB::table('cms.planes_sitio')->where('estado', 'publicado')->orderBy('orden')->get(['clave', 'nombre']),
+            // EDUN-275 / EDUN-282 · Estado del envío al CRM.
+            'crm' => [
+                'configurado' => $this->crm->configurado(),
+                'pendientes' => DB::table('cms.leads_pendientes')->where('intentos', '<', EnvioCrm::MAX_INTENTOS)->count(),
+                'con_error' => DB::table('cms.leads_pendientes')->where('intentos', '>=', EnvioCrm::MAX_INTENTOS)->count(),
+            ],
         ];
+    }
+
+    /** 'enviado' | 'pendiente' | 'error' (agotó los 5 intentos) | null (sin fila de salida). */
+    public static function estadoCrm(object $l): ?string
+    {
+        if ($l->crm_enviado_en) {
+            return 'enviado';
+        }
+        if ($l->crm_intentos === null) {
+            return null;
+        }
+
+        return $l->crm_intentos >= EnvioCrm::MAX_INTENTOS ? 'error' : 'pendiente';
+    }
+
+    /** Columnas del CSV, en orden (EDUN-282). */
+    public const COLUMNAS_CSV = [
+        'ID', 'Recibida (hora de Lima)', 'Estado', 'Origen', 'Institución educativa', 'Ciudad', 'Alumnos', 'Plan de interés', 'Contacto', 'Cargo',
+        'Correo', 'Teléfono', 'Fecha de demo', 'Hora de demo', 'utm_source', 'utm_medium', 'utm_campaign', 'Página', 'Mensaje', 'CRM',
+    ];
+
+    public const MAX_CSV = 20000;
+
+    /**
+     * EDUN-282 / SIT-027 · CSV con los mismos filtros de la bandeja (UTF-8 con BOM para Excel).
+     * Las celdas que empiezan con = + - @ se escapan con ' (inyección de fórmulas).
+     *
+     * @param  array{estado?: ?string, plan?: ?string, ciudad?: ?string, q?: ?string, desde?: ?string, hasta?: ?string}  $f
+     */
+    public function csv(array $f): string
+    {
+        $filas = $this->consulta($f)
+            ->when(! empty($f['estado']), fn ($q) => $q->where('l.estado', $f['estado']))
+            ->when(! empty($f['desde']), fn ($q) => $q->where('l.created_at', '>=', CarbonImmutable::parse($f['desde'], 'America/Lima')->startOfDay()))
+            ->when(! empty($f['hasta']), fn ($q) => $q->where('l.created_at', '<', CarbonImmutable::parse($f['hasta'], 'America/Lima')->addDay()->startOfDay()))
+            ->orderByDesc('l.created_at')->orderByDesc('l.id')->limit(self::MAX_CSV)
+            ->get(['l.*', 'p.nombre as plan_nombre', 'lp.intentos as crm_intentos']);
+
+        $salida = fopen('php://temp', 'r+');
+        fwrite($salida, "\u{FEFF}");
+        fputcsv($salida, self::COLUMNAS_CSV, ',', '"', '');
+        foreach ($filas as $l) {
+            fputcsv($salida, array_map(self::celda(...), [
+                $l->id,
+                CarbonImmutable::parse($l->created_at)->setTimezone('America/Lima')->format('Y-m-d H:i'),
+                self::ESTADOS[$l->estado] ?? $l->estado,
+                $l->source,
+                $l->colegio,
+                $l->ciudad,
+                $l->alumnos,
+                $l->plan_nombre,
+                $l->nombre,
+                $l->cargo,
+                $l->email,
+                $l->telefono,
+                $l->demo_fecha,
+                $l->demo_hora ? substr($l->demo_hora, 0, 5) : null,
+                $l->utm_source,
+                $l->utm_medium,
+                $l->utm_campaign,
+                $l->page_url,
+                $l->mensaje,
+                match (self::estadoCrm($l)) {
+                    'enviado' => 'Enviado', 'pendiente' => 'Pendiente', 'error' => 'Con error', default => ''
+                },
+            ]), ',', '"', '');
+        }
+        rewind($salida);
+        $csv = (string) stream_get_contents($salida);
+        fclose($salida);
+
+        return $csv;
+    }
+
+    /** Evita que Excel ejecute una celda como fórmula. */
+    private static function celda(mixed $v): string
+    {
+        $v = $v === null ? '' : (string) $v;
+
+        return preg_match('/^[=+\-@\t\r]/', $v) === 1 ? "'".$v : $v;
     }
 
     /** Cambia el estado y deja la auditoría en la misma transacción. */
@@ -91,6 +180,7 @@ class BandejaLeads
     {
         return DB::table('cms.leads as l')
             ->leftJoin('cms.planes_sitio as p', 'p.clave', '=', 'l.plan_interes')
+            ->leftJoin('cms.leads_pendientes as lp', 'lp.lead_id', '=', 'l.id')
             ->when(! empty($f['plan']), fn ($q) => $q->where('l.plan_interes', $f['plan']))
             ->when(! empty($f['ciudad']), fn ($q) => $q->where('l.ciudad', $f['ciudad']))
             ->when(! empty($f['q']), function ($q) use ($f) {

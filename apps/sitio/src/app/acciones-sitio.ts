@@ -1,7 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { demo, reclamos, seguimiento } from '@/contenido/provisional';
+import { demo, popupSalida, reclamos, seguimiento } from '@/contenido/provisional';
 import { API_URL } from '@/lib/sesionCms';
 
 /*
@@ -82,6 +82,32 @@ export async function solicitarDemo(s: SolicitudDemo): Promise<ResultadoDemo> {
     return { ok: false, error: (Object.values(cuerpo.errors)[0] as string[])[0] ?? demo.errorIncompleto, campos };
   }
   return { ok: false, error: r.status === 429 ? String(cuerpo?.message ?? demo.errorConexion) : demo.errorConexion, campos: [] };
+}
+
+export type LeadPopup = { email: string; telefono: string; consentimiento: boolean; page_url: string | null; sitio_web: string; utm: Record<string, string> };
+
+/** EDUN-271 · Correo o WhatsApp del popup de salida (POST /api/v1/sitio/leads/popup). */
+export async function registrarLeadPopup(s: LeadPopup): Promise<{ ok: true } | { ok: false; error: string; campos: string[] }> {
+  const utm = Object.fromEntries(UTM.map((k) => [k, typeof s.utm?.[k] === 'string' ? s.utm[k].slice(0, 100) : null]));
+  let r: Response;
+  try {
+    r = await enviar('/sitio/leads/popup', {
+      email: s.email?.trim() || null,
+      telefono: s.telefono?.trim() || null,
+      consentimiento: s.consentimiento === true,
+      page_url: s.page_url?.slice(0, 500) ?? null,
+      ...(s.sitio_web ? { sitio_web: s.sitio_web } : {}),
+      ...utm,
+    });
+  } catch {
+    return { ok: false, error: popupSalida.errorConexion, campos: [] };
+  }
+  if (r.status === 201) return { ok: true };
+  const cuerpo = await r.json().catch(() => ({}));
+  if (r.status === 422 && cuerpo?.errors) {
+    return { ok: false, error: (Object.values(cuerpo.errors)[0] as string[])[0] ?? popupSalida.errorIncompleto, campos: Object.keys(cuerpo.errors) };
+  }
+  return { ok: false, error: r.status === 429 ? String(cuerpo?.message ?? popupSalida.errorConexion) : popupSalida.errorConexion, campos: [] };
 }
 
 /** EDUN-306 · Copia de la elección del banner de cookies (auditoría). Si falla, no molesta al visitante. */

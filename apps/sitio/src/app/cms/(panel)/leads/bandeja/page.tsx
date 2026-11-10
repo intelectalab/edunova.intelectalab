@@ -4,9 +4,11 @@ import { bandeja as t } from '@/contenido/provisional';
 import { soles } from '@/lib/formato';
 import { leerBandeja, type Bandeja, type FiltrosBandeja, type Lead } from '../../../leads-acciones';
 import { CambiarEstado } from './CambiarEstado';
+import { SincronizarCrm } from './SincronizarCrm';
 
 // EDUN-278 / SIT-026 · Bandeja de solicitudes de demo (prototipo #cms-bandeja-solicitudes).
 // Filtros, pestañas y página viajan en la URL: se pueden compartir y funcionan sin JavaScript.
+// EDUN-282 · Exportar CSV con los filtros de la pantalla y sincronizar con el CRM (EDUN-275).
 // Sin «cotejado con el Padrón MINEDU/SUNAT» ni «Sincronizado SIAGIE» (TRASPASO §7).
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +55,24 @@ function Indicadores({ i }: { i: Bandeja['indicadores'] }) {
   );
 }
 
-function Ficha({ lead }: { lead: Lead | undefined }) {
+const TONOS_CRM: Record<string, TonoInsignia> = { enviado: 'exito', pendiente: 'aviso', error: 'error' };
+
+function EstadoCrm({ lead, configurado }: { lead: Lead; configurado: boolean }) {
+  if (!lead.crm) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">{t.crmTitulo}</span>
+      <span className="flex flex-wrap items-center gap-space-xs">
+        <Insignia tono={TONOS_CRM[lead.crm]}>{t.crmEstados[lead.crm]}</Insignia>
+        {lead.crm !== 'enviado' && lead.crm_intentos ? <span className="font-label-sm text-label-sm text-on-surface-variant">{t.crmIntentos(lead.crm_intentos)}</span> : null}
+      </span>
+      {lead.crm === 'error' && lead.crm_error && <span className="font-label-sm text-label-sm text-on-surface-variant break-words">{lead.crm_error}</span>}
+      {lead.crm !== 'enviado' && configurado && <SincronizarCrm ids={[lead.id]} etiqueta={t.reenviar} discreto />}
+    </div>
+  );
+}
+
+function Ficha({ lead, crmConfigurado }: { lead: Lead | undefined; crmConfigurado: boolean }) {
   if (!lead) {
     return (
       <aside aria-label={t.ficha} className="p-space-md rounded-xl bg-surface-container-lowest border border-surface-container">
@@ -77,7 +96,7 @@ function Ficha({ lead }: { lead: Lead | undefined }) {
     <aside aria-label={t.ficha} className="p-space-md rounded-xl bg-surface-container-lowest border border-surface-container flex flex-col gap-space-sm">
       <h2 className="font-title-lg text-title-lg text-primary">{t.ficha}</h2>
       <div>
-        <p className="font-title-md text-title-md text-on-surface">{lead.colegio}</p>
+        <p className="font-title-md text-title-md text-on-surface">{lead.colegio ?? lead.email ?? lead.telefono}</p>
         <p className="font-label-md text-label-md text-secondary">{lead.ciudad ?? t.sinCiudad}</p>
       </div>
       <dl className="grid grid-cols-1 gap-space-xs font-body-sm text-body-sm">
@@ -104,6 +123,7 @@ function Ficha({ lead }: { lead: Lead | undefined }) {
           </a>
         )}
       </div>
+      <EstadoCrm lead={lead} configurado={crmConfigurado} />
       <CambiarEstado key={`${lead.id}-${lead.estado}`} id={lead.id} estado={lead.estado} />
     </aside>
   );
@@ -139,6 +159,30 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: Pr
       </header>
 
       <Indicadores i={datos.indicadores} />
+
+      <section aria-label={t.acciones} className="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md p-space-md rounded-xl bg-surface-container-lowest border border-surface-container">
+        <form method="get" action="/cms/leads/exportar" className="flex flex-col sm:flex-row sm:items-end gap-space-sm">
+          {(['estado', 'plan', 'ciudad', 'q'] as const).map((k) => (f[k] ? <input key={k} type="hidden" name={k} value={f[k]} /> : null))}
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-secondary">
+            {t.desde}
+            <input type="date" name="desde" className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 font-body-md text-body-md text-on-surface" />
+          </label>
+          <label className="flex flex-col gap-1 font-label-md text-label-md text-secondary">
+            {t.hasta}
+            <input type="date" name="hasta" className="h-10 rounded-lg border border-outline-variant bg-surface-container-lowest px-2 font-body-md text-body-md text-on-surface" />
+          </label>
+          <button type="submit" title={t.exportarNota} className="inline-flex items-center gap-1 h-10 px-space-md rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-lg text-label-lg">
+            <Icono nombre="download" tamano="sm" />
+            {t.exportar}
+          </button>
+        </form>
+        <div className="flex flex-col gap-1 lg:items-end">
+          <span className="font-label-md text-label-md text-secondary" data-crm-resumen>
+            {datos.crm.configurado ? t.crmResumen(datos.crm.pendientes, datos.crm.con_error) : t.crmSinConfigurar}
+          </span>
+          {datos.crm.configurado && datos.crm.pendientes + datos.crm.con_error > 0 && <SincronizarCrm />}
+        </div>
+      </section>
 
       <nav aria-label={t.estadosNav} className="flex gap-space-xs overflow-x-auto border-b border-surface-container">
         {ESTADOS.map((e) => (
@@ -214,7 +258,7 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: Pr
                   ) : (
                     datos.data.map((l) => {
                       const wa = whatsapp(l.telefono);
-                      const nombre = l.colegio ?? '—';
+                      const nombre = l.colegio ?? l.email ?? l.telefono ?? '—';
                       return (
                         <tr key={l.id} data-lead={l.id} aria-selected={seleccionado?.id === l.id} className={`h-fila-tabla ${seleccionado?.id === l.id ? 'bg-surface-container-low' : 'hover:bg-surface-container-low'}`}>
                           <td className="px-space-md py-space-xs">
@@ -281,7 +325,7 @@ export default async function PaginaBandeja({ searchParams }: { searchParams: Pr
             </span>
           </nav>
         </div>
-        <Ficha lead={seleccionado} />
+        <Ficha lead={seleccionado} crmConfigurado={datos.crm.configurado} />
       </div>
     </div>
   );

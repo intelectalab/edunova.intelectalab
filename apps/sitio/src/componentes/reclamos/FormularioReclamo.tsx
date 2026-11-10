@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactN
 import { registrarReclamo } from '@/app/acciones-sitio';
 import { Icono } from '@/componentes/base';
 import { reclamos as t } from '@/contenido/provisional';
+import { registrarEvento } from '@/lib/analitica';
 
 declare global {
   interface Window {
@@ -89,6 +90,7 @@ export function FormularioReclamo({ claveRecaptcha }: { claveRecaptcha: string |
     });
     setErrores(locales);
     if (Object.keys(locales).length > 0) {
+      registrarEvento('form_error', { source: 'reclamo', campos: Object.keys(locales) });
       setError(t.errorIncompleto);
       f.querySelector<HTMLElement>('[aria-invalid="true"], :invalid')?.focus();
       return;
@@ -103,6 +105,7 @@ export function FormularioReclamo({ claveRecaptcha }: { claveRecaptcha: string |
         setError(Object.values(r.errores)[0] ?? r.error);
         return;
       }
+      registrarEvento('reclamo_submit', { tipo: String(datos.get('tipo')) });
       setListo({ expediente: r.expediente, vence_en: r.vence_en, email: r.email, tipo: String(datos.get('tipo')) });
       f.reset();
       setLargo(0);
