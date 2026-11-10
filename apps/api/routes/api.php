@@ -2,8 +2,17 @@
 
 use App\Http\Controllers\SaludController;
 use App\Modulos\ADM\Http\Controllers\AlumnosController;
+use App\Modulos\ADM\Http\Controllers\AniosEscolaresController;
+use App\Modulos\ADM\Http\Controllers\InstitucionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
+use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
+use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
+use App\Modulos\SEG\Http\Controllers\ArchivosController;
+use App\Modulos\SEG\Http\Controllers\AuditoriaController;
+use App\Modulos\SEG\Http\Controllers\DosPasosController;
+use App\Modulos\SEG\Http\Controllers\InvitacionesController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
+use App\Modulos\SEG\Http\Controllers\UsuariosController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
@@ -30,6 +39,32 @@ Route::prefix('auth')->group(function () {
         Route::post('/colegio', [SesionController::class, 'elegirColegio']);
         Route::get('/yo', [SesionController::class, 'yo']);
         Route::post('/salir', [SesionController::class, 'salir']);
+        // EDUN-38 · Segundo factor (TOTP + códigos de respaldo).
+        Route::middleware('throttle:30,1')->prefix('dos-pasos')->group(function () {
+            Route::post('/iniciar', [DosPasosController::class, 'iniciar']);
+            Route::post('/activar', [DosPasosController::class, 'activar']);
+            Route::post('/verificar', [DosPasosController::class, 'verificar']);
+            Route::post('/respaldos', [DosPasosController::class, 'respaldos']);
+        });
+    });
+});
+
+// EDUN-36 · Enlace de invitación (sin sesión, un solo uso).
+Route::prefix('invitaciones/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->middleware('throttle:ingreso')->group(function () {
+    Route::get('/', [InvitacionesController::class, 'mostrar']);
+    Route::post('/aceptar', [InvitacionesController::class, 'aceptar']);
+});
+
+// Consola de la plataforma (EDUN-24 a EDUN-26): staff de Edunova con segundo factor.
+Route::middleware(['auth:sanctum', 'plataforma'])->prefix('plataforma')->group(function () {
+    Route::get('/catalogos', [InstitucionesPlataformaController::class, 'catalogos']);
+    Route::get('/instituciones', [InstitucionesPlataformaController::class, 'index']);
+    Route::get('/instituciones/{institucion}', [InstitucionesPlataformaController::class, 'show'])->whereNumber('institucion');
+    Route::middleware('plataforma:superadmin')->group(function () {
+        Route::post('/instituciones', [InstitucionesPlataformaController::class, 'store'])->middleware('throttle:20,1');
+        Route::put('/instituciones/{institucion}/modulos/{modulo}', [InstitucionesPlataformaController::class, 'modulo'])->whereNumber('institucion')->where('modulo', '[A-Za-z]{2,10}');
+        Route::put('/instituciones/{institucion}/aula', [InstitucionesPlataformaController::class, 'aula'])->whereNumber('institucion');
+        Route::post('/instituciones/{institucion}/promotores/{usuario}/invitacion', [InstitucionesPlataformaController::class, 'reinvitar'])->whereNumber(['institucion', 'usuario'])->middleware('throttle:10,1');
     });
 });
 
@@ -38,6 +73,48 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     Route::get('/alumnos', [AlumnosController::class, 'index'])->middleware('permiso:adm.alumnos.ver');
     // Sin permiso de ruta: la policy deja pasar al personal con adm.alumnos.ver y a la familia por propiedad.
     Route::get('/alumnos/{alumno}', [AlumnosController::class, 'show'])->whereNumber('alumno');
+
+    // EDUN-36 · Usuarios del colegio (SEG-02).
+    Route::get('/usuarios', [UsuariosController::class, 'index'])->middleware('permiso:seg.usuarios.ver');
+    Route::post('/usuarios', [UsuariosController::class, 'store'])->middleware(['permiso:seg.usuarios.crear', 'permiso:seg.roles.asignar', 'throttle:30,1']);
+    Route::put('/usuarios/{usuario}/roles', [UsuariosController::class, 'roles'])->whereNumber('usuario')->middleware('permiso:seg.roles.asignar');
+    Route::patch('/usuarios/{usuario}/estado', [UsuariosController::class, 'estado'])->whereNumber('usuario')->middleware('permiso:seg.usuarios.desactivar');
+    Route::post('/usuarios/{usuario}/invitacion', [UsuariosController::class, 'invitacion'])->whereNumber('usuario')->middleware(['permiso:seg.usuarios.crear', 'throttle:10,1']);
+
+    // EDUN-40 · Auditoría (SEG-03): solo lectura y exportación.
+    Route::middleware('permiso:seg.auditoria.ver')->group(function () {
+        Route::get('/auditoria', [AuditoriaController::class, 'index']);
+        Route::get('/auditoria/opciones', [AuditoriaController::class, 'opciones']);
+        Route::get('/auditoria/exportar', [AuditoriaController::class, 'exportar'])->middleware('throttle:20,1');
+    });
+
+    // EDUN-42 · Archivos con enlace firmado de 5 minutos.
+    Route::post('/archivos', [ArchivosController::class, 'store'])->middleware('throttle:60,1');
+    Route::get('/archivos/{archivo}/enlace', [ArchivosController::class, 'enlace'])->whereNumber('archivo');
+
+    // EDUN-43 · Configuración de la institución (ADM-01). El logo lo ve todo el colegio.
+    Route::get('/institucion/logo', [InstitucionController::class, 'logo']);
+    Route::middleware('modulo:ADM')->group(function () {
+        Route::get('/institucion', [InstitucionController::class, 'show'])->middleware('permiso:adm.configuracion.ver');
+        Route::middleware('permiso:adm.configuracion.editar')->group(function () {
+            Route::put('/institucion', [InstitucionController::class, 'update']);
+            Route::put('/institucion/servicios', [InstitucionController::class, 'servicios']);
+            Route::post('/institucion/logo', [InstitucionController::class, 'subirLogo'])->middleware('throttle:20,1');
+            Route::delete('/institucion/logo', [InstitucionController::class, 'quitarLogo']);
+        });
+
+        // EDUN-44 · Año escolar y periodos (ADM-02).
+        Route::get('/anios-escolares', [AniosEscolaresController::class, 'index'])->middleware('permiso:adm.configuracion.ver');
+        Route::get('/anios-escolares/{anio}', [AniosEscolaresController::class, 'show'])->whereNumber('anio')->middleware('permiso:adm.configuracion.ver');
+        Route::post('/anios-escolares', [AniosEscolaresController::class, 'store'])->middleware('permiso:adm.configuracion.editar');
+        Route::put('/anios-escolares/{anio}', [AniosEscolaresController::class, 'update'])->whereNumber('anio')->middleware('permiso:adm.configuracion.editar');
+    });
+
+    // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.
+    Route::middleware('modulo:MDL')->group(function () {
+        Route::get('/moodle/conexion', [ConectorMoodleController::class, 'show'])->middleware('permiso:mdl.conector.ver');
+        Route::put('/moodle/conexion', [ConectorMoodleController::class, 'update'])->middleware('permiso:mdl.conector.configurar');
+    });
 });
 
 // EDUN-226 · Panel CMS: solo el superadmin del SaaS. Los colegios no tienen CMS.

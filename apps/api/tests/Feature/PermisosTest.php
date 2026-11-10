@@ -75,7 +75,7 @@ function escenarioPermisos(): object
 
 function como(User $usuario, int $institucion, string $url)
 {
-    Sanctum::actingAs($usuario);
+    actuarComo($usuario);
 
     return test()->getJson('/api/v1'.$url, ['X-Institucion' => (string) $institucion]);
 }

@@ -7,6 +7,8 @@ use App\Modulos\ADM\Models\Alumno;
 use App\Modulos\ADM\Models\Seccion;
 use App\Modulos\ADM\Policies\AlumnoPolicy;
 use App\Modulos\ADM\Policies\SeccionPolicy;
+use App\Modulos\SEG\Models\Archivo;
+use App\Modulos\SEG\Policies\ArchivoPolicy;
 use App\Modulos\SEG\Services\Autorizacion;
 use App\Modulos\SIT\Http\Middleware\VisitanteSitio;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         // EDUN-39 · Policies de propiedad.
         Gate::policy(Alumno::class, AlumnoPolicy::class);
         Gate::policy(Seccion::class, SeccionPolicy::class);
+        Gate::policy(Archivo::class, ArchivoPolicy::class);
 
         // Los permisos del catálogo (modulo.recurso.accion) funcionan con can() y Gate.
         Gate::before(function (User $usuario, string $habilidad) {

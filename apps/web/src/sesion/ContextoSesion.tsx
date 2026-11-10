@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { almacenToken, api, ErrorApi } from '../api/cliente';
 import { Contexto, type EstadoSesion, type Sesion } from './contexto';
 
-/** EDUN-35 · Sesión de la web de gestión: token Sanctum y colegio activo. */
+/** EDUN-35 · Sesión de la web de gestión: token Sanctum, colegio activo y segundo factor. */
 export function ProveedorSesion({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => almacenToken.leer());
   const [estado, setEstado] = useState<EstadoSesion | null>(null);
@@ -32,6 +32,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     () => ({
       cargando,
       estado,
+      token,
       async ingresar(usuario, password) {
         const r = await api<EstadoSesion & { token: string }>('/auth/ingresar', {
           metodo: 'POST',
@@ -47,6 +48,21 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
         await api('/auth/salir', { metodo: 'POST', token }).catch(() => undefined);
         fijarToken(null);
         setEstado(null);
+      },
+      async recargar() {
+        setEstado(await api<EstadoSesion>('/auth/yo', { token }));
+      },
+      async pedir<T>(ruta: string, opciones: { metodo?: string; cuerpo?: unknown } = {}) {
+        try {
+          return await api<T>(ruta, { ...opciones, token });
+        } catch (e) {
+          // Sesión vencida o cerrada en otro lado: vuelve al ingreso.
+          if (e instanceof ErrorApi && e.estado === 401) {
+            fijarToken(null);
+            setEstado(null);
+          }
+          throw e;
+        }
       },
     }),
     [cargando, estado, token, fijarToken],

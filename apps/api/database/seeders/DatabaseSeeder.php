@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         DB::unprepared(file_get_contents(database_path('sql/02_semillas.sql')));
+        DB::unprepared(file_get_contents(database_path('sql/04_permisos_adicionales.sql')));
         $this->call(CmsSeeder::class);
 
         if (app()->environment('local', 'testing')) {

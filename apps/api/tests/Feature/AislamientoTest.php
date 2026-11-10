@@ -55,6 +55,7 @@ class AislamientoTest extends TestCase
     public function test_las_semillas_cargan_roles_y_permisos(): void
     {
         $this->assertSame(25, DB::table('roles')->count());
-        $this->assertSame(165, DB::table('permisos')->count());
+        // 165 del catálogo del kit + seg.archivos.confidenciales (EDUN-42).
+        $this->assertSame(166, DB::table('permisos')->count());
     }
 }

@@ -10,4 +10,10 @@ return [
         'url_minutos' => (int) env('EDUNOVA_ARCHIVOS_URL_MINUTOS', 5),
     ],
 
+    // Web de gestión (enlaces de invitación). En el VPS se publica en /app del mismo dominio.
+    'web_url' => env('EDUNOVA_WEB_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/app'),
+
+    // Dominio de los subdominios de los colegios (<slug>.<dominio>).
+    'dominio_colegios' => env('EDUNOVA_DOMINIO_COLEGIOS', 'edunova.pe'),
+
 ];

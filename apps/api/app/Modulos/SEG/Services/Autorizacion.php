@@ -29,6 +29,15 @@ class Autorizacion
         return array_intersect($roles, $this->roles($usuario)) !== [];
     }
 
+    /** @return list<string> permisos vigentes en el colegio activo */
+    public function permisos(User $usuario): array
+    {
+        $permisos = array_keys($this->cargar($usuario)['permisos']);
+        sort($permisos);
+
+        return $permisos;
+    }
+
     public function tiene(User $usuario, string $permiso): bool
     {
         return isset($this->cargar($usuario)['permisos'][$permiso]);

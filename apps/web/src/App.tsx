@@ -1,37 +1,43 @@
+import { useState } from 'react';
+import { Marco } from './panel/Marco';
+import { Consola } from './pla/Consola';
+import { PantallaDosPasos } from './seg/PantallaDosPasos';
+import { PantallaInvitacion } from './seg/PantallaInvitacion';
 import { ProveedorSesion } from './sesion/ContextoSesion';
-import { useSesion } from './sesion/contexto';
+import { sesionLista, useSesion } from './sesion/contexto';
 import { PantallaIngreso } from './sesion/PantallaIngreso';
 
-/** Marco de la web de gestión con la sesión iniciada. Las pantallas llegan con cada módulo. */
-function Marco() {
-  const { estado, salir } = useSesion();
-  if (!estado?.colegio_activo) return null;
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <aside style={{ width: 240, background: 'var(--en-menu-lateral)', color: '#fff', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <strong style={{ fontFamily: 'var(--en-fuente-titulos)', fontSize: 20 }}>Edunova</strong>
-        <span style={{ fontSize: 14 }}>{estado.colegio_activo.nombre}</span>
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 14 }}>
-          {estado.usuario.nombres} {estado.usuario.apellidos}
-        </span>
-        <button type="button" onClick={salir} style={{ height: 36, borderRadius: 8, border: '1px solid #fff', background: 'transparent', color: '#fff', cursor: 'pointer' }}>
-          Cerrar sesión
-        </button>
-      </aside>
-      <main style={{ flex: 1, padding: 32, background: 'var(--en-tarjeta)' }}>
-        <h1>Hola, {estado.usuario.nombres}</h1>
-        <p style={{ color: 'var(--en-texto2)' }}>Las pantallas de cada módulo llegan con sus historias.</p>
-      </main>
-    </div>
-  );
+/** Enlace de invitación: ?invitacion=<token> (EDUN-36). */
+function tokenInvitacion(): string | null {
+  const t = new URLSearchParams(window.location.search).get('invitacion');
+  return t && /^[A-Za-z0-9]{48}$/.test(t) ? t : null;
 }
 
 function Contenido() {
-  const { cargando, estado } = useSesion();
+  const { cargando, estado, salir } = useSesion();
+  const [invitacion, setInvitacion] = useState(tokenInvitacion);
+
+  if (invitacion) {
+    return (
+      <PantallaInvitacion
+        token={invitacion}
+        alTerminar={() => {
+          window.history.replaceState(null, '', window.location.pathname);
+          setInvitacion(null);
+          // Si en este navegador había otra sesión abierta, el invitado ingresa con la suya.
+          if (estado) void salir();
+        }}
+      />
+    );
+  }
   if (cargando) return <p style={{ padding: 32 }}>Cargando…</p>;
-  if (!estado || !estado.colegio_activo) return <PantallaIngreso />;
-  return <Marco />;
+  if (!estado) return <PantallaIngreso />;
+  // EDUN-38 · Segundo factor antes de cualquier pantalla.
+  if (!sesionLista(estado)) return <PantallaDosPasos />;
+  if (estado.colegio_activo) return <Marco />;
+  // Staff de Edunova sin colegio: consola de la plataforma.
+  if (estado.roles_plataforma.length > 0 && estado.colegios.length === 0) return <Consola />;
+  return <PantallaIngreso />;
 }
 
 export default function App() {

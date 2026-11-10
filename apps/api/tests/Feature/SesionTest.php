@@ -89,8 +89,10 @@ it('con varios colegios debe elegir uno, y la sesión usa ese colegio', function
     $ids = $this->withToken($token)->getJson('/api/v1/alumnos')->assertOk()->json('data');
     expect(count($ids))->toBeGreaterThanOrEqual(8);
 
-    // En el otro colegio es directora, pero allí no hay alumnos.
+    // En el otro colegio es directora: primero el segundo factor (EDUN-38); allí no hay alumnos.
     $this->withToken($token)->postJson('/api/v1/auth/colegio', ['institucion_id' => $c['otro']])->assertOk();
+    $this->withToken($token)->getJson('/api/v1/alumnos')->assertForbidden()->assertJsonPath('codigo', 'dos_pasos');
+    verificarToken($token);
     expect($this->withToken($token)->getJson('/api/v1/alumnos')->assertOk()->json('data'))->toBe([]);
 });
 
@@ -105,6 +107,7 @@ it('no puede elegir un colegio al que no pertenece', function () {
 it('el token de un colegio no sirve con la cabecera de otro', function () {
     $c = usuarioDeDosColegios();
     $token = ingresar('29000001')->json('token');
+    verificarToken($token);
 
     // El token del director tiene fijado el colegio demo: la cabecera no lo cambia.
     $this->withToken($token)->getJson('/api/v1/alumnos', ['X-Institucion' => (string) $c['otro']])->assertOk();

@@ -4,6 +4,7 @@ namespace App\Modulos\SEG\Http\Middleware;
 
 use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\SEG\Services\Autorizacion;
+use App\Modulos\SEG\Services\DosPasos;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,13 @@ class IdentificarInstitucion
             $usuario = $request->user();
             if ($usuario && ! $this->autorizacion->esMiembro($usuario)) {
                 return response()->json(['message' => 'No perteneces a este colegio.'], 403);
+            }
+
+            // EDUN-38 · Promotor, director y tesorería (o quien activó el segundo factor)
+            // necesitan la sesión verificada con el código de la app autenticadora.
+            if ($usuario && ! DosPasos::verificado($usuario->currentAccessToken())
+                && ($usuario->dos_pasos_activo_at !== null || $this->autorizacion->tieneRol($usuario, ...DosPasos::ROLES_OBLIGATORIOS))) {
+                return response()->json(['message' => 'Confirma tu identidad con el segundo factor para continuar.', 'codigo' => 'dos_pasos'], 403);
             }
 
             return $next($request);

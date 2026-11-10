@@ -2,6 +2,8 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 
 /*
 | Ayudas compartidas por varias pruebas de la API (se cargan desde tests/Pest.php).
@@ -11,6 +13,28 @@ use Illuminate\Support\Facades\DB;
 function dueno()
 {
     return DB::connection('propietario');
+}
+
+/**
+ * Sesión de prueba (Sanctum::actingAs) con el segundo factor ya verificado (EDUN-38): los
+ * promotores, directores y tesoreros lo necesitan para las rutas del colegio.
+ */
+function actuarComo(User $usuario, bool $dosPasos = true, ?int $institucion = null): User
+{
+    Sanctum::actingAs($usuario);
+    $token = new PersonalAccessToken;
+    $token->forceFill(['dos_pasos_ok' => $dosPasos, 'institucion_id' => $institucion]);
+    $usuario->withAccessToken($token);
+
+    return $usuario;
+}
+
+/** Marca como verificada (segundo factor) la sesión de un token real. */
+function verificarToken(string $token): void
+{
+    dueno()->table('personal_access_tokens')->where('id', (int) explode('|', $token)[0])->update(['dos_pasos_ok' => true]);
+    // El guard guarda el usuario y su token entre peticiones de la misma prueba.
+    app('auth')->forgetGuards();
 }
 
 /** Cabeceras del servidor del sitio con la IP del visitante (SITIO_PROXY_SECRETO). */

@@ -15,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
  * pertenecer a varios colegios por medio de «membresias».
  */
 #[Fillable(['nombres', 'apellidos', 'tipo_documento', 'numero_documento', 'email', 'celular', 'password'])]
-#[Hidden(['password', 'dos_pasos_secreto'])]
+#[Hidden(['password', 'dos_pasos_secreto', 'dos_pasos_respaldo'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -31,6 +31,8 @@ class User extends Authenticatable
             'ultimo_acceso_at' => 'datetime',
             'es_staff_plataforma' => 'boolean',
             'activo' => 'boolean',
+            'dos_pasos_activo_at' => 'datetime',
+            'dos_pasos_respaldo' => 'array',
             'password' => 'hashed',
         ];
     }

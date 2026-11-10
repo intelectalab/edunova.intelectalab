@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\CabecerasSeguridad;
 use App\Http\Middleware\ContarErrores;
+use App\Modulos\PLA\Http\Middleware\AccesoPlataforma;
+use App\Modulos\PLA\Http\Middleware\VerificarModulo;
 use App\Modulos\SEG\Http\Middleware\IdentificarInstitucion;
 use App\Modulos\SEG\Http\Middleware\VerificarPermiso;
 use App\Modulos\SIT\Http\Middleware\AccesoCms;
@@ -32,6 +34,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'colegio' => IdentificarInstitucion::class,
             'permiso' => VerificarPermiso::class,
+            // EDUN-25 · Módulo encendido para el colegio (403 si está apagado).
+            'modulo' => VerificarModulo::class,
+            // Consola interna de Edunova: staff con segundo factor.
+            'plataforma' => AccesoPlataforma::class,
             // EDUN-226 · Panel CMS: solo superadmin; fija app.rol_cms y app.usuario_id.
             'cms' => AccesoCms::class,
             // Sprint 6 · IP y navegador del visitante en los formularios del sitio.
