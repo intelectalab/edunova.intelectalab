@@ -81,6 +81,13 @@ return [
         'adaptadores' => [],
     ],
 
+    // EDUN-60 / EDUN-68 · WhatsApp: costo por mensaje (lo define el contrato con el proveedor; 0 si no se configura).
+    'whatsapp' => [
+        'simular' => (bool) env('WHATSAPP_SIMULADO', true),
+        'adaptador' => env('WHATSAPP_ADAPTADOR'),
+        'costo_mensaje' => (float) env('WHATSAPP_COSTO_MENSAJE', 0),
+    ],
+
     // EDUN-196 · Notificaciones push de la app (Expo entrega por APNs y FCM).
     'expo' => [
         'push_url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),

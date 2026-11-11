@@ -5,6 +5,7 @@ namespace App\Modulos\PAG\Http\Controllers;
 use App\Modulos\PAG\Services\Caja;
 use App\Modulos\PAG\Services\Cobros;
 use App\Modulos\PAG\Services\Comprobantes;
+use App\Modulos\PAG\Services\Morosidad;
 use App\Modulos\PAG\Services\PagosEnLinea;
 use App\Modulos\SEG\Http\Controllers\FamiliaController;
 use App\Modulos\SEG\Models\Archivo;
@@ -247,5 +248,36 @@ class CobranzaController
         abort_unless($propio, 404);
 
         return response()->json(['url' => $almacen->urlTemporal(Archivo::query()->findOrFail($c->pdf_archivo_id))]);
+    }
+
+    // ── EDUN-81 · Morosidad
+
+    public function morosidad(Request $request, Morosidad $morosidad): JsonResponse
+    {
+        $tramo = $request->validate(['tramo' => ['nullable', Rule::in(array_keys(Morosidad::TRAMOS))]])['tramo'] ?? null;
+
+        return response()->json(['data' => $morosidad->familias($tramo), 'resumen' => $morosidad->resumen(), 'tramos' => Morosidad::TRAMOS]);
+    }
+
+    public function historialCobranza(int $apoderado, Morosidad $morosidad): JsonResponse
+    {
+        return response()->json($morosidad->historial($apoderado));
+    }
+
+    public function gestionCobranza(Request $request, int $apoderado, Morosidad $morosidad): JsonResponse
+    {
+        $d = $request->validate(['canal' => ['required', Rule::in(['llamada', 'whatsapp', 'correo', 'presencial'])], 'resultado' => ['required', 'string', 'max:200'],
+            'detalle' => ['nullable', 'string', 'max:2000'], 'monto' => ['nullable', 'numeric', 'gt:0'], 'fecha' => ['nullable', 'date_format:Y-m-d']],
+            ['resultado.required' => 'Indica el resultado del contacto.']);
+        $morosidad->registrarGestion($apoderado, $d['canal'], $d['resultado'], $d['detalle'] ?? null, isset($d['monto']) ? (float) $d['monto'] : null, $d['fecha'] ?? null, (int) $request->user()->id);
+
+        return response()->json($morosidad->historial($apoderado), 201);
+    }
+
+    public function recordatorioMasivo(Request $request, Morosidad $morosidad): JsonResponse
+    {
+        $d = $request->validate(['tramo' => ['nullable', Rule::in(array_keys(Morosidad::TRAMOS))], 'canales' => ['required', 'array', 'min:1'], 'canales.*' => [Rule::in(['app', 'whatsapp', 'correo'])]]);
+
+        return response()->json($morosidad->recordatorio($d['tramo'] ?? null, $d['canales'], (int) $request->user()->id));
     }
 }

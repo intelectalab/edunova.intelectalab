@@ -14,6 +14,9 @@ import { LibretasYActas } from '../cal/Libretas';
 import { AlertasRiesgo, AsistenciaDiaria, TutoriaAlumno } from '../cal/Seguimiento';
 import { MisNotas } from '../familia/MisNotas';
 import { Siagie } from '../sia/Siagie';
+import { Agenda, Bitacora, Comunicados, MisComunicados, Reclamos } from '../com/Comunicacion';
+import { Citas, Mensajes } from '../com/Mensajes';
+import { Morosidad } from '../pag/Morosidad';
 import { Caja } from '../pag/Caja';
 import { Comprobantes } from '../pag/Comprobantes';
 import { Pasarela } from '../pag/Pasarela';
@@ -186,11 +189,67 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <Pasarela />,
   },
   {
+    ruta: 'morosidad',
+    nombre: 'Morosidad',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.cobranza.ver'),
+    pantalla: () => <Morosidad />,
+  },
+  {
     ruta: 'facturacion',
     nombre: 'Facturación electrónica',
     grupo: 'Pagos',
     visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.comprobantes.ver'),
     pantalla: () => <ProveedoresFacturacion />,
+  },
+  {
+    ruta: 'comunicados',
+    nombre: 'Comunicados',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM') && puede(c, 'com.comunicados.ver'),
+    pantalla: () => <Comunicados />,
+  },
+  {
+    ruta: 'mensajes',
+    nombre: 'Mensajes',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM') && (c.roles.includes('apoderado') || puede(c, 'com.mensajes.ver')),
+    pantalla: () => <Mensajes />,
+  },
+  {
+    ruta: 'agenda',
+    nombre: 'Agenda',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM'),
+    pantalla: () => <Agenda />,
+  },
+  {
+    ruta: 'citas',
+    nombre: 'Citas',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM'),
+    pantalla: () => <Citas />,
+  },
+  {
+    ruta: 'reclamos',
+    nombre: 'Libro de reclamaciones',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM') && puede(c, 'com.reclamaciones.ver'),
+    pantalla: () => <Reclamos />,
+  },
+  {
+    ruta: 'bitacora',
+    nombre: 'Bitácora de avisos',
+    grupo: 'Comunicación',
+    visible: (c) => moduloActivo(c, 'COM') && puede(c, 'com.comunicados.ver'),
+    pantalla: () => <Bitacora />,
+  },
+  {
+    ruta: 'mis-comunicados',
+    nombre: 'Comunicados',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'COM'),
+    pantalla: () => <MisComunicados />,
   },
   {
     ruta: 'familia',

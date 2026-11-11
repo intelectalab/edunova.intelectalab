@@ -1,6 +1,8 @@
 <?php
 
 use App\Modulos\CAL\Services\Tutoria;
+use App\Modulos\COM\Services\Comunicados;
+use App\Modulos\COM\Services\LibroReclamaciones;
 use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
@@ -81,3 +83,27 @@ Artisan::command('cal:alertas', function () {
     $this->info("Alertas nuevas: {$total}");
 })->purpose('Evalúa las reglas de riesgo académico en cada colegio');
 Schedule::command('cal:alertas')->dailyAt('06:30')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-60 / EDUN-64 / EDUN-67 · Comunicados programados, recordatorio de eventos y reclamos por vencer.
+Artisan::command('com:programados', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('comunicados')->where('estado', 'programado')->where('programado_para', '<=', now())->distinct()->pluck('institucion_id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Comunicados::class)->enviarProgramados();
+        });
+    }
+    $this->info("Destinatarios: {$n}");
+})->purpose('Envía los comunicados programados que ya vencieron');
+Artisan::command('com:recordatorios', function () {
+    foreach (DB::connection('plataforma')->table('instituciones')->whereIn('estado', ['activo', 'implementacion'])->pluck('id') as $inst) {
+        DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+            app(Comunicados::class)->recordarEventos();
+            app(LibroReclamaciones::class)->alertarPorVencer();
+        });
+    }
+})->purpose('Recordatorio de eventos de mañana y reclamos por vencer');
+Schedule::command('com:programados')->everyMinute()->withoutOverlapping();
+Schedule::command('com:recordatorios')->dailyAt('08:00')->timezone('America/Lima')->withoutOverlapping();

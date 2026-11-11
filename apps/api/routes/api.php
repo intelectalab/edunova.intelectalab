@@ -11,6 +11,7 @@ use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
+use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
@@ -72,6 +73,10 @@ Route::prefix('auth')->group(function () {
 
 // EDUN-74 · Aviso de la pasarela del colegio (sin sesión: firma HMAC y token de la cuenta en la URL).
 Route::post('/pasarela/webhook/{token}', [CobranzaController::class, 'webhook'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:120,1');
+
+// EDUN-66 · Libro de reclamaciones del colegio (público, sin sesión; el colegio por su subdominio).
+Route::get('/colegios/{slug}/libro-reclamaciones', [ComunicacionController::class, 'colegioPublico'])->where('slug', '[a-z0-9-]{2,60}')->middleware('throttle:60,1');
+Route::post('/colegios/{slug}/libro-reclamaciones', [ComunicacionController::class, 'reclamoPublico'])->where('slug', '[a-z0-9-]{2,60}')->middleware('throttle:5,1');
 
 // EDUN-36 · Enlace de invitación (sin sesión, un solo uso).
 Route::prefix('invitaciones/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->middleware('throttle:ingreso')->group(function () {
@@ -276,6 +281,12 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::patch('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'resolverBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
         Route::delete('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'quitarBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
 
+        // EDUN-81 · Morosidad.
+        Route::get('/pagos/morosidad', [CobranzaController::class, 'morosidad'])->middleware('permiso:pag.cobranza.ver');
+        Route::get('/pagos/morosidad/{apoderado}', [CobranzaController::class, 'historialCobranza'])->whereNumber('apoderado')->middleware('permiso:pag.cobranza.ver');
+        Route::post('/pagos/morosidad/{apoderado}/gestiones', [CobranzaController::class, 'gestionCobranza'])->whereNumber('apoderado')->middleware('permiso:pag.cobranza.gestionar');
+        Route::post('/pagos/morosidad/recordatorio', [CobranzaController::class, 'recordatorioMasivo'])->middleware(['permiso:pag.cobranza.gestionar', 'throttle:5,1']);
+
         // EDUN-82 · Estado de cuenta de la familia.
         Route::get('/familia/estado-cuenta', [CobranzaController::class, 'estadoCuenta']);
 
@@ -374,6 +385,36 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/plantillas/lote', [SiagieController::class, 'lote'])->middleware(['permiso:sia.plantillas.generar', 'throttle:5,1']);
         Route::get('/mapeos/{grado}', [SiagieController::class, 'mapeo'])->whereNumber('grado')->middleware('permiso:sia.plantillas.validar');
         Route::put('/mapeos/{grado}', [SiagieController::class, 'guardarMapeo'])->whereNumber('grado')->middleware('permiso:sia.plantillas.validar');
+    });
+
+    // Sprint 21 · COM: comunicados, mensajería, agenda, citas, reclamos y bitácora.
+    Route::middleware('modulo:COM')->group(function () {
+        Route::get('/comunicados', [ComunicacionController::class, 'comunicados'])->middleware('permiso:com.comunicados.ver');
+        Route::post('/comunicados', [ComunicacionController::class, 'crearComunicado'])->middleware(['permiso:com.comunicados.enviar', 'throttle:20,1']);
+        Route::post('/comunicados/vista-previa', [ComunicacionController::class, 'vistaPrevia'])->middleware('permiso:com.comunicados.crear|com.comunicados.enviar');
+        Route::post('/comunicados/{comunicado}/anulacion', [ComunicacionController::class, 'anularComunicado'])->whereNumber('comunicado')->middleware('permiso:com.comunicados.enviar');
+        Route::get('/comunicados/{comunicado}/lectura', [ComunicacionController::class, 'lectura'])->whereNumber('comunicado')->middleware('permiso:com.comunicados.ver');
+        Route::post('/comunicados/{comunicado}/recordatorio', [ComunicacionController::class, 'recordarComunicado'])->whereNumber('comunicado')->middleware(['permiso:com.comunicados.enviar', 'throttle:5,1']);
+        Route::get('/familia/comunicados', [ComunicacionController::class, 'comunicadosFamilia']);
+        Route::post('/familia/comunicados/{destinatario}', [ComunicacionController::class, 'marcarComunicado'])->whereNumber('destinatario');
+
+        Route::get('/conversaciones', [ComunicacionController::class, 'conversaciones']);
+        Route::post('/conversaciones', [ComunicacionController::class, 'iniciarConversacion'])->middleware('throttle:20,1');
+        Route::get('/conversaciones/{conversacion}', [ComunicacionController::class, 'conversacion'])->whereNumber('conversacion');
+        Route::post('/conversaciones/{conversacion}/mensajes', [ComunicacionController::class, 'enviarMensaje'])->whereNumber('conversacion')->middleware('throttle:60,1');
+
+        Route::get('/agenda', [ComunicacionController::class, 'eventos']);
+        Route::post('/agenda', [ComunicacionController::class, 'guardarEvento'])->middleware('permiso:com.agenda.editar');
+        Route::put('/agenda/{evento}', [ComunicacionController::class, 'guardarEvento'])->whereNumber('evento')->middleware('permiso:com.agenda.editar');
+        Route::delete('/agenda/{evento}', [ComunicacionController::class, 'eliminarEvento'])->whereNumber('evento')->middleware('permiso:com.agenda.editar');
+
+        Route::get('/citas', [ComunicacionController::class, 'citas']);
+        Route::post('/citas', [ComunicacionController::class, 'solicitarCita'])->middleware('throttle:10,1');
+        Route::patch('/citas/{cita}', [ComunicacionController::class, 'gestionarCita'])->whereNumber('cita');
+
+        Route::get('/reclamos', [ComunicacionController::class, 'reclamos'])->middleware('permiso:com.reclamaciones.ver');
+        Route::post('/reclamos/{reclamo}/respuesta', [ComunicacionController::class, 'responderReclamo'])->whereNumber('reclamo')->middleware('permiso:com.reclamaciones.responder');
+        Route::get('/notificaciones/bitacora', [ComunicacionController::class, 'bitacora'])->middleware('permiso:com.comunicados.ver');
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.

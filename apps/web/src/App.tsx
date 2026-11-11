@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { LibroPublico } from './com/LibroPublico';
+import { slugLibro } from './com/libro';
 import { Marco } from './panel/Marco';
 import { Consola } from './pla/Consola';
 import { PantallaDosPasos } from './seg/PantallaDosPasos';
@@ -41,6 +43,9 @@ function Contenido() {
 }
 
 export default function App() {
+  // EDUN-66 · El libro de reclamaciones del colegio es público (sin sesión).
+  const libro = slugLibro();
+  if (libro) return <LibroPublico slug={libro} />;
   return (
     <ProveedorSesion>
       <Contenido />
