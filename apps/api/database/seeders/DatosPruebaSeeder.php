@@ -59,8 +59,15 @@ class DatosPruebaSeeder extends Seeder
 
         // Justificaciones pendientes de familias con cuenta.
         if (! $db->table('justificaciones_inasistencia')->where('institucion_id', $inst)->exists()) {
-            $faltas = $db->table('asistencias as x')->join('alumno_apoderado as aa', 'aa.alumno_id', '=', 'x.alumno_id')->join('apoderados as p', 'p.id', '=', 'aa.apoderado_id')
-                ->where('x.institucion_id', $inst)->where('x.estado', 'F')->whereNotNull('p.user_id')->orderByDesc('x.fecha')->limit(2)->get(['x.alumno_id', 'x.fecha', 'p.user_id']);
+            $conCuenta = fn () => $db->table('asistencias as x')->join('alumno_apoderado as aa', 'aa.alumno_id', '=', 'x.alumno_id')->join('apoderados as p', 'p.id', '=', 'aa.apoderado_id')
+                ->where('x.institucion_id', $inst)->whereNotNull('p.user_id')->where('x.fecha', '<', now()->toDateString());
+            $faltas = $conCuenta()->where('x.estado', 'F')->orderByDesc('x.fecha')->limit(2)->get(['x.alumno_id', 'x.fecha', 'p.user_id']);
+            if ($faltas->count() < 2) {
+                // Las familias con cuenta no tienen faltas: se marcan dos días recientes como falta para poder justificarlos.
+                $ids = $conCuenta()->where('x.estado', '<>', 'F')->orderByDesc('x.fecha')->limit(2 - $faltas->count())->pluck('x.id');
+                $db->table('asistencias')->whereIn('id', $ids)->update(['estado' => 'F', 'hora_registro' => null]);
+                $faltas = $conCuenta()->where('x.estado', 'F')->orderByDesc('x.fecha')->limit(2)->get(['x.alumno_id', 'x.fecha', 'p.user_id']);
+            }
             foreach ($faltas as $i => $f) {
                 $db->table('justificaciones_inasistencia')->insert(['institucion_id' => $inst, 'alumno_id' => $f->alumno_id, 'fecha_desde' => $f->fecha, 'fecha_hasta' => $f->fecha,
                     'motivo' => ['Tuvo fiebre; adjunto la receta en la próxima visita.', 'Cita médica con el pediatra.'][$i % 2], 'solicitado_por' => $f->user_id]);
@@ -70,8 +77,12 @@ class DatosPruebaSeeder extends Seeder
 
         // Pagos de la mitad de los cargos vencidos.
         if (! $db->table('pagos')->where('institucion_id', $inst)->exists()) {
-            $cargos = $db->table('cargos')->where('institucion_id', $inst)->whereIn('estado', ['pendiente', 'parcial'])->where('vencimiento', '<', now()->toDateString())
-                ->orderBy('id')->get(['id', 'monto', 'descuento', 'mora', 'pagado']);
+            $porPagar = fn () => $db->table('cargos')->where('institucion_id', $inst)->whereIn('estado', ['pendiente', 'parcial'])->orderBy('vencimiento')->orderBy('id');
+            $cargos = $porPagar()->where('vencimiento', '<', now()->toDateString())->get(['id', 'monto', 'descuento', 'mora', 'pagado']);
+            if ($cargos->isEmpty()) {
+                // Sin cargos vencidos (año escolar futuro): se pagan los próximos a vencer.
+                $cargos = $porPagar()->get(['id', 'monto', 'descuento', 'mora', 'pagado']);
+            }
             $pagados = 0;
             DB::transaction(function () use ($inst, $cargos, &$pagados) {
                 ContextoInstitucion::fijar($inst);
