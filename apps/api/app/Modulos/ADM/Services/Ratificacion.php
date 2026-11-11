@@ -7,6 +7,7 @@ use App\Modulos\PAG\Services\GeneradorCargos;
 use App\Modulos\SEG\Http\Controllers\FamiliaController;
 use App\Modulos\SEG\Services\Auditoria;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -142,5 +143,43 @@ class Ratificacion
             app(GeneradorCargos::class)->generar((int) $m);
             Admision::alMatricular((int) DB::table('matriculas')->where('id', $m)->value('alumno_id'));
         }
+    }
+
+    /**
+     * Lo llama Cobros al anular un pago: si la matrícula de una ratificación hecha en la app se
+     * confirmó con ese pago y el cargo de matrícula vuelve a deberse, la matrícula regresa a
+     * «reservado» y se quitan las pensiones que se generaron al confirmarla. Si alguna de esas
+     * pensiones ya tiene movimientos (pagos, comprobantes, convenios…), no se toca nada y queda en
+     * el registro para que lo vea tesorería.
+     *
+     * @param  int[]  $cargoIds
+     * @return int[] matrículas que volvieron a «reservado»
+     */
+    public static function alAnular(array $cargoIds): array
+    {
+        $candidatas = DB::table('cargos as c')->join('matriculas as m', 'm.id', '=', 'c.matricula_id')->join('conceptos_cobro as cp', 'cp.id', '=', 'c.concepto_cobro_id')
+            ->whereIn('c.id', $cargoIds)->whereIn('c.estado', ['pendiente', 'parcial'])->where('cp.tipo', 'matricula')
+            ->where('m.estado', 'matriculado')->where('m.tipo', 'ratificacion')
+            ->whereExists(fn ($q) => $q->from('auditoria as a')->whereColumn('a.registro_id', 'm.id')->where('a.tabla', 'matriculas')->where('a.accion', 'matricula_ratificada'))
+            ->get(['m.id as matricula_id', 'c.id as cargo_id']);
+        $revertidas = [];
+        foreach ($candidatas as $c) {
+            $pensiones = DB::table('cargos')->where('matricula_id', $c->matricula_id)->where('id', '<>', $c->cargo_id)->pluck('id');
+            $conMovimientos = DB::table('cargos')->whereIn('id', $pensiones)->where(fn ($q) => $q->where('pagado', '>', 0)->orWhere('estado', '<>', 'pendiente'))->exists();
+            foreach (['pago_aplicaciones', 'comprobante_items', 'recaudacion_lineas', 'convenio_cargos', 'tramites', 'com_consumos', 'tienda_pedidos'] as $tabla) {
+                $conMovimientos = $conMovimientos || DB::table($tabla)->whereIn('cargo_id', $pensiones)->exists();
+            }
+            if ($conMovimientos) {
+                Log::warning('Pago de matrícula anulado: la ratificación sigue confirmada porque sus pensiones ya tienen movimientos.', ['matricula_id' => $c->matricula_id]);
+
+                continue;
+            }
+            DB::table('cargos')->whereIn('id', $pensiones)->delete();
+            DB::table('matriculas')->where('id', $c->matricula_id)->update(['estado' => 'reservado']);
+            app(Auditoria::class)->registrar('matricula_reservada_por_anulacion', 'matriculas', (int) $c->matricula_id, ['estado' => 'matriculado'], ['estado' => 'reservado', 'pensiones_quitadas' => $pensiones->count()]);
+            $revertidas[] = (int) $c->matricula_id;
+        }
+
+        return $revertidas;
     }
 }

@@ -187,6 +187,25 @@ it('el apoderado ratifica la matrícula del año siguiente, paga la matrícula y
         ->and($db->table('cargos')->where('matricula_id', $r->json('matricula_id'))->count())->toBe(2);
     $this->get('/api/v1/familia/constancias/'.$r->json('matricula_id'), ['X-Institucion' => (string) demoId()])->assertOk()->assertHeader('Content-Type', 'application/pdf');
     enDemo(familiaOtraS18(), 'GET', '/familia/constancias/'.$r->json('matricula_id'))->assertNotFound();
+
+    // Se anula ese pago: la matrícula vuelve a reserva y se quitan las pensiones generadas.
+    $pago = (int) $db->table('pago_aplicaciones')->where('cargo_id', $r->json('cargo_id'))->value('pago_id');
+    DB::transaction(function () use ($pago) {
+        ContextoInstitucion::fijar(demoId());
+        app(Cobros::class)->anular($pago, 'Yape rechazado por el banco', null);
+    });
+    expect($db->table('matriculas')->find($r->json('matricula_id'))->estado)->toBe('reservado')
+        ->and($db->table('cargos')->where('matricula_id', $r->json('matricula_id'))->pluck('id')->all())->toBe([$r->json('cargo_id')])
+        ->and($db->table('cargos')->find($r->json('cargo_id'))->estado)->toBe('pendiente');
+    enDemo($familia, 'GET', '/familia/constancias/'.$r->json('matricula_id'))->assertNotFound();
+
+    // Al volver a pagarla se confirma otra vez con sus pensiones.
+    DB::transaction(function () use ($r) {
+        ContextoInstitucion::fijar(demoId());
+        app(Cobros::class)->registrar([['id' => $r->json('cargo_id'), 'monto' => 300]], [], ['medio' => 'efectivo'], null);
+    });
+    expect($db->table('matriculas')->find($r->json('matricula_id'))->estado)->toBe('matriculado')
+        ->and($db->table('cargos')->where('matricula_id', $r->json('matricula_id'))->count())->toBe(2);
 });
 
 function familiaOtraS18(): User

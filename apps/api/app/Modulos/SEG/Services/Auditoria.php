@@ -88,6 +88,7 @@ class Auditoria
         'pasarela_fallo_prueba' => 'Prueba de la pasarela fallida',
         'pago_en_linea_confirmado' => 'Pago en línea confirmado',
         'matricula_ratificada' => 'Matrícula ratificada por la familia',
+        'matricula_reservada_por_anulacion' => 'Matrícula vuelve a reserva (se anuló el pago de matrícula)',
         'recordatorio_notas' => 'Recordatorio de notas pendientes',
         'seccion_cerrada' => 'Sección cerrada en el periodo',
         'periodo_cerrado' => 'Periodo cerrado',
