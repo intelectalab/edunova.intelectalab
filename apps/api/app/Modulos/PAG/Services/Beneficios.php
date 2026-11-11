@@ -24,7 +24,7 @@ class Beneficios
 
     public function tipos(): array
     {
-        return DB::table('beneficios')->orderByDesc('activo')->orderBy('nombre')->get()->map(fn ($b) => (array) $b + ['valor' => (float) $b->valor])->all();
+        return DB::table('beneficios')->orderByDesc('activo')->orderBy('nombre')->get()->map(fn ($b) => array_merge((array) $b, ['valor' => (float) $b->valor]))->all();
     }
 
     public function guardarTipo(array $d, ?int $id = null): int
@@ -61,7 +61,7 @@ class Beneficios
                 'b.nombre as beneficio', 'b.tipo', 'b.valor', 'b.aplica_a', 'f.nombre_original as sustento',
                 DB::raw("a.apellido_paterno || ' ' || coalesce(a.apellido_materno, '') || ', ' || a.nombres as alumno"),
                 DB::raw("s.nombres || ' ' || s.apellidos as solicitado_por"), DB::raw("u.nombres || ' ' || u.apellidos as aprobado_por"),
-            ])->map(fn ($f) => (array) $f + ['valor' => (float) $f->valor])->all();
+            ])->map(fn ($f) => array_merge((array) $f, ['valor' => (float) $f->valor]))->all();
     }
 
     /** @return array{id: int, estado: string, recalculados: int} */

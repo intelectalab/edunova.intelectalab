@@ -68,6 +68,17 @@ return [
     // EDUN-90 · Proveedores de facturación electrónica: «codigo:Nombre,codigo:Nombre».
     'facturacion' => [
         'proveedores' => env('FACTURACION_PROVEEDORES', 'proveedor_a:Proveedor A,proveedor_b:Proveedor B'),
+        // Mientras no haya conector real, los comprobantes se emiten con el proveedor simulado.
+        'simular' => (bool) env('FACTURACION_SIMULADA', true),
+        // código del proveedor => clase que implementa App\Modulos\PAG\Facturacion\ProveedorFacturacion
+        'adaptadores' => [],
+    ],
+
+    // EDUN-88 · Pasarela de pagos: cada colegio cobra con su propia cuenta. Sin conector real
+    // (o en el servidor de pruebas) se usa la pasarela simulada, con el mismo webhook firmado.
+    'pasarela' => [
+        'simular' => (bool) env('PASARELA_SIMULADA', true),
+        'adaptadores' => [],
     ],
 
     // EDUN-196 · Notificaciones push de la app (Expo entrega por APNs y FCM).

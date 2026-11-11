@@ -11,6 +11,7 @@ use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
+use App\Modulos\PAG\Http\Controllers\CobranzaController;
 use App\Modulos\PAG\Http\Controllers\ConfiguracionPagosController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
@@ -65,6 +66,9 @@ Route::prefix('auth')->group(function () {
         });
     });
 });
+
+// EDUN-74 · Aviso de la pasarela del colegio (sin sesión: firma HMAC y token de la cuenta en la URL).
+Route::post('/pasarela/webhook/{token}', [CobranzaController::class, 'webhook'])->where('token', '[A-Za-z0-9]{20,64}')->middleware('throttle:120,1');
 
 // EDUN-36 · Enlace de invitación (sin sesión, un solo uso).
 Route::prefix('invitaciones/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->middleware('throttle:ingreso')->group(function () {
@@ -264,6 +268,36 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/pagos/beneficios/asignaciones', [ConfiguracionPagosController::class, 'asignarBeneficio'])->middleware('permiso:pag.conceptos.editar|pag.beneficios.aprobar');
         Route::patch('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'resolverBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
         Route::delete('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'quitarBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
+
+        // EDUN-75 / EDUN-76 · Caja.
+        Route::get('/pagos/caja', [CobranzaController::class, 'caja'])->middleware('permiso:pag.caja.ver|pag.caja.abrir');
+        Route::post('/pagos/cajas', [CobranzaController::class, 'crearCaja'])->middleware('permiso:pag.conceptos.editar');
+        Route::post('/pagos/caja/abrir', [CobranzaController::class, 'abrir'])->middleware('permiso:pag.caja.abrir');
+        Route::get('/pagos/caja/buscar', [CobranzaController::class, 'buscar'])->middleware('permiso:pag.pagos.registrar');
+        Route::post('/pagos/caja/cobros', [CobranzaController::class, 'cobrar'])->middleware(['permiso:pag.pagos.registrar', 'throttle:60,1']);
+        Route::post('/pagos/caja/cerrar', [CobranzaController::class, 'cerrar'])->middleware('permiso:pag.caja.cerrar');
+        Route::get('/pagos/caja/sesiones/{sesion}/pdf', [CobranzaController::class, 'reporteCaja'])->whereNumber('sesion')->middleware('permiso:pag.caja.ver|pag.caja.cerrar');
+
+        // EDUN-77 / EDUN-78 · Comprobantes electrónicos y notas de crédito.
+        Route::get('/pagos/comprobantes', [CobranzaController::class, 'comprobantes'])->middleware('permiso:pag.comprobantes.ver');
+        Route::get('/pagos/comprobantes/{comprobante}/{formato}', [CobranzaController::class, 'archivoComprobante'])->whereNumber('comprobante')->whereIn('formato', ['pdf', 'xml'])->middleware('permiso:pag.comprobantes.ver');
+        Route::post('/pagos/comprobantes/{comprobante}/reenvio', [CobranzaController::class, 'reenviar'])->whereNumber('comprobante')->middleware('permiso:pag.comprobantes.reenviar');
+        Route::post('/pagos/comprobantes/{comprobante}/correo', [CobranzaController::class, 'enviarCorreo'])->whereNumber('comprobante')->middleware(['permiso:pag.comprobantes.reenviar', 'throttle:20,1']);
+        Route::post('/pagos/comprobantes/{comprobante}/nota-credito', [CobranzaController::class, 'notaCredito'])->whereNumber('comprobante')->middleware('permiso:pag.comprobantes.anular');
+        Route::post('/pagos/comprobantes/{comprobante}/anulacion', [CobranzaController::class, 'anular'])->whereNumber('comprobante')->middleware('permiso:pag.comprobantes.anular');
+
+        // EDUN-88 · Cuenta propia del colegio en la pasarela.
+        Route::get('/pagos/pasarela', [CobranzaController::class, 'pasarela'])->middleware('permiso:pag.pasarela.ver');
+        Route::post('/pagos/pasarela', [CobranzaController::class, 'guardarPasarela'])->middleware('permiso:pag.pasarela.configurar');
+        Route::put('/pagos/pasarela/{cuenta}', [CobranzaController::class, 'guardarPasarela'])->whereNumber('cuenta')->middleware('permiso:pag.pasarela.configurar');
+        Route::post('/pagos/pasarela/{cuenta}/prueba', [CobranzaController::class, 'probarPasarela'])->whereNumber('cuenta')->middleware(['permiso:pag.pasarela.configurar', 'throttle:10,1']);
+
+        // EDUN-73 · La familia paga en línea (por propiedad: solo cargos de sus hijos).
+        Route::get('/familia/pagos', [CobranzaController::class, 'misPagos']);
+        Route::post('/familia/pagos/ordenes', [CobranzaController::class, 'crearOrden'])->middleware('throttle:20,1');
+        Route::get('/familia/pagos/ordenes/{orden}', [CobranzaController::class, 'orden'])->where('orden', '[A-Za-z0-9-]{8,60}');
+        Route::post('/familia/pagos/ordenes/{orden}/simulacion', [CobranzaController::class, 'simular'])->where('orden', '[A-Za-z0-9-]{8,60}')->middleware('throttle:20,1');
+        Route::get('/familia/comprobantes/{comprobante}', [CobranzaController::class, 'miComprobante'])->whereNumber('comprobante');
 
         // EDUN-90 · Proveedores de facturación electrónica.
         Route::get('/pagos/proveedores-facturacion', [ConfiguracionPagosController::class, 'proveedores'])->middleware('permiso:pag.comprobantes.ver');

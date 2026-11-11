@@ -30,7 +30,7 @@ class ConfiguracionCobros
     public function conceptos(): array
     {
         return DB::table('conceptos_cobro')->orderByRaw("array_position(array['cuota_ingreso','matricula','pension','servicio','tramite','otro']::varchar[], tipo)")
-            ->orderBy('nombre')->get()->map(fn ($c) => (array) $c + ['monto' => (float) $c->monto])->all();
+            ->orderBy('nombre')->get()->map(fn ($c) => array_merge((array) $c, ['monto' => (float) $c->monto]))->all();
     }
 
     public function guardarConcepto(array $d, ?int $id = null): int

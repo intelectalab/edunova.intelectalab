@@ -62,6 +62,20 @@ class AlmacenArchivos
         ]);
     }
 
+    /** Guarda un contenido generado por el sistema (XML, PDF) como archivo del colegio activo. */
+    public function guardarContenido(string $contenido, string $nombre, string $mime, ?int $usuarioId = null, bool $confidencial = false): Archivo
+    {
+        $institucionId = ContextoInstitucion::requerido();
+        $extension = strtolower(pathinfo($nombre, PATHINFO_EXTENSION) ?: 'bin');
+        $ruta = sprintf('%d/%s/%s.%s', $institucionId, now()->format('Y/m'), Str::uuid7(), $extension);
+        Storage::disk(self::DISCO)->put($ruta, $contenido);
+
+        return Archivo::create([
+            'institucion_id' => $institucionId, 'disco' => self::DISCO, 'ruta' => $ruta, 'nombre_original' => Str::limit($nombre, 250, ''),
+            'mime' => $mime, 'bytes' => strlen($contenido), 'sha256' => hash('sha256', $contenido), 'subido_por' => $usuarioId, 'confidencial' => $confidencial,
+        ]);
+    }
+
     /** URL firmada de descarga, válida por config('edunova.archivos.url_minutos') (5 por defecto). */
     public function urlTemporal(Archivo $archivo): string
     {

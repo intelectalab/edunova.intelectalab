@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
 import { colorDeMarca, iniciales, textoSobre } from './marca';
@@ -112,6 +112,52 @@ export function ElegirColegio({ estado, alElegir, alSalir }: { estado: EstadoSes
   );
 }
 
+type CargoApp = { id: number; alumno: string; descripcion: string; vencimiento: string; saldo: number; vencido: boolean };
+type PagosFamilia = { cargos: CargoApp[]; en_linea: { medios: string[] } | null };
+
+const soles = (n: number) => `S/ ${n.toFixed(2)}`;
+
+/** EDUN-73 · Pagar en línea desde la app: elige cargos emitidos y abre la pasarela del colegio. */
+function PagosApp({ api, color }: { api: Cliente; color: string }) {
+  const [datos, setDatos] = useState<PagosFamilia | null>(null);
+  const [elegidos, setElegidos] = useState<number[]>([]);
+  const envio = useEnvio();
+  useEffect(() => {
+    let vivo = true;
+    api.pedir<PagosFamilia>('/familia/pagos').then((r) => vivo && setDatos(r)).catch(() => vivo && setDatos({ cargos: [], en_linea: null }));
+    return () => {
+      vivo = false;
+    };
+  }, [api]);
+  if (!datos) return <Text style={estilos.subtitulo}>Cargando…</Text>;
+  if (!datos.cargos.length) return <Text style={estilos.subtitulo}>No tienes cuotas pendientes.</Text>;
+  const total = datos.cargos.filter((c) => elegidos.includes(c.id)).reduce((s, c) => s + c.saldo, 0);
+  return (
+    <>
+      {datos.cargos.map((c) => (
+        <View key={c.id} style={estilos.fila}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, color: colores.texto }}>{c.descripcion}</Text>
+            <Text style={{ color: c.vencido ? colores.error : colores.suave }}>{c.alumno} · vence {c.vencimiento} · {soles(c.saldo)}</Text>
+          </View>
+          {datos.en_linea && (
+            <Switch accessibilityLabel={`Pagar ${c.descripcion}`} value={elegidos.includes(c.id)} trackColor={{ true: color }}
+              onValueChange={(v) => setElegidos(v ? [...elegidos, c.id] : elegidos.filter((x) => x !== c.id))} />
+          )}
+        </View>
+      ))}
+      {datos.en_linea ? (
+        <Boton titulo={`Pagar ${soles(total)}`} color={color} deshabilitado={!elegidos.length} cargando={envio.enviando}
+          alPulsar={() => envio.ejecutar(async () => {
+            const r = await api.pedir<{ url: string }>('/familia/pagos/ordenes', { metodo: 'POST', cuerpo: { cargos: elegidos } });
+            await Linking.openURL(r.url);
+          })} />
+      ) : <Text style={estilos.subtitulo}>El colegio aún no tiene pagos en línea.</Text>}
+      <MensajeError>{envio.error}</MensajeError>
+    </>
+  );
+}
+
 type Preferencia = { tipo: string; nombre: string; push: boolean };
 
 function Preferencias({ api, color }: { api: Cliente; color: string }) {
@@ -165,9 +211,15 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
       <ScrollView contentContainerStyle={estilos.contenido}>
         {aviso && <Tarjeta><Text style={{ color: colores.texto }}>{aviso}</Text></Tarjeta>}
         {colegio.estado === 'suspendido' && <MensajeError>El acceso del colegio está pausado. Comunícate con el colegio.</MensajeError>}
+        {colegio.roles.includes('apoderado') && (
+          <Tarjeta>
+            <Text style={estilos.etiqueta}>Mis pagos</Text>
+            <PagosApp api={api} color={color} />
+          </Tarjeta>
+        )}
         <Tarjeta>
           <Text style={estilos.etiqueta}>Pronto en la app</Text>
-          <Text style={estilos.subtitulo}>Pagos, notas, asistencia, comunicados y tareas llegarán en las próximas versiones. Mientras tanto, te avisaremos aquí.</Text>
+          <Text style={estilos.subtitulo}>Notas, asistencia, comunicados y tareas llegarán en las próximas versiones. Mientras tanto, te avisaremos aquí.</Text>
         </Tarjeta>
         <Tarjeta>
           <Text style={[estilos.etiqueta, enfocar !== 'inicio' && { color }]}>Notificaciones</Text>

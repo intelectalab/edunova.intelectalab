@@ -6,6 +6,10 @@ import { Configuracion } from '../adm/Configuracion';
 import { Horarios } from '../adm/Horarios';
 import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
 import { MisHijos } from '../familia/MisHijos';
+import { MisPagos, PagoSimulado } from '../familia/MisPagos';
+import { Caja } from '../pag/Caja';
+import { Comprobantes } from '../pag/Comprobantes';
+import { Pasarela } from '../pag/Pasarela';
 import { Beneficios } from '../pag/Beneficios';
 import { ConceptosYCronogramas } from '../pag/Conceptos';
 import { ProveedoresFacturacion } from '../pag/Facturacion';
@@ -20,7 +24,7 @@ import { estiloMarca, useRuta } from './ruta';
 import { NOMBRE_ROL, useImagenApi } from './utilidades';
 import './panel.css';
 
-type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode };
+type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode; oculta?: boolean };
 
 /** Menú de la web de gestión: cada opción aparece solo con su permiso y su módulo encendido (EDUN-25). */
 const PAGINAS: Pagina[] = [
@@ -91,6 +95,20 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <PendientesSiagie />,
   },
   {
+    ruta: 'caja',
+    nombre: 'Caja',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.caja.ver', 'pag.caja.abrir'),
+    pantalla: () => <Caja />,
+  },
+  {
+    ruta: 'comprobantes',
+    nombre: 'Comprobantes',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.comprobantes.ver'),
+    pantalla: () => <Comprobantes />,
+  },
+  {
     ruta: 'conceptos',
     nombre: 'Conceptos y cronogramas',
     grupo: 'Pagos',
@@ -103,6 +121,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Pagos',
     visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.conceptos.ver', 'pag.beneficios.aprobar'),
     pantalla: () => <Beneficios />,
+  },
+  {
+    ruta: 'pasarela',
+    nombre: 'Pagos en línea',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.pasarela.ver'),
+    pantalla: () => <Pasarela />,
   },
   {
     ruta: 'facturacion',
@@ -119,6 +144,21 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <MisHijos />,
   },
   {
+    ruta: 'mis-pagos',
+    nombre: 'Mis pagos',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'PAG'),
+    pantalla: () => <MisPagos />,
+  },
+  {
+    ruta: 'pago-simulado',
+    nombre: 'Pago en línea',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado'),
+    pantalla: () => <PagoSimulado orden={decodeURIComponent(window.location.hash.split('/')[2] ?? '')} />,
+    oculta: true,
+  },
+  {
     ruta: 'moodle',
     nombre: 'Moodle',
     grupo: 'Aula virtual',
@@ -132,7 +172,7 @@ const PAGINAS: Pagina[] = [
 function Inicio() {
   const { estado } = useSesion();
   const colegio = estado!.colegio_activo!;
-  const accesos = PAGINAS.filter((p) => p.ruta !== 'inicio' && p.visible(colegio));
+  const accesos = PAGINAS.filter((p) => p.ruta !== 'inicio' && !p.oculta && p.visible(colegio));
   return (
     <>
       <div className="titulo">
@@ -168,7 +208,7 @@ export function Marco() {
   const logo = useImagenApi('/institucion/logo', colegio.marca?.tiene_logo ?? false, JSON.stringify(colegio.marca));
   const visibles = PAGINAS.filter((p) => p.visible(colegio));
   const actual = visibles.find((p) => p.ruta === ruta) ?? visibles[0];
-  const grupos = [...new Set(visibles.map((p) => p.grupo))];
+  const grupos = [...new Set(visibles.filter((p) => !p.oculta).map((p) => p.grupo))];
 
   return (
     <div className="marco" style={estiloMarca(colegio.marca?.color_primario)}>
@@ -188,7 +228,7 @@ export function Marco() {
             <div key={g}>
               <div className="lateral-grupo">{g}</div>
               {visibles
-                .filter((p) => p.grupo === g)
+                .filter((p) => p.grupo === g && !p.oculta)
                 .map((p) => (
                   <a key={p.ruta} href={`#/${p.ruta}`} aria-current={actual.ruta === p.ruta ? 'page' : undefined} onClick={() => setAbierto(false)}>
                     {p.nombre}
