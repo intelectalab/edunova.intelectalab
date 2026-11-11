@@ -9,6 +9,7 @@ use App\Modulos\ADM\Http\Controllers\InstitucionController;
 use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
+use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
@@ -92,6 +93,10 @@ Route::middleware(['auth:sanctum', 'plataforma'])->prefix('plataforma')->group(f
     // EDUN-212 · Lista de implementación.
     Route::get('/instituciones/{institucion}/checklist', [OperacionController::class, 'checklist'])->whereNumber('institucion');
     Route::middleware('plataforma:superadmin')->group(function () {
+        // EDUN-27 · Cobro mensual de Edunova a los colegios (solo superadmin).
+        Route::get('/cobro-mensual', [OperacionController::class, 'cobroMensual']);
+        Route::post('/cobro-mensual', [OperacionController::class, 'emitirCobroMensual'])->middleware('throttle:5,1');
+        Route::patch('/facturas-saas/{factura}', [OperacionController::class, 'marcarFacturaSaas'])->whereNumber('factura');
         Route::post('/instituciones', [InstitucionesPlataformaController::class, 'store'])->middleware('throttle:20,1');
         Route::put('/instituciones/{institucion}/modulos/{modulo}', [InstitucionesPlataformaController::class, 'modulo'])->whereNumber('institucion')->where('modulo', '[A-Za-z]{2,10}');
         Route::put('/instituciones/{institucion}/aula', [InstitucionesPlataformaController::class, 'aula'])->whereNumber('institucion');
@@ -269,6 +274,9 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::patch('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'resolverBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
         Route::delete('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'quitarBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
 
+        // EDUN-82 · Estado de cuenta de la familia.
+        Route::get('/familia/estado-cuenta', [CobranzaController::class, 'estadoCuenta']);
+
         // EDUN-75 / EDUN-76 · Caja.
         Route::get('/pagos/caja', [CobranzaController::class, 'caja'])->middleware('permiso:pag.caja.ver|pag.caja.abrir');
         Route::post('/pagos/cajas', [CobranzaController::class, 'crearCaja'])->middleware('permiso:pag.conceptos.editar');
@@ -303,6 +311,28 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/pagos/proveedores-facturacion', [ConfiguracionPagosController::class, 'proveedores'])->middleware('permiso:pag.comprobantes.ver');
         Route::post('/pagos/proveedores-facturacion', [ConfiguracionPagosController::class, 'guardarProveedor'])->middleware('permiso:pag.comprobantes.emitir');
         Route::put('/pagos/proveedores-facturacion/{proveedor}', [ConfiguracionPagosController::class, 'guardarProveedor'])->whereNumber('proveedor')->middleware('permiso:pag.comprobantes.emitir');
+    });
+
+    // EDUN-55 · Ratificación de matrícula desde la app (por propiedad).
+    Route::middleware('modulo:ADM')->group(function () {
+        Route::get('/familia/ratificacion', [FamiliaController::class, 'ratificacion']);
+        Route::post('/familia/ratificacion', [FamiliaController::class, 'ratificar'])->middleware('throttle:20,1');
+        Route::get('/familia/constancias/{matricula}', [FamiliaController::class, 'constancia'])->whereNumber('matricula')->middleware('throttle:20,1');
+    });
+
+    // Sprint 18 · CAL: notas por competencia, actividades, cierre y reapertura.
+    Route::middleware('modulo:CAL')->group(function () {
+        Route::get('/notas/cargas', [NotasController::class, 'cargas'])->middleware('permiso:cal.notas.ver|cal.notas.registrar');
+        Route::get('/notas/cargas/{carga}', [NotasController::class, 'grilla'])->whereNumber('carga')->middleware('permiso:cal.notas.ver|cal.notas.registrar');
+        Route::put('/notas/cargas/{carga}/celda', [NotasController::class, 'guardar'])->whereNumber('carga')->middleware(['permiso:cal.notas.registrar', 'throttle:300,1']);
+        Route::get('/notas/cargas/{carga}/actividades', [NotasController::class, 'actividades'])->whereNumber('carga')->middleware('permiso:cal.notas.ver|cal.notas.registrar');
+        Route::post('/notas/cargas/{carga}/actividades', [NotasController::class, 'crearActividad'])->whereNumber('carga')->middleware('permiso:cal.notas.registrar');
+        Route::put('/notas/actividades/{actividad}/notas', [NotasController::class, 'notasActividad'])->whereNumber('actividad')->middleware('permiso:cal.notas.registrar');
+        Route::delete('/notas/actividades/{actividad}', [NotasController::class, 'eliminarActividad'])->whereNumber('actividad')->middleware('permiso:cal.notas.registrar');
+        Route::get('/notas/periodos/{periodo}/avance', [NotasController::class, 'avance'])->whereNumber('periodo')->middleware('permiso:cal.notas.revisar');
+        Route::post('/notas/periodos/{periodo}/recordatorio', [NotasController::class, 'recordar'])->whereNumber('periodo')->middleware(['permiso:cal.notas.revisar', 'throttle:5,1']);
+        Route::post('/notas/periodos/{periodo}/cierre', [NotasController::class, 'cerrar'])->whereNumber('periodo')->middleware('permiso:cal.notas.cerrar');
+        Route::post('/notas/periodos/{periodo}/reapertura', [NotasController::class, 'reabrir'])->whereNumber('periodo')->middleware('permiso:cal.notas.reabrir');
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.

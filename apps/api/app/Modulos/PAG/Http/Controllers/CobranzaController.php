@@ -211,6 +211,33 @@ class CobranzaController
         return response()->json(['estado' => $r['estado'], 'orden' => $this->enLinea->transaccion($orden)]);
     }
 
+    /** EDUN-82 · Estado de cuenta por hijo: cargos del año, próximo vencimiento y comprobantes. */
+    public function estadoCuenta(Request $request): JsonResponse
+    {
+        $hijos = FamiliaController::alumnosDe((int) $request->user()->id);
+        $hoy = now()->toDateString();
+        $cargos = DB::table('cargos as c')->join('alumnos as a', 'a.id', '=', 'c.alumno_id')->whereIn('c.alumno_id', $hijos)->where('c.estado', '<>', 'anulado')
+            ->where('c.vencimiento', '>=', now()->subYear()->startOfYear()->toDateString())->orderBy('c.vencimiento')
+            ->get(['c.id', 'c.alumno_id', 'a.nombres as alumno', 'c.descripcion', 'c.emision', 'c.vencimiento', 'c.monto', 'c.descuento', 'c.pagado', 'c.estado',
+                DB::raw(Cobros::saldoSql().' as saldo')])
+            ->map(fn ($c) => array_merge((array) $c, ['monto' => (float) $c->monto, 'descuento' => (float) $c->descuento, 'pagado' => (float) $c->pagado, 'saldo' => (float) $c->saldo,
+                'vencido' => in_array($c->estado, ['pendiente', 'parcial'], true) && $c->vencimiento < $hoy]));
+        $comprobantes = $this->misPagos($request)->getData(true)['comprobantes'];
+        $porHijo = $cargos->groupBy('alumno_id')->map(function ($g, $id) use ($hoy) {
+            $pendientes = $g->whereIn('estado', ['pendiente', 'parcial']);
+            $proximo = $pendientes->filter(fn ($c) => $c['vencimiento'] >= $hoy)->sortBy('vencimiento')->first();
+
+            return [
+                'alumno_id' => (int) $id, 'alumno' => $g->first()['alumno'], 'deuda_vencida' => round($pendientes->where('vencido', true)->sum('saldo'), 2),
+                'por_vencer' => round($pendientes->where('vencido', false)->sum('saldo'), 2),
+                'proximo' => $proximo ? ['descripcion' => $proximo['descripcion'], 'vencimiento' => $proximo['vencimiento'], 'saldo' => $proximo['saldo']] : null,
+                'cargos' => $g->values()->all(),
+            ];
+        })->values();
+
+        return response()->json(['hijos' => $porHijo, 'comprobantes' => $comprobantes]);
+    }
+
     public function miComprobante(Request $request, int $comprobante, AlmacenArchivos $almacen): JsonResponse
     {
         $hijos = FamiliaController::alumnosDe((int) $request->user()->id);

@@ -2,6 +2,7 @@
 
 namespace App\Modulos\PAG\Services;
 
+use App\Modulos\ADM\Services\Ratificacion;
 use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\SEG\Services\Auditoria;
 use Illuminate\Support\Facades\DB;
@@ -93,6 +94,8 @@ class Cobros
             ]);
         }
         $this->auditoria->registrar('pago_registrado', 'pagos', $pago, null, ['monto' => $total, 'medio' => $medio, 'cargos' => $ids]);
+        // EDUN-55 · Pagar la matrícula de una ratificación la confirma.
+        Ratificacion::alPagar($ids);
 
         return $pago;
     }

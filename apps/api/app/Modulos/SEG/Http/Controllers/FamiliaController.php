@@ -4,11 +4,14 @@ namespace App\Modulos\SEG\Http\Controllers;
 
 use App\Modulos\ADM\Services\Carnes;
 use App\Modulos\ADM\Services\CondicionesEconomicas;
+use App\Modulos\ADM\Services\Matriculas;
+use App\Modulos\ADM\Services\Ratificacion;
 use App\Modulos\SEG\Services\Consentimientos;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * /api/v1/me/* · Lo que ve la familia (y el alumno) en la app: sus hijos, los consentimientos
@@ -68,5 +71,29 @@ class FamiliaController
         abort_unless(in_array($alumno, self::alumnosDe($request->user()->id), true), 404);
 
         return response()->json($carnes->datos($alumno));
+    }
+
+    /** EDUN-55 · Ratificación de matrícula desde la app. */
+    public function ratificacion(Request $request, Ratificacion $ratificacion): JsonResponse
+    {
+        return response()->json($ratificacion->opciones((int) $request->user()->id));
+    }
+
+    public function ratificar(Request $request, Ratificacion $ratificacion): JsonResponse
+    {
+        $d = $request->validate([
+            'alumno_id' => ['required', 'integer'], 'acepta_condiciones' => ['accepted'],
+            'celular' => ['nullable', 'regex:/^9\d{8}$/'], 'email' => ['nullable', 'email', 'max:150'], 'direccion' => ['nullable', 'string', 'max:250'],
+        ], ['acepta_condiciones.accepted' => 'Debes aceptar las condiciones económicas para ratificar.', 'celular.regex' => 'El celular tiene 9 dígitos y empieza con 9.']);
+
+        return response()->json($ratificacion->ratificar((int) $request->user()->id, (int) $d['alumno_id'], $d, (string) $request->ip()), 201);
+    }
+
+    public function constancia(Request $request, int $matricula, Matriculas $matriculas): Response
+    {
+        $m = DB::table('matriculas')->find($matricula);
+        abort_unless($m && $m->estado === 'matriculado' && in_array((int) $m->alumno_id, self::alumnosDe((int) $request->user()->id), true), 404);
+
+        return response($matriculas->constancia($matricula), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "inline; filename=\"constancia-matricula-{$matricula}.pdf\""]);
     }
 }

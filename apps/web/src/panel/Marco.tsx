@@ -7,6 +7,9 @@ import { Horarios } from '../adm/Horarios';
 import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
 import { MisHijos } from '../familia/MisHijos';
 import { MisPagos, PagoSimulado } from '../familia/MisPagos';
+import { Ratificacion } from '../familia/Ratificacion';
+import { CierrePeriodo } from '../cal/Cierre';
+import { Notas } from '../cal/Notas';
 import { Caja } from '../pag/Caja';
 import { Comprobantes } from '../pag/Comprobantes';
 import { Pasarela } from '../pag/Pasarela';
@@ -58,6 +61,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Académico',
     visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'adm.horarios.ver'),
     pantalla: () => <Horarios />,
+  },
+  {
+    ruta: 'notas',
+    nombre: 'Notas',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.notas.registrar', 'cal.notas.ver'),
+    pantalla: () => <Notas />,
+  },
+  {
+    ruta: 'cierre-notas',
+    nombre: 'Revisión y cierre',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.notas.revisar'),
+    pantalla: () => <CierrePeriodo />,
   },
   {
     ruta: 'alumnos',
@@ -142,6 +159,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado'),
     pantalla: () => <MisHijos />,
+  },
+  {
+    ruta: 'ratificacion',
+    nombre: 'Ratificar matrícula',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'ADM'),
+    pantalla: () => <Ratificacion />,
   },
   {
     ruta: 'mis-pagos',

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
+import { EstadoCuentaApp, RatificacionApp } from './familia';
 import { colorDeMarca, iniciales, textoSobre } from './marca';
 import { Boton, Campo, colores, estilos, MensajeError, Tarjeta } from './ui';
 
@@ -112,52 +113,6 @@ export function ElegirColegio({ estado, alElegir, alSalir }: { estado: EstadoSes
   );
 }
 
-type CargoApp = { id: number; alumno: string; descripcion: string; vencimiento: string; saldo: number; vencido: boolean };
-type PagosFamilia = { cargos: CargoApp[]; en_linea: { medios: string[] } | null };
-
-const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-
-/** EDUN-73 · Pagar en línea desde la app: elige cargos emitidos y abre la pasarela del colegio. */
-function PagosApp({ api, color }: { api: Cliente; color: string }) {
-  const [datos, setDatos] = useState<PagosFamilia | null>(null);
-  const [elegidos, setElegidos] = useState<number[]>([]);
-  const envio = useEnvio();
-  useEffect(() => {
-    let vivo = true;
-    api.pedir<PagosFamilia>('/familia/pagos').then((r) => vivo && setDatos(r)).catch(() => vivo && setDatos({ cargos: [], en_linea: null }));
-    return () => {
-      vivo = false;
-    };
-  }, [api]);
-  if (!datos) return <Text style={estilos.subtitulo}>Cargando…</Text>;
-  if (!datos.cargos.length) return <Text style={estilos.subtitulo}>No tienes cuotas pendientes.</Text>;
-  const total = datos.cargos.filter((c) => elegidos.includes(c.id)).reduce((s, c) => s + c.saldo, 0);
-  return (
-    <>
-      {datos.cargos.map((c) => (
-        <View key={c.id} style={estilos.fila}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, color: colores.texto }}>{c.descripcion}</Text>
-            <Text style={{ color: c.vencido ? colores.error : colores.suave }}>{c.alumno} · vence {c.vencimiento} · {soles(c.saldo)}</Text>
-          </View>
-          {datos.en_linea && (
-            <Switch accessibilityLabel={`Pagar ${c.descripcion}`} value={elegidos.includes(c.id)} trackColor={{ true: color }}
-              onValueChange={(v) => setElegidos(v ? [...elegidos, c.id] : elegidos.filter((x) => x !== c.id))} />
-          )}
-        </View>
-      ))}
-      {datos.en_linea ? (
-        <Boton titulo={`Pagar ${soles(total)}`} color={color} deshabilitado={!elegidos.length} cargando={envio.enviando}
-          alPulsar={() => envio.ejecutar(async () => {
-            const r = await api.pedir<{ url: string }>('/familia/pagos/ordenes', { metodo: 'POST', cuerpo: { cargos: elegidos } });
-            await Linking.openURL(r.url);
-          })} />
-      ) : <Text style={estilos.subtitulo}>El colegio aún no tiene pagos en línea.</Text>}
-      <MensajeError>{envio.error}</MensajeError>
-    </>
-  );
-}
-
 type Preferencia = { tipo: string; nombre: string; push: boolean };
 
 function Preferencias({ api, color }: { api: Cliente; color: string }) {
@@ -198,6 +153,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
   const texto = textoSobre(color);
   const envio = useEnvio();
   const [ok, setOk] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
 
   return (
     <View style={estilos.pantalla}>
@@ -212,10 +168,13 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {aviso && <Tarjeta><Text style={{ color: colores.texto }}>{aviso}</Text></Tarjeta>}
         {colegio.estado === 'suspendido' && <MensajeError>El acceso del colegio está pausado. Comunícate con el colegio.</MensajeError>}
         {colegio.roles.includes('apoderado') && (
-          <Tarjeta>
-            <Text style={estilos.etiqueta}>Mis pagos</Text>
-            <PagosApp api={api} color={color} />
-          </Tarjeta>
+          <>
+            <RatificacionApp api={api} color={color} alRatificar={() => setVersion((v) => v + 1)} />
+            <Tarjeta>
+              <Text style={estilos.etiqueta}>Mis pagos</Text>
+              <EstadoCuentaApp key={version} api={api} color={color} />
+            </Tarjeta>
+          </>
         )}
         <Tarjeta>
           <Text style={estilos.etiqueta}>Pronto en la app</Text>

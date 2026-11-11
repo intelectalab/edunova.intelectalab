@@ -7,6 +7,7 @@ import '../panel/panel.css';
 import { CumplimientoSla, MesaAyuda } from './MesaAyuda';
 import { Exportaciones, ListaImplementacion, Suspension } from './OperacionColegio';
 import { ParametrosLegales } from './Parametros';
+import { CobroMensual } from './CobroMensual';
 
 type Fila = {
   id: number;
@@ -409,6 +410,7 @@ export function Consola() {
     seccion === 'soporte' ? <MesaAyuda /> :
     seccion === 'sla' ? <CumplimientoSla /> :
     seccion === 'parametros' ? <ParametrosLegales /> :
+    seccion === 'cobro' ? <CobroMensual /> :
     partes[1] === 'nuevo' ? <Alta /> : partes[1] && /^\d+$/.test(partes[1]) ? <Ficha id={Number(partes[1])} /> : <Lista />;
 
   return (
@@ -429,6 +431,11 @@ export function Consola() {
           {estado!.roles_plataforma.includes('superadmin') && (
             <a href="#/colegios/nuevo" aria-current={partes[1] === 'nuevo' ? 'page' : undefined}>
               Alta de colegio
+            </a>
+          )}
+          {estado!.roles_plataforma.includes('superadmin') && (
+            <a href="#/cobro" aria-current={seccion === 'cobro' ? 'page' : undefined}>
+              Cobro mensual
             </a>
           )}
           <div className="lateral-grupo">Soporte</div>

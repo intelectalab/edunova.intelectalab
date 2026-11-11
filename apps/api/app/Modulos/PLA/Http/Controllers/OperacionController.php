@@ -4,6 +4,7 @@ namespace App\Modulos\PLA\Http\Controllers;
 
 use App\Modulos\PLA\Jobs\GenerarExportacion;
 use App\Modulos\PLA\Services\ChecklistImplementacion;
+use App\Modulos\PLA\Services\CobroMensual;
 use App\Modulos\PLA\Services\ExportacionColegio;
 use App\Modulos\PLA\Services\Suspensiones;
 use App\Modulos\SEG\Services\Auditoria;
@@ -124,5 +125,28 @@ class OperacionController
         abort_unless($this->db()->table('exportaciones')->where('id', $exportacion)->where('institucion_id', $institucion)->exists(), 404);
 
         return response()->json($exp->enlace($exportacion));
+    }
+
+    /** EDUN-27 · Cálculo del cobro mensual (vista previa) y facturas ya emitidas. */
+    public function cobroMensual(Request $request, CobroMensual $cobro): JsonResponse
+    {
+        $periodo = $request->validate(['periodo' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']])['periodo'];
+
+        return response()->json(['periodo' => $periodo, 'calculo' => $cobro->calcular($periodo), 'facturas' => $cobro->listar($periodo)]);
+    }
+
+    public function emitirCobroMensual(Request $request, CobroMensual $cobro): JsonResponse
+    {
+        $periodo = $request->validate(['periodo' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']])['periodo'];
+
+        return response()->json($cobro->emitir($periodo, (int) $request->user()->id) + ['facturas' => $cobro->listar($periodo)]);
+    }
+
+    public function marcarFacturaSaas(Request $request, int $factura, CobroMensual $cobro): JsonResponse
+    {
+        $d = $request->validate(['estado' => ['required', 'in:pagada,anulada,emitida']]);
+        $cobro->marcar($factura, $d['estado']);
+
+        return response()->json(['message' => 'Actualizado.']);
     }
 }
