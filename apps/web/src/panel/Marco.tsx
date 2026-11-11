@@ -13,6 +13,7 @@ import { Notas } from '../cal/Notas';
 import { LibretasYActas } from '../cal/Libretas';
 import { AlertasRiesgo, AsistenciaDiaria, TutoriaAlumno } from '../cal/Seguimiento';
 import { MisNotas } from '../familia/MisNotas';
+import { Siagie } from '../sia/Siagie';
 import { Caja } from '../pag/Caja';
 import { Comprobantes } from '../pag/Comprobantes';
 import { Pasarela } from '../pag/Pasarela';
@@ -134,6 +135,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Matrícula',
     visible: (c) => puede(c, 'seg.consentimientos.ver'),
     pantalla: () => <ConsentimientosColegio />,
+  },
+  {
+    ruta: 'siagie-archivos',
+    nombre: 'SIAGIE',
+    grupo: 'Matrícula',
+    visible: (c) => moduloActivo(c, 'SIA') && puede(c, 'sia.nomina.importar', 'sia.plantillas.validar', 'sia.plantillas.generar', 'sia.plantillas.descargar'),
+    pantalla: () => <Siagie />,
   },
   {
     ruta: 'siagie',

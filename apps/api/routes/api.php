@@ -26,6 +26,7 @@ use App\Modulos\SEG\Http\Controllers\FamiliaController;
 use App\Modulos\SEG\Http\Controllers\InvitacionesController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SEG\Http\Controllers\UsuariosController;
+use App\Modulos\SIA\Http\Controllers\SiagieController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
@@ -360,6 +361,19 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         // La familia ve notas y libretas publicadas, sin bloqueo por deuda (EDUN-100).
         Route::get('/familia/notas', [SeguimientoController::class, 'notasFamilia']);
         Route::get('/familia/libretas/{libreta}', [SeguimientoController::class, 'libretaFamilia'])->whereNumber('libreta');
+    });
+
+    // Sprint 20 · Integración SIAGIE por archivos (EDUN-106 a 111).
+    Route::middleware('modulo:SIA')->prefix('siagie')->group(function () {
+        Route::get('/procesos', [SiagieController::class, 'procesos'])->middleware('permiso:sia.nomina.importar|sia.plantillas.descargar');
+        Route::get('/procesos/{proceso}', [SiagieController::class, 'proceso'])->whereNumber('proceso')->middleware('permiso:sia.nomina.importar|sia.plantillas.descargar');
+        Route::get('/procesos/{proceso}/{cual}', [SiagieController::class, 'archivo'])->whereNumber('proceso')->whereIn('cual', ['original', 'resultado'])->middleware('permiso:sia.plantillas.descargar|sia.nomina.importar');
+        Route::post('/nominas', [SiagieController::class, 'subirNomina'])->middleware(['permiso:sia.nomina.importar', 'throttle:20,1']);
+        Route::get('/validacion', [SiagieController::class, 'validar'])->middleware('permiso:sia.plantillas.validar');
+        Route::post('/plantillas', [SiagieController::class, 'generar'])->middleware(['permiso:sia.plantillas.generar', 'throttle:30,1']);
+        Route::post('/plantillas/lote', [SiagieController::class, 'lote'])->middleware(['permiso:sia.plantillas.generar', 'throttle:5,1']);
+        Route::get('/mapeos/{grado}', [SiagieController::class, 'mapeo'])->whereNumber('grado')->middleware('permiso:sia.plantillas.validar');
+        Route::put('/mapeos/{grado}', [SiagieController::class, 'guardarMapeo'])->whereNumber('grado')->middleware('permiso:sia.plantillas.validar');
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.

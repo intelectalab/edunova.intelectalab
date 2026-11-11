@@ -191,8 +191,9 @@ export function Notas() {
   const colegio = estado!.colegio_activo!;
   const { anios, anio, setAnio } = useAnioEscolar();
   const { datos, error } = useCarga(() => (anio ? pedir<{ cargas: Carga[]; periodos: Periodo[] }>(`/notas/cargas?anio_escolar_id=${anio}`) : Promise.resolve({ cargas: [], periodos: [] })), [anio]);
-  const [carga, setCarga] = useState<number | null>(null);
-  const [periodo, setPeriodo] = useState<number | null>(null);
+  // Enlace directo desde la validación del SIAGIE: #/notas/{curso}/{periodo}.
+  const [carga, setCarga] = useState<number | null>(() => Number(window.location.hash.split('/')[2]) || null);
+  const [periodo, setPeriodo] = useState<number | null>(() => Number(window.location.hash.split('/')[3]) || null);
   const [vista, setVista] = useState<'notas' | 'actividades'>('notas');
   const cargaActual = carga ?? datos?.cargas[0]?.id ?? null;
   const periodoActual = periodo ?? datos?.periodos.find((p) => p.estado === 'abierto')?.id ?? datos?.periodos[0]?.id ?? null;

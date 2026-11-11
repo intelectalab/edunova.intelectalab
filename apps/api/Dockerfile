@@ -2,8 +2,8 @@
 FROM php:8.3-cli
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip libpq-dev libzip-dev libicu-dev \
-    && docker-php-ext-install pdo_pgsql pgsql zip intl bcmath pcntl \
+    && apt-get install -y --no-install-recommends git unzip libpq-dev libzip-dev libicu-dev libpng-dev \
+    && docker-php-ext-install pdo_pgsql pgsql zip intl bcmath pcntl gd \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
