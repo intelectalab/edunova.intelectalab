@@ -65,6 +65,14 @@ it('blog en el CMS: ocultar se publica al instante en el sitio, queda en la audi
     expect($a->accion)->toBe('ocultado')->and(json_decode($a->valor_despues, true))->toEqual(['titulo' => 'Pensiones al día', 'oculto' => true])
         ->and(dueno()->table('cms.versiones')->where('seccion', 'blog')->where('entidad_id', 'pensiones-al-dia')->exists())->toBeTrue();
 
+    // Revisión: si WordPress lo deja de listar un rato, el post oculto no se borra ni reaparece visible.
+    Http::fake(['wp.test/wp-json/wp/v2/categories*' => Http::response([]), 'wp.test/wp-json/wp/v2/posts*' => Http::response([])]);
+    $this->postJson('/api/v1/cms/blog/sincronizar')->assertOk();
+    expect(dueno()->table('cms.blog_wp_cache')->where('slug', 'pensiones-al-dia')->value('oculto'))->toBeTrue();
+    blogS23();
+    $this->postJson('/api/v1/cms/blog/sincronizar')->assertOk();
+    $this->getJson('/api/v1/sitio/blog/pensiones-al-dia')->assertNotFound();
+
     $this->patchJson('/api/v1/cms/blog/pensiones-al-dia', ['oculto' => false])->assertOk();
     $this->getJson('/api/v1/sitio/blog/pensiones-al-dia')->assertOk();
     expect(dueno()->table('cms.auditoria')->where('seccion', 'blog')->where('entidad_id', 'pensiones-al-dia')->orderByDesc('id')->value('accion'))->toBe('publicado');

@@ -59,7 +59,7 @@ class CobranzaController
     public function cobrar(Request $request): JsonResponse
     {
         $d = $request->validate([
-            'cargos' => ['required', 'array', 'min:1', 'max:30'], 'cargos.*.id' => ['required', 'integer'], 'cargos.*.monto' => ['required', 'numeric', 'gt:0'],
+            'cargos' => ['required', 'array', 'min:1', 'max:30'], 'cargos.*.id' => ['required', 'integer', 'distinct'], 'cargos.*.monto' => ['required', 'numeric', 'gt:0'],
             'medios' => ['required', 'array', 'min:1', 'max:5'], 'medios.*.medio' => ['required', Rule::in(array_keys(Cobros::MEDIOS))],
             'medios.*.monto' => ['required', 'numeric', 'gt:0'], 'medios.*.referencia' => ['nullable', 'string', 'max:80'],
             'apoderado_id' => ['nullable', 'integer'], 'tipo_comprobante' => ['required', Rule::in(['01', '03'])],

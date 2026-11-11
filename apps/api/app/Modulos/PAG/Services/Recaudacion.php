@@ -93,7 +93,8 @@ class Recaudacion
             $operacionRepetida = $operacion && DB::table('recaudacion_lineas as l')->join('recaudacion_archivos as r', 'r.id', '=', 'l.recaudacion_archivo_id')
                 ->where('r.banco', $banco)->where('l.operacion', $operacion)->where('l.resultado', 'conciliado')->exists();
             $resultado = match (true) {
-                ! $cargo => 'sin_coincidencia',
+                // Anulado o exonerado después de enviar las deudas: no se cobra (tesorería lo revisa en la línea).
+                ! $cargo || in_array($cargo->estado, ['anulado', 'exonerado'], true) => 'sin_coincidencia',
                 isset($vistos[$codigo]) || $operacionRepetida || $cargo->estado === 'pagado' => 'duplicado',
                 abs((float) $cargo->saldo - $monto) > 0.009 => 'monto_distinto',
                 default => 'conciliado',

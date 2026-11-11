@@ -60,6 +60,23 @@ export async function leerCola(almacen: Almacen, cifrado: Cifrado): Promise<Oper
   return cola;
 }
 
+// Toda escritura de la cola pasa por aquí, una a la vez: leer, cambiar y guardar sin que otra
+// escritura (p. ej. una lectura de QR mientras se sincroniza) se pierda en el medio.
+let candado: Promise<unknown> = Promise.resolve();
+function enSerie<T>(fn: () => Promise<T>): Promise<T> {
+  const r = candado.then(fn, fn);
+  candado = r.catch(() => undefined);
+  return r;
+}
+
+async function modificar(almacen: Almacen, cifrado: Cifrado, cambio: (cola: Operacion[]) => Operacion[]): Promise<Operacion[]> {
+  return enSerie(async () => {
+    const cola = cambio(await leerCola(almacen, cifrado));
+    await guardar(almacen, cifrado, cola);
+    return cola;
+  });
+}
+
 async function guardar(almacen: Almacen, cifrado: Cifrado, cola: Operacion[]) {
   await almacen.setItem(CLAVE, cifrado.cifrar(JSON.stringify(cola)));
 }
@@ -90,28 +107,20 @@ export function agregarLectura(cola: Operacion[], lectura: Lectura, ahora = new 
 export const pendientes = (cola: Operacion[]) => cola.filter((o) => !o.error).length;
 export const conError = (cola: Operacion[]) => cola.filter((o) => o.error);
 
-export async function encolarLista(almacen: Almacen, cifrado: Cifrado, lote: Lote): Promise<Operacion[]> {
-  const cola = fusionarLista(await leerCola(almacen, cifrado), lote);
-  await guardar(almacen, cifrado, cola);
-  return cola;
+export function encolarLista(almacen: Almacen, cifrado: Cifrado, lote: Lote): Promise<Operacion[]> {
+  return modificar(almacen, cifrado, (c) => fusionarLista(c, lote));
 }
 
-export async function encolarLectura(almacen: Almacen, cifrado: Cifrado, lectura: Lectura): Promise<Operacion[]> {
-  const cola = agregarLectura(await leerCola(almacen, cifrado), lectura);
-  await guardar(almacen, cifrado, cola);
-  return cola;
+export function encolarLectura(almacen: Almacen, cifrado: Cifrado, lectura: Lectura): Promise<Operacion[]> {
+  return modificar(almacen, cifrado, (c) => agregarLectura(c, lectura));
 }
 
-export async function descartar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
-  const cola = (await leerCola(almacen, cifrado)).filter((o) => o.id !== id);
-  await guardar(almacen, cifrado, cola);
-  return cola;
+export function descartar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
+  return modificar(almacen, cifrado, (c) => c.filter((o) => o.id !== id));
 }
 
-export async function reintentar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
-  const cola = (await leerCola(almacen, cifrado)).map((o) => (o.id === id ? { ...o, intentos: 0, error: undefined } : o));
-  await guardar(almacen, cifrado, cola);
-  return cola;
+export function reintentar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
+  return modificar(almacen, cifrado, (c) => c.map((o) => (o.id === id ? { ...o, intentos: 0, error: undefined } : o)));
 }
 
 /** Bloques en orden: las lecturas de QR seguidas van juntas (hasta 50); cada lista va sola. */
@@ -147,11 +156,15 @@ export function sincronizar(almacen: Almacen, cifrado: Cifrado, envio: Envio): P
 }
 
 async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promise<Resumen> {
-  let cola = await leerCola(almacen, cifrado);
+  const cola = await leerCola(almacen, cifrado);
   let enviados = 0;
   let detenido = false;
-  const quitar = (ids: Set<string>) => (cola = cola.filter((o) => !ids.has(o.id)));
-  const marcar = (ids: Set<string>, cambio: (o: Operacion) => Operacion) => (cola = cola.map((o) => (ids.has(o.id) ? cambio(o) : o)));
+  // Lo que pasó con cada operación se anota y al final se aplica sobre la cola recién leída:
+  // mientras se enviaba pudieron llegar registros nuevos (o fusionarse en una lista enviada).
+  const enviadas = new Map<string, string>();
+  const marcas = new Map<string, (o: Operacion) => Operacion>();
+  const quitar = (ids: Set<string>) => ids.forEach((id) => enviadas.set(id, JSON.stringify(cola.find((o) => o.id === id)?.datos)));
+  const marcar = (ids: Set<string>, cambio: (o: Operacion) => Operacion) => ids.forEach((id) => marcas.set(id, cambio));
 
   for (const bloque of bloques(cola)) {
     const ids = new Set(bloque.map((o) => o.id));
@@ -184,6 +197,11 @@ async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promi
       marcar(ids, (o) => ({ ...o, error: mensajeDe(e) }));
     }
   }
-  await guardar(almacen, cifrado, cola);
-  return { enviados, pendientes: pendientes(cola), errores: conError(cola).length, detenido };
+  const final = await modificar(almacen, cifrado, (actual) =>
+    actual
+      // Se quita lo enviado, salvo una lista que recibió registros nuevos mientras tanto (se reenvía; el servidor se queda con el más reciente).
+      .filter((o) => !(enviadas.has(o.id) && enviadas.get(o.id) === JSON.stringify(o.datos)))
+      .map((o) => (marcas.has(o.id) ? marcas.get(o.id)!(o) : o)),
+  );
+  return { enviados, pendientes: pendientes(final), errores: conError(final).length, detenido };
 }

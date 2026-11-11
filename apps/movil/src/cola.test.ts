@@ -121,3 +121,24 @@ describe('cola sin conexión (EDUN-94/215/218)', () => {
     expect(e.listas).toHaveLength(1);
   });
 });
+
+describe('cola: escrituras durante la sincronización (revisión)', () => {
+  it('no pierde lo que se guarda mientras se envía', async () => {
+    const a = memoria();
+    await encolarLectura(a, cifrado, { codigo: 'Q1', leido_at: '2027-04-05T08:01:00Z' });
+    await encolarLista(a, cifrado, lote([{ alumno_id: 1, estado: 'P', registrado_at: '2027-04-05T08:00:00Z' }]));
+    const envio: Envio = {
+      qr: async (ls) => {
+        // Llega otra lectura y se completa la lista mientras el bloque viaja.
+        await encolarLectura(a, cifrado, { codigo: 'Q2', leido_at: '2027-04-05T08:03:00Z' });
+        await encolarLista(a, cifrado, lote([{ alumno_id: 2, estado: 'T', registrado_at: '2027-04-05T08:04:00Z' }]));
+        return ls.map((l) => ({ id: l.id, ok: true }));
+      },
+      lista: async () => undefined,
+    };
+    await sincronizar(a, cifrado, envio);
+    const quedan = await leerCola(a, cifrado);
+    expect(quedan.some((o) => o.tipo === 'qr' && o.datos.codigo === 'Q2')).toBe(true);
+    expect(quedan.some((o) => o.tipo === 'qr' && o.datos.codigo === 'Q1')).toBe(false);
+  });
+});

@@ -76,8 +76,9 @@ class BlogWordpress
                     'synced_at' => now(),
                 ]);
             }
-            // Lo despublicado en WordPress deja de verse.
-            DB::table('cms.blog_wp_cache')->whereNotIn('wp_post_id', $vistos ?: [0])->delete();
+            // Lo despublicado en WordPress deja de verse. Lo que el editor ocultó en el CMS se conserva
+            // (oculto) para que, si vuelve a publicarse, no reaparezca sin su revisión (EDUN-368).
+            DB::table('cms.blog_wp_cache')->whereNotIn('wp_post_id', $vistos ?: [0])->where('oculto', false)->delete();
         });
     }
 

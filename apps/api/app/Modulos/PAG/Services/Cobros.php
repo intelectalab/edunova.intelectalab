@@ -54,6 +54,10 @@ class Cobros
             throw ValidationException::withMessages(['cargos' => ['Elige al menos un cargo.']]);
         }
         $ids = array_map(fn ($c) => (int) $c['id'], $cargos);
+        if (count(array_unique($ids)) !== count($ids)) {
+            // Cada repetición se compararía con el saldo completo y se cobraría de más.
+            throw ValidationException::withMessages(['cargos' => ['Un cargo aparece más de una vez en el cobro.']]);
+        }
         $filas = DB::table('cargos as c')->whereIn('c.id', $ids)->lockForUpdate()->get(['c.id', 'c.estado', 'c.descripcion', DB::raw(self::saldoSql().' as saldo')])->keyBy('id');
         $total = 0.0;
         foreach ($cargos as $i => $c) {

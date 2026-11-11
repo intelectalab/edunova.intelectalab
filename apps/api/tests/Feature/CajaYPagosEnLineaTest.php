@@ -71,6 +71,9 @@ it('cobra en caja con varios medios, emite la boleta electrónica y cierra con a
     $cobro = ['cargos' => [['id' => $f['vencido'], 'monto' => 350], ['id' => $f['actual'], 'monto' => 150]], 'apoderado_id' => $f['apoderado'], 'tipo_comprobante' => '03',
         'cliente' => ['numero_doc' => '45678912', 'nombre' => 'Rosa Caja', 'email' => 'rosa@familia.prueba']];
     enDemo($t, 'POST', '/pagos/caja/cobros', $cobro + ['medios' => [['medio' => 'efectivo', 'monto' => 300]]])->assertUnprocessable()->assertJsonValidationErrors('medios');
+    // Revisión: el mismo cargo repetido se compararía cada vez con el saldo completo.
+    enDemo($t, 'POST', '/pagos/caja/cobros', ['cargos' => [['id' => $f['vencido'], 'monto' => 350], ['id' => $f['vencido'], 'monto' => 350]], 'medios' => [['medio' => 'efectivo', 'monto' => 700]], 'tipo_comprobante' => '03'] + array_intersect_key($cobro, ['apoderado_id' => 1, 'cliente' => 1]))
+        ->assertUnprocessable()->assertJsonValidationErrors('cargos.1.id');
     $r = enDemo($t, 'POST', '/pagos/caja/cobros', $cobro + ['medios' => [['medio' => 'efectivo', 'monto' => 200], ['medio' => 'yape', 'monto' => 300, 'referencia' => 'OP-123']]])->assertCreated();
 
     $db = dueno();
