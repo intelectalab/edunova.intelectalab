@@ -53,6 +53,17 @@ class SeguimientoController
         return response()->json($this->asistencia->porQr($d['codigo'], (int) $request->user()->id));
     }
 
+    /** EDUN-215 · Lecturas de QR guardadas sin conexión, en bloques ordenados. */
+    public function loteQr(Request $request): JsonResponse
+    {
+        $d = $request->validate([
+            'lecturas' => ['required', 'array', 'min:1', 'max:50'], 'lecturas.*.id' => ['required', 'string', 'max:40', 'distinct'],
+            'lecturas.*.codigo' => ['required', 'string', 'max:40'], 'lecturas.*.leido_at' => ['required', 'date'],
+        ]);
+
+        return response()->json($this->asistencia->loteQr($d['lecturas'], (int) $request->user()->id));
+    }
+
     // ── EDUN-101 / EDUN-102 / EDUN-103 · Conducta, tutoría y alertas
 
     public function historial(Request $request, int $alumno): JsonResponse

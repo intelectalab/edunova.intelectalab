@@ -1,62 +1,189 @@
-// EDUN-94 · Cola de asistencia sin conexión. Lógica pura (se prueba con Vitest); el
-// almacenamiento real (AsyncStorage) se inyecta desde asistencia.tsx.
+// EDUN-94 / EDUN-197 / EDUN-215 / EDUN-218 · Cola sin conexión. Lógica pura (se prueba con Vitest);
+// el almacenamiento (AsyncStorage) y el cifrado se inyectan desde colaDispositivo.ts.
+//
+// - Todo lo pendiente se guarda cifrado; sin la clave del llavero del teléfono no se lee.
+// - Se envía en el orden en que se registró, en bloques (las lecturas de QR van de a 50).
+// - Si se cae la red a mitad, se detiene para no desordenar y sigue en la próxima reconexión.
+// - Un fallo del servidor se reintenta hasta 5 veces; luego queda «con error» a la vista.
+// - Un rechazo por datos (4xx) no se reintenta: queda con error y su mensaje.
+// - Los conflictos se resuelven por hora: cada registro lleva la hora real en que se tomó y el
+//   servidor se queda con el más reciente.
+import type { Cifrado } from './cifrado';
 
 export type Registro = { alumno_id: number; estado: 'P' | 'T' | 'F' | 'J'; registrado_at: string };
 export type Lote = { seccion_id: number; fecha: string; registros: Registro[] };
+export type Lectura = { codigo: string; leido_at: string };
+
+type Base = { id: string; creado_at: string; intentos: number; error?: string };
+export type Operacion = (Base & { tipo: 'asistencia'; datos: Lote }) | (Base & { tipo: 'qr'; datos: Lectura });
 
 export interface Almacen {
   getItem(clave: string): Promise<string | null>;
   setItem(clave: string, valor: string): Promise<void>;
 }
 
-const CLAVE = 'edunova.cola.asistencia';
-
-export async function leerCola(almacen: Almacen): Promise<Lote[]> {
-  try {
-    const crudo = await almacen.getItem(CLAVE);
-    const datos = crudo ? JSON.parse(crudo) : [];
-    return Array.isArray(datos) ? datos : [];
-  } catch {
-    return [];
-  }
+export type ResultadoQr = { id: string; ok: boolean; mensaje?: string };
+export interface Envio {
+  lista(lote: Lote): Promise<void>;
+  qr(lecturas: (Lectura & { id: string })[]): Promise<ResultadoQr[]>;
 }
 
-/** Agrega o fusiona un lote: por alumno queda el registro más reciente (misma regla que el servidor). */
-export function fusionar(cola: Lote[], lote: Lote): Lote[] {
-  const previo = cola.find((l) => l.seccion_id === lote.seccion_id && l.fecha === lote.fecha);
-  if (!previo) return [...cola, lote];
+export const MAX_INTENTOS = 5;
+export const TAM_BLOQUE_QR = 50;
+const CLAVE = 'edunova.cola.v2';
+const CLAVE_ANTIGUA = 'edunova.cola.asistencia';
+
+let secuencia = 0;
+export const nuevoId = (ahora = Date.now()) => `${ahora.toString(36)}-${(secuencia++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+export async function leerCola(almacen: Almacen, cifrado: Cifrado): Promise<Operacion[]> {
+  let cola: Operacion[] = [];
+  try {
+    const crudo = await almacen.getItem(CLAVE);
+    const datos = crudo ? JSON.parse(cifrado.descifrar(crudo)) : [];
+    cola = Array.isArray(datos) ? datos : [];
+  } catch {
+    cola = [];
+  }
+  // Migración: la cola de la versión anterior estaba en claro; se cifra y se borra.
+  try {
+    const antigua = await almacen.getItem(CLAVE_ANTIGUA);
+    if (antigua) {
+      const lotes = JSON.parse(antigua);
+      if (Array.isArray(lotes)) for (const l of lotes as Lote[]) cola = fusionarLista(cola, l);
+      await guardar(almacen, cifrado, cola);
+      await almacen.setItem(CLAVE_ANTIGUA, '');
+    }
+  } catch {
+    await almacen.setItem(CLAVE_ANTIGUA, '').catch(() => undefined);
+  }
+  return cola;
+}
+
+async function guardar(almacen: Almacen, cifrado: Cifrado, cola: Operacion[]) {
+  await almacen.setItem(CLAVE, cifrado.cifrar(JSON.stringify(cola)));
+}
+
+/** Por alumno queda el registro más reciente (misma regla que el servidor). */
+export function fusionar(previo: Lote, lote: Lote): Lote {
   const porAlumno = new Map(previo.registros.map((r) => [r.alumno_id, r]));
   for (const r of lote.registros) {
     const actual = porAlumno.get(r.alumno_id);
     if (!actual || actual.registrado_at <= r.registrado_at) porAlumno.set(r.alumno_id, r);
   }
-  return cola.map((l) => (l === previo ? { ...l, registros: [...porAlumno.values()] } : l));
+  return { ...previo, registros: [...porAlumno.values()] };
 }
 
-export async function encolar(almacen: Almacen, lote: Lote): Promise<number> {
-  const cola = fusionar(await leerCola(almacen), lote);
-  await almacen.setItem(CLAVE, JSON.stringify(cola));
-  return cola.length;
+export function fusionarLista(cola: Operacion[], lote: Lote, ahora = new Date()): Operacion[] {
+  const previa = cola.find((o) => o.tipo === 'asistencia' && !o.error && o.datos.seccion_id === lote.seccion_id && o.datos.fecha === lote.fecha);
+  if (!previa || previa.tipo !== 'asistencia') return [...cola, { id: nuevoId(ahora.getTime()), tipo: 'asistencia', creado_at: ahora.toISOString(), intentos: 0, datos: lote }];
+  return cola.map((o) => (o === previa ? { ...previa, datos: fusionar(previa.datos, lote) } : o));
 }
 
-/**
- * Envía lo pendiente. Lo que se envió bien sale de la cola; si falla la red, se queda para el
- * próximo intento. Devuelve cuántos lotes quedaron pendientes.
- */
-export async function sincronizar(almacen: Almacen, enviar: (lote: Lote) => Promise<void>): Promise<{ enviados: number; pendientes: number }> {
-  const cola = await leerCola(almacen);
-  const quedan: Lote[] = [];
+export function agregarLectura(cola: Operacion[], lectura: Lectura, ahora = new Date()): Operacion[] {
+  // El mismo carné leído dos veces el mismo día: basta la primera (es la hora de llegada).
+  const dia = lectura.leido_at.slice(0, 10);
+  if (cola.some((o) => o.tipo === 'qr' && o.datos.codigo === lectura.codigo && o.datos.leido_at.slice(0, 10) === dia)) return cola;
+  return [...cola, { id: nuevoId(ahora.getTime()), tipo: 'qr', creado_at: ahora.toISOString(), intentos: 0, datos: lectura }];
+}
+
+export const pendientes = (cola: Operacion[]) => cola.filter((o) => !o.error).length;
+export const conError = (cola: Operacion[]) => cola.filter((o) => o.error);
+
+export async function encolarLista(almacen: Almacen, cifrado: Cifrado, lote: Lote): Promise<Operacion[]> {
+  const cola = fusionarLista(await leerCola(almacen, cifrado), lote);
+  await guardar(almacen, cifrado, cola);
+  return cola;
+}
+
+export async function encolarLectura(almacen: Almacen, cifrado: Cifrado, lectura: Lectura): Promise<Operacion[]> {
+  const cola = agregarLectura(await leerCola(almacen, cifrado), lectura);
+  await guardar(almacen, cifrado, cola);
+  return cola;
+}
+
+export async function descartar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
+  const cola = (await leerCola(almacen, cifrado)).filter((o) => o.id !== id);
+  await guardar(almacen, cifrado, cola);
+  return cola;
+}
+
+export async function reintentar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
+  const cola = (await leerCola(almacen, cifrado)).map((o) => (o.id === id ? { ...o, intentos: 0, error: undefined } : o));
+  await guardar(almacen, cifrado, cola);
+  return cola;
+}
+
+/** Bloques en orden: las lecturas de QR seguidas van juntas (hasta 50); cada lista va sola. */
+export function bloques(cola: Operacion[]): Operacion[][] {
+  const salida: Operacion[][] = [];
+  for (const o of [...cola].filter((x) => !x.error).sort((a, b) => a.creado_at.localeCompare(b.creado_at))) {
+    const ultimo = salida[salida.length - 1];
+    if (o.tipo === 'qr' && ultimo && ultimo[0].tipo === 'qr' && ultimo.length < TAM_BLOQUE_QR) ultimo.push(o);
+    else salida.push([o]);
+  }
+  return salida;
+}
+
+const sinRed = (e: unknown) => {
+  const estado = (e as { estado?: number }).estado;
+  return estado === undefined || estado === 0;
+};
+const reintentable = (e: unknown) => {
+  const estado = (e as { estado?: number }).estado ?? 0;
+  return estado >= 500 || estado === 429 || estado === 408;
+};
+const mensajeDe = (e: unknown) => (e instanceof Error ? e.message : 'Error al enviar.');
+
+let enCurso: Promise<Resumen> | null = null;
+export type Resumen = { enviados: number; pendientes: number; errores: number; detenido: boolean };
+
+/** Envía lo pendiente. Una sola sincronización a la vez: si ya hay una en curso, se espera esa. */
+export function sincronizar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promise<Resumen> {
+  enCurso ??= ejecutar(almacen, cifrado, envio).finally(() => {
+    enCurso = null;
+  });
+  return enCurso;
+}
+
+async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promise<Resumen> {
+  let cola = await leerCola(almacen, cifrado);
   let enviados = 0;
-  for (const lote of cola) {
+  let detenido = false;
+  const quitar = (ids: Set<string>) => (cola = cola.filter((o) => !ids.has(o.id)));
+  const marcar = (ids: Set<string>, cambio: (o: Operacion) => Operacion) => (cola = cola.map((o) => (ids.has(o.id) ? cambio(o) : o)));
+
+  for (const bloque of bloques(cola)) {
+    const ids = new Set(bloque.map((o) => o.id));
     try {
-      await enviar(lote);
-      enviados++;
+      if (bloque[0].tipo === 'asistencia') {
+        await envio.lista(bloque[0].datos);
+        quitar(ids);
+        enviados++;
+      } else {
+        const resultados = await envio.qr(bloque.map((o) => ({ id: o.id, ...(o.datos as Lectura) })));
+        const porId = new Map(resultados.map((r) => [r.id, r]));
+        const bien = new Set(bloque.filter((o) => porId.get(o.id)?.ok).map((o) => o.id));
+        for (const o of bloque) {
+          const r = porId.get(o.id);
+          if (r && !r.ok) marcar(new Set([o.id]), (x) => ({ ...x, error: r.mensaje ?? 'Rechazado.' }));
+        }
+        quitar(bien);
+        enviados += bien.size;
+      }
     } catch (e) {
-      // Un 422 (datos inválidos) no se reintenta para siempre; la red caída sí.
-      const estado = (e as { estado?: number }).estado;
-      if (estado === undefined || estado === 0 || estado >= 500 || estado === 429) quedan.push(lote);
+      if (sinRed(e)) {
+        detenido = true;
+        break; // Sin señal: se sigue en la próxima reconexión, sin gastar intentos.
+      }
+      if (reintentable(e)) {
+        marcar(ids, (o) => (o.intentos + 1 >= MAX_INTENTOS ? { ...o, intentos: o.intentos + 1, error: `${mensajeDe(e)} (${MAX_INTENTOS} intentos)` } : { ...o, intentos: o.intentos + 1 }));
+        detenido = true;
+        break; // Se respeta el orden: no se envía lo de después hasta que pase esto.
+      }
+      marcar(ids, (o) => ({ ...o, error: mensajeDe(e) }));
     }
   }
-  await almacen.setItem(CLAVE, JSON.stringify(quedan));
-  return { enviados, pendientes: quedan.length };
+  await guardar(almacen, cifrado, cola);
+  return { enviados, pendientes: pendientes(cola), errores: conError(cola).length, detenido };
 }

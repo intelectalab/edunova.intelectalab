@@ -149,6 +149,15 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 30: aceptó dos flujos activos';
   EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'OK 30 · un solo flujo de chatbot activo'; END;
 
+  -- 31. Blog: un post nuevo de WordPress llega visible y el asistente SEO registra sus pedidos (EDUN-367, EDUN-411)
+  INSERT INTO cms.blog_wp_cache (wp_post_id, slug, titulo) VALUES (9001, 'post-prueba', 'Post de prueba');
+  IF (SELECT oculto FROM cms.blog_wp_cache WHERE slug = 'post-prueba') THEN RAISE EXCEPTION 'FALLO 31: el post nuevo llegó oculto'; END IF;
+  INSERT INTO cms.seo_sugerencias (slug, proveedor, entrada) VALUES ('inicio', 'simulado', '{}');
+  BEGIN
+    INSERT INTO cms.seo_sugerencias (slug, proveedor, entrada) VALUES ('inicio', 'otro', '{}');
+    RAISE EXCEPTION 'FALLO 31: aceptó un proveedor desconocido';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 31 · blog visible por defecto y proveedores del asistente SEO'; END;
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 
@@ -185,6 +194,12 @@ DO $$ DECLARE n int; BEGIN
   SELECT count(*) INTO n FROM cms.seguimiento_reclamo('rec-2026-0003', '87654321'); IF n <> 1 THEN RAISE EXCEPTION 'FALLO 24: el titular no ve su estado'; END IF;
   RAISE NOTICE 'OK 24 · reclamos: el público envía y consulta el suyo, sin leer los demás';
 
+  -- 32. El público no oculta posts del blog ni lee las sugerencias del asistente SEO (EDUN-368, EDUN-412)
+  UPDATE cms.blog_wp_cache SET oculto = true WHERE slug = 'post-prueba'; GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN RAISE EXCEPTION 'FALLO 32: el público ocultó un post'; END IF;
+  SELECT count(*) INTO n FROM cms.seo_sugerencias; IF n <> 0 THEN RAISE EXCEPTION 'FALLO 32: el público leyó sugerencias SEO'; END IF;
+  RAISE NOTICE 'OK 32 · público: no cambia el blog ni lee el asistente SEO';
+
   -- Un usuario de colegio (por ejemplo, el promotor o propietario) no tiene CMS
   PERFORM set_config('app.rol_cms', 'promotor', true);
   UPDATE cms.planes_sitio SET precio_mensual = 1 WHERE clave = 'inicial'; GET DIAGNOSTICS n = ROW_COUNT;
@@ -200,6 +215,9 @@ DO $$ DECLARE n int; BEGIN
   UPDATE cms.config SET valor = '"/api/crm/leads"' WHERE clave = 'crm_endpoint'; GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN RAISE EXCEPTION 'FALLO 17: el superadmin no pudo editar la configuración'; END IF;
   SELECT count(*) INTO n FROM cms.leads; IF n < 1 THEN RAISE EXCEPTION 'FALLO 17: el superadmin no ve leads'; END IF;
+  UPDATE cms.blog_wp_cache SET oculto = true WHERE slug = 'post-prueba'; GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN RAISE EXCEPTION 'FALLO 17: el superadmin no pudo ocultar un post'; END IF;
+  SELECT count(*) INTO n FROM cms.seo_sugerencias; IF n < 1 THEN RAISE EXCEPTION 'FALLO 17: el superadmin no ve las sugerencias SEO'; END IF;
   RAISE NOTICE 'OK 17 · superadmin del SaaS: acceso total al CMS';
   RAISE NOTICE 'TODAS LAS PRUEBAS DE PERMISOS PASARON';
 END $$;

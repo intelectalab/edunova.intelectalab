@@ -20,7 +20,7 @@ class AuditoriaCms
     /** Nombres de las secciones que no son de la landing. */
     private const OTRAS = [
         'leads' => 'Bandeja de solicitudes', 'reclamaciones' => 'Libro de Reclamaciones', 'seo' => 'Ajustes SEO',
-        'politicas' => 'Políticas legales', 'medios' => 'Biblioteca de medios',
+        'politicas' => 'Políticas legales', 'medios' => 'Biblioteca de medios', 'blog' => 'Blog (WordPress)', 'asistente_seo' => 'Asistente SEO',
     ];
 
     /** @param  array{q?: ?string, usuario?: ?int, seccion?: ?string, accion?: ?string, pagina?: int}  $f */

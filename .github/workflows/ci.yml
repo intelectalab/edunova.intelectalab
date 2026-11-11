@@ -112,6 +112,122 @@ jobs:
       - name: Auditoría de dependencias JS
         run: pnpm audit --prod
 
+  # EDUN-210 · Web de gestión contra la API real: matrícula, pago en línea con el webhook de la
+  # pasarela simulada, notas y cierre del periodo, y plantilla del SIAGIE (infra/e2e-web.sh en local).
+  e2e-web:
+    name: Web de gestión contra la API real (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: edunova
+          POSTGRES_USER: edunova
+          POSTGRES_PASSWORD: edunova
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U edunova -d edunova"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+    env:
+      PGHOST: localhost
+      PGUSER: edunova
+      PGPASSWORD: edunova
+      # Variables de la API: ganan sobre el .env copiado de .env.example.
+      DB_HOST: 127.0.0.1
+      REDIS_HOST: 127.0.0.1
+      APP_URL: http://127.0.0.1:8000
+      EDUNOVA_WEB_URL: http://localhost:4173
+      CORS_ORIGENES: http://localhost:4173
+      # Sin trabajador de cola: los comprobantes y avisos se procesan en la misma petición.
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+      PASARELA_SIMULADA: "true"
+      FACTURACION_SIMULADA: "true"
+      EDUNOVA_CMS_CONTENIDO: base
+      AWS_ENDPOINT: http://127.0.0.1:9000
+      AWS_URL_FIRMAS: http://localhost:9000
+      PHP_CLI_SERVER_WORKERS: "4"
+      # Web: build y pruebas.
+      VITE_API_URL: http://127.0.0.1:8000/api/v1
+      E2E_WEB_URL: http://localhost:4173
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Almacenamiento de objetos compatible con S3 (igual que docker-compose)
+        run: |
+          docker run -d --name s3 -p 9000:8333 \
+            -v "$GITHUB_WORKSPACE/infra/s3/identidades.json:/etc/seaweedfs/identidades.json:ro" \
+            chrislusf/seaweedfs:latest server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/identidades.json
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd
+          coverage: none
+
+      - name: Caché de Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('apps/api/composer.lock') }}
+
+      - name: Dependencias de la API
+        working-directory: apps/api
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Roles de la base (igual que infra/postgres en local)
+        run: |
+          for f in infra/postgres/*.sql; do psql -d edunova -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+      - name: Base con el colegio demo y los datos de las pruebas (E2eSeeder)
+        working-directory: apps/api
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          php artisan migrate --database=propietario --seed --force
+          php artisan db:seed --class=E2eSeeder --force
+          for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:9000 && break; sleep 1; done
+          php artisan objetos:preparar
+
+      - name: API en segundo plano
+        working-directory: apps/api/public
+        # php -S directo (no `artisan serve`, que relee el .env y no pasa las variables del job).
+        run: |
+          nohup php -S 127.0.0.1:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php > ../storage/logs/servidor-e2e.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/api/v1/salud && break; sleep 1; done
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build de la web apuntando a la API local
+        run: pnpm --filter @edunova/web build
+
+      - name: Navegador para las pruebas de pantalla
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Pruebas de pantalla de la web (Playwright sirve el build con vite preview)
+        run: pnpm --filter @edunova/web e2e
+
+      - name: Registros y trazas si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-web
+          path: |
+            apps/web/test-results
+            apps/api/storage/logs
+          retention-days: 7
+
   movil:
     name: App móvil (tipos, lint, Vitest)
     runs-on: ubuntu-latest

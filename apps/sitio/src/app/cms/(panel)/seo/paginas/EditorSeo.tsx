@@ -6,7 +6,8 @@ import { Icono, TarjetaSeccion, useToast } from '@/componentes/base';
 import { Campo, ErrorLista } from '@/componentes/cms/Formulario';
 import { SelectorMedios } from '@/componentes/cms/SelectorMedios';
 import { cms } from '@/contenido/provisional';
-import { guardarSeo, type PaginaSeo } from '../../../panel-acciones';
+import { guardarSeo, type ConfigAsistenteSeo, type PaginaSeo } from '../../../panel-acciones';
+import { AsistenteSeo } from './AsistenteSeo';
 
 const LIMITES = { meta_titulo: 70, meta_descripcion: 160 } as const;
 
@@ -51,7 +52,7 @@ function CampoLimitado({ etiqueta, valor, max, filas, error, onCambio }: { etiqu
  * canonical, robots y palabras clave; Open Graph con vista previa estilo WhatsApp/Facebook.
  * «Guardar y actualizar metadatos» publica (auditoría y revalidación del sitio).
  */
-export function EditorSeo({ inicial, dominio }: { inicial: PaginaSeo; dominio: string }) {
+export function EditorSeo({ inicial, dominio, asistente }: { inicial: PaginaSeo; dominio: string; asistente: ConfigAsistenteSeo | null }) {
   const t = cms.seo;
   const [v, setV] = useState(inicial);
   const [keywords, setKeywords] = useState(inicial.keywords.join(', '));
@@ -111,6 +112,17 @@ export function EditorSeo({ inicial, dominio }: { inicial: PaginaSeo; dominio: s
           </div>
           <Campo etiqueta={t.keywords} valor={keywords} error={errores.keywords} onCambio={setKeywords} />
         </TarjetaSeccion>
+
+        <AsistenteSeo
+          slug={v.slug}
+          titulo={v.meta_titulo}
+          descripcion={v.meta_descripcion}
+          keywords={keywords.split(',').map((k) => k.trim()).filter(Boolean)}
+          config={asistente}
+          onUsarDescripcion={(d) => set({ meta_descripcion: d })}
+          onUsarTitulo={(x) => set({ meta_titulo: x })}
+          onAgregarKeywords={(nuevas) => setKeywords((k) => [...new Set([...k.split(',').map((x) => x.trim()).filter(Boolean), ...nuevas])].join(', '))}
+        />
 
         <TarjetaSeccion icono="share" titulo={t.social}>
           <Campo etiqueta={t.ogTitulo.etiqueta} max={t.ogTitulo.max} valor={v.og_titulo ?? ''} error={errores.og_titulo} onCambio={(x) => set({ og_titulo: x || null })} />

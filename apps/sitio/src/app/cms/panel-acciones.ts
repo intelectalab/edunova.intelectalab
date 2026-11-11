@@ -174,3 +174,67 @@ export async function leerIntegraciones() {
 export async function guardarIntegraciones(d: CambiosIntegraciones) {
   return escribir<IntegracionesCms>('/cms/integraciones', 'PUT', d);
 }
+
+// --- Blog de WordPress (EDUN-367 / SIT-023) ------------------------------------------------------
+
+export type PostCms = {
+  wp_post_id: number;
+  slug: string;
+  titulo: string;
+  resumen: string | null;
+  imagen_url: string | null;
+  publicado_en: string | null;
+  actualizado_wp: string | null;
+  autor_wp: string | null;
+  oculto: boolean;
+  estado: 'publicado' | 'oculto';
+  revisado_at: string | null;
+  wp_url: string | null;
+  categoria_nombre: string | null;
+  cambio_sin_revisar: boolean;
+  editar_url: string | null;
+};
+export type BlogCms = { configurado: boolean; wp_admin: string | null; ultima_sincronia: string | null; data: PostCms[] };
+export type VistaPreviaPost = Pick<PostCms, 'slug' | 'titulo' | 'resumen' | 'imagen_url' | 'publicado_en' | 'actualizado_wp' | 'autor_wp' | 'oculto' | 'categoria_nombre' | 'editar_url'> & { contenido: string | null };
+
+export async function leerBlogCms() {
+  return leer<BlogCms>('/cms/blog');
+}
+
+export async function leerVistaPreviaPost(slug: string) {
+  return (await leer<{ data: VistaPreviaPost }>(`/cms/blog/${encodeURIComponent(slug)}`))?.data ?? null;
+}
+
+export async function sincronizarBlog() {
+  return escribir<BlogCms>('/cms/blog/sincronizar', 'POST', {});
+}
+
+export async function cambiarVisibilidadPost(slug: string, oculto: boolean) {
+  return escribir<VistaPreviaPost>(`/cms/blog/${encodeURIComponent(slug)}`, 'PATCH', { oculto });
+}
+
+// --- Asistente SEO con IA (EDUN-411 / SIT-030) -----------------------------------------------------
+
+export type AnalisisTexto = { largo: number; ideal: [number, number]; estado: 'bien' | 'corto' | 'largo' | 'vacio'; legibilidad: number; nivel: string };
+export type SugerenciasSeo = { proveedor: string; titulo: string; keywords: string[]; descripciones: (AnalisisTexto & { texto: string })[] };
+export type AnalisisSeo = {
+  titulo: { largo: number; ideal: [number, number]; estado: AnalisisTexto['estado']; duplicado_en: string[] };
+  descripcion: AnalisisTexto & { duplicado_en: string[] };
+};
+export type ConfigAsistenteSeo = { proveedor: string; modelo: string; proveedores: Record<string, string>; modelos: string[]; clave_configurada: boolean };
+
+export async function leerAsistenteSeo() {
+  return (await leer<{ data: ConfigAsistenteSeo }>('/cms/seo-asistente'))?.data ?? null;
+}
+
+export async function guardarAsistenteSeo(proveedor: string, modelo: string) {
+  return escribir<ConfigAsistenteSeo>('/cms/seo-asistente', 'PUT', { proveedor, modelo });
+}
+
+export async function sugerirSeo(slug: string, contexto: string) {
+  return escribir<SugerenciasSeo>(`/cms/seo/${encodeURIComponent(slug)}/sugerencias`, 'POST', { contexto: contexto.trim() || null });
+}
+
+export async function analizarSeo(slug: string, metaTitulo: string, metaDescripcion: string) {
+  return escribir<AnalisisSeo>(`/cms/seo/${encodeURIComponent(slug)}/analisis`, 'POST', { meta_titulo: metaTitulo, meta_descripcion: metaDescripcion });
+}

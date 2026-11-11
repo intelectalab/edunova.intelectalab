@@ -115,14 +115,22 @@ class Asistencia
         }
     }
 
-    /** EDUN-95 · Llegada por QR: P o T según la hora; si ya llegó antes, no se cambia. */
-    public function porQr(string $codigo, int $usuarioId): array
+    /**
+     * EDUN-95 · Llegada por QR: P o T según la hora; si ya llegó antes, no se cambia.
+     * EDUN-215 · Con $cuando (lectura hecha sin conexión) se usa la hora real del escaneo, no la de
+     * llegada al servidor; si ya hay un registro más reciente (p. ej. lo corrigió el tutor), gana ese.
+     */
+    public function porQr(string $codigo, int $usuarioId, ?Carbon $cuando = null): array
     {
         $alumno = app(Carnes::class)->buscar($codigo);
         if (! $alumno || $alumno['estado'] !== 'activo') {
             throw ValidationException::withMessages(['codigo' => ['Carné no reconocido o alumno inactivo.']]);
         }
-        $hoy = now()->toDateString();
+        $ahora = ($cuando ?? now())->copy()->timezone(config('app.timezone'));
+        if ($ahora->greaterThan(now()->addMinutes(5)) || $ahora->lessThan(now()->subDays(7)->startOfDay())) {
+            throw ValidationException::withMessages(['codigo' => ['La hora de la lectura no es válida (futura o de hace más de 7 días).']]);
+        }
+        $hoy = $ahora->toDateString();
         $seccion = DB::table('matriculas as m')->join('secciones as s', 's.id', '=', 'm.seccion_id')->join('anios_escolares as y', 'y.id', '=', 'm.anio_escolar_id')
             ->where('m.alumno_id', $alumno['id'])->where('m.estado', 'matriculado')->orderByDesc('y.anio')->value('m.seccion_id');
         if (! $seccion) {
@@ -133,13 +141,35 @@ class Asistencia
         if ($previa && in_array($previa->estado, ['P', 'T'], true) && $previa->hora_registro) {
             return ['alumno' => $nombre, 'seccion' => $alumno['seccion'], 'estado' => $previa->estado, 'hora' => substr((string) $previa->hora_registro, 0, 5), 'repetido' => true];
         }
-        $ahora = now();
         $config = json_decode(DB::table('instituciones')->where('id', ContextoInstitucion::requerido())->value('configuracion') ?? '{}', true)['asistencia'] ?? [];
         $limite = Carbon::parse($hoy.' '.($config['hora_entrada'] ?? '08:00'), config('app.timezone'))->addMinutes((int) ($config['tolerancia_min'] ?? 0));
         $estado = $ahora->greaterThan($limite) ? 'T' : 'P';
-        $this->registrar((int) $alumno['id'], (int) $seccion, $hoy, $estado, $ahora, $ahora->format('H:i:s'), 'qr', $usuarioId);
+        if (! $this->registrar((int) $alumno['id'], (int) $seccion, $hoy, $estado, $ahora, $ahora->format('H:i:s'), $cuando ? 'offline' : 'qr', $usuarioId)) {
+            return ['alumno' => $nombre, 'seccion' => $alumno['seccion'], 'estado' => $previa->estado, 'hora' => $ahora->format('H:i'), 'repetido' => true, 'conflicto' => true];
+        }
 
         return ['alumno' => $nombre, 'seccion' => $alumno['seccion'], 'estado' => $estado, 'hora' => $ahora->format('H:i'), 'repetido' => false];
+    }
+
+    /**
+     * EDUN-215 · Lecturas de QR hechas sin conexión, enviadas en bloque. Idempotente: reenviar el
+     * mismo bloque no duplica (el alumno ya figura como llegado). Cada lectura responde por su id local.
+     *
+     * @param  list<array{id: string, codigo: string, leido_at: string}>  $lecturas
+     */
+    public function loteQr(array $lecturas, int $usuarioId): array
+    {
+        $resultados = [];
+        foreach ($lecturas as $l) {
+            try {
+                $r = $this->porQr($l['codigo'], $usuarioId, Carbon::parse($l['leido_at']));
+                $resultados[] = ['id' => $l['id'], 'ok' => true] + $r;
+            } catch (ValidationException $e) {
+                $resultados[] = ['id' => $l['id'], 'ok' => false, 'mensaje' => collect($e->errors())->flatten()->first()];
+            }
+        }
+
+        return ['resultados' => $resultados];
     }
 
     /** Resumen de un alumno en un rango (para libretas y alertas). */

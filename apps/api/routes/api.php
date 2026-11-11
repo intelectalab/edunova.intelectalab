@@ -30,6 +30,7 @@ use App\Modulos\SEG\Http\Controllers\InvitacionesController;
 use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SEG\Http\Controllers\UsuariosController;
 use App\Modulos\SIA\Http\Controllers\SiagieController;
+use App\Modulos\SIT\Http\Controllers\BlogSeoCmsController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
@@ -377,6 +378,7 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/asistencia/secciones/{seccion}', [SeguimientoController::class, 'lista'])->whereNumber('seccion')->middleware('permiso:cal.asistencia.registrar|cal.asistencia.ver');
         Route::put('/asistencia/secciones/{seccion}', [SeguimientoController::class, 'guardar'])->whereNumber('seccion')->middleware(['permiso:cal.asistencia.registrar', 'throttle:120,1']);
         Route::post('/asistencia/qr', [SeguimientoController::class, 'qr'])->middleware(['permiso:cal.asistencia.registrar', 'throttle:600,1']);
+        Route::post('/asistencias/lote', [SeguimientoController::class, 'loteQr'])->middleware(['permiso:cal.asistencia.registrar', 'throttle:120,1']);
 
         // Conducta, tutoría y alertas (EDUN-101/102/103).
         Route::get('/tutoria/alumnos/{alumno}', [SeguimientoController::class, 'historial'])->whereNumber('alumno')->middleware('permiso:cal.conducta.ver|cal.conducta.registrar');
@@ -493,6 +495,17 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::get('/integraciones', [PanelCmsController::class, 'integraciones']);
     Route::put('/integraciones', [PanelCmsController::class, 'guardarIntegraciones']);
     Route::post('/politicas/{tipo}', [PanelCmsController::class, 'publicarPolitica'])->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies']);
+
+    // EDUN-368 · Blog de WordPress: lista, vista previa, mostrar u ocultar y sincronizar.
+    Route::get('/blog', [BlogSeoCmsController::class, 'blog']);
+    Route::post('/blog/sincronizar', [BlogSeoCmsController::class, 'sincronizarBlog'])->middleware('throttle:10,1');
+    Route::get('/blog/{slug}', [BlogSeoCmsController::class, 'vistaPrevia'])->where('slug', '[a-z0-9][a-z0-9-]{0,199}');
+    Route::patch('/blog/{slug}', [BlogSeoCmsController::class, 'visibilidad'])->where('slug', '[a-z0-9][a-z0-9-]{0,199}');
+    // EDUN-412 · Asistente SEO con IA (proveedor configurable).
+    Route::get('/seo-asistente', [BlogSeoCmsController::class, 'configuracionAsistente']);
+    Route::put('/seo-asistente', [BlogSeoCmsController::class, 'guardarAsistente']);
+    Route::post('/seo/{slug}/sugerencias', [BlogSeoCmsController::class, 'sugerir'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}')->middleware('throttle:20,1');
+    Route::post('/seo/{slug}/analisis', [BlogSeoCmsController::class, 'analizar'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
 
     // EDUN-302 · Gestión de reclamaciones.
     Route::get('/reclamaciones', [ReclamacionesCmsController::class, 'index']);

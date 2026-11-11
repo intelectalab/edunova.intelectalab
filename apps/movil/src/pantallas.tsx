@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
-import { AsistenciaApp, NotasApp, PuertaQrApp } from './academico';
+import { AsistenciaApp, EstadoConexion, NotasApp, PuertaQrApp } from './academico';
+import { useSincronizacion } from './colaDispositivo';
 import { AgendaApp, ComunicadosApp } from './comunicacion';
 import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
 import { EstadoCuentaApp, RatificacionApp } from './familia';
@@ -157,6 +158,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
   const envio = useEnvio();
   const [ok, setOk] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  useSincronizacion(api);
 
   return (
     <View style={estilos.pantalla}>
@@ -170,6 +172,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
       <ScrollView contentContainerStyle={estilos.contenido}>
         {aviso && <Tarjeta><Text style={{ color: colores.texto }}>{aviso}</Text></Tarjeta>}
         {colegio.estado === 'suspendido' && <MensajeError>El acceso del colegio está pausado. Comunícate con el colegio.</MensajeError>}
+        <EstadoConexion color={color} />
         {colegio.roles.some((r) => ['docente', 'tutor', 'auxiliar', 'coordinador'].includes(r)) && <AsistenciaApp api={api} color={color} />}
         {colegio.roles.some((r) => ['auxiliar', 'porteria'].includes(r)) && <PuertaQrApp api={api} color={color} />}
         {colegio.roles.some((r) => ['conductor', 'movilidad'].includes(r)) && <RecorridoApp api={api} color={color} />}

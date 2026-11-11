@@ -86,13 +86,13 @@ class BlogWordpress
     {
         $this->sincronizar();
         $pagina = max(1, (int) ($f['pagina'] ?? 1));
-        $q = DB::table('cms.blog_wp_cache as b')->leftJoin('cms.categorias_blog as c', 'c.id', '=', 'b.categoria_id')
+        $q = DB::table('cms.blog_wp_cache as b')->leftJoin('cms.categorias_blog as c', 'c.id', '=', 'b.categoria_id')->where('b.oculto', false)
             ->when(! empty($f['categoria']), fn ($q) => $q->where('c.slug', $f['categoria']));
         $total = (clone $q)->count();
 
         return [
             'configurado' => $this->configurado(),
-            'categorias' => DB::table('cms.categorias_blog as c')->whereExists(fn ($s) => $s->from('cms.blog_wp_cache as b')->whereColumn('b.categoria_id', 'c.id'))
+            'categorias' => DB::table('cms.categorias_blog as c')->whereExists(fn ($s) => $s->from('cms.blog_wp_cache as b')->whereColumn('b.categoria_id', 'c.id')->where('b.oculto', false))
                 ->orderBy('c.nombre')->get(['c.slug', 'c.nombre']),
             'data' => $q->orderByDesc('b.publicado_en')->offset(($pagina - 1) * self::POR_PAGINA)->limit(self::POR_PAGINA)
                 ->get(['b.slug', 'b.titulo', 'b.resumen', 'b.imagen_url', 'b.publicado_en', 'b.autor_wp', 'c.slug as categoria', 'c.nombre as categoria_nombre']),
@@ -104,12 +104,12 @@ class BlogWordpress
     public function articulo(string $slug): ?array
     {
         $this->sincronizar();
-        $a = DB::table('cms.blog_wp_cache as b')->leftJoin('cms.categorias_blog as c', 'c.id', '=', 'b.categoria_id')->where('b.slug', $slug)
+        $a = DB::table('cms.blog_wp_cache as b')->leftJoin('cms.categorias_blog as c', 'c.id', '=', 'b.categoria_id')->where('b.slug', $slug)->where('b.oculto', false)
             ->first(['b.id', 'b.slug', 'b.titulo', 'b.resumen', 'b.contenido', 'b.imagen_url', 'b.publicado_en', 'b.actualizado_wp', 'b.autor_wp', 'b.categoria_id', 'c.slug as categoria', 'c.nombre as categoria_nombre']);
         if (! $a) {
             return null;
         }
-        $relacionados = DB::table('cms.blog_wp_cache')->where('id', '<>', $a->id)
+        $relacionados = DB::table('cms.blog_wp_cache')->where('id', '<>', $a->id)->where('oculto', false)
             ->when($a->categoria_id, fn ($q) => $q->where('categoria_id', $a->categoria_id))
             ->orderByDesc('publicado_en')->limit(3)->get(['slug', 'titulo', 'resumen', 'imagen_url', 'publicado_en']);
 

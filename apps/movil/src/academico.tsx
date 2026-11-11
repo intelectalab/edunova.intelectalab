@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ErrorApi, type Cliente } from './api';
-import { encolar, leerCola, sincronizar, type Lote } from './cola';
+import type { Lote } from './cola';
+import { descartarOperacion, guardarLectura, guardarLista, reintentarOperacion, sincronizarAhora, useEstadoCola } from './colaDispositivo';
 import { Boton, colores, estilos, MensajeError } from './ui';
 
 type Alumno = { id: number; nombre: string; estado: 'P' | 'T' | 'F' | 'J' };
@@ -17,27 +17,17 @@ export function AsistenciaApp({ api, color }: { api: Cliente; color: string }) {
   const [secciones, setSecciones] = useState<{ id: number; nombre: string }[]>([]);
   const [seccion, setSeccion] = useState<number | null>(null);
   const [alumnos, setAlumnos] = useState<Alumno[] | null>(null);
-  const [pendientes, setPendientes] = useState(0);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-
-  const sincronizarCola = useCallback(async () => {
-    const r = await sincronizar(AsyncStorage, async (l: Lote) => {
-      await api.pedir(`/asistencia/secciones/${l.seccion_id}`, { metodo: 'PUT', cuerpo: { fecha: l.fecha, origen: 'offline', registros: l.registros } });
-    });
-    setPendientes(r.pendientes);
-    if (r.enviados) setMensaje(`Se sincronizaron ${r.enviados} listas guardadas sin conexión.`);
-  }, [api]);
+  const red = useEstadoCola();
 
   useEffect(() => {
     api.pedir<{ data: { id: number; nombre: string }[] }>('/asistencia/secciones').then((r) => {
       setSecciones(r.data);
       setSeccion((s) => s ?? r.data[0]?.id ?? null);
     }).catch(() => setSecciones([]));
-    leerCola(AsyncStorage).then((c) => setPendientes(c.length));
-    sincronizarCola().catch(() => undefined);
-  }, [api, sincronizarCola]);
+  }, [api]);
 
   useEffect(() => {
     if (!seccion) return;
@@ -51,16 +41,17 @@ export function AsistenciaApp({ api, color }: { api: Cliente; color: string }) {
     setEnviando(true);
     setError(null);
     const lote: Lote = { seccion_id: seccion, fecha: hoy(), registros: alumnos.map((a) => ({ alumno_id: a.id, estado: a.estado, registrado_at: new Date().toISOString() })) };
+    const aCola = async () => {
+      await guardarLista(lote);
+      setMensaje('Sin conexión: la lista quedó guardada (cifrada) en el teléfono y se enviará al volver la señal.');
+    };
     try {
+      if (!red.enLinea) return await aCola();
       await api.pedir(`/asistencia/secciones/${seccion}`, { metodo: 'PUT', cuerpo: { fecha: lote.fecha, origen: 'movil', registros: lote.registros } });
       setMensaje('Asistencia guardada.');
     } catch (e) {
-      if (e instanceof ErrorApi && e.estado !== 0) {
-        setError(e.message);
-      } else {
-        setPendientes(await encolar(AsyncStorage, lote));
-        setMensaje('Sin conexión: la lista quedó guardada en el teléfono y se enviará al volver la señal.');
-      }
+      if (e instanceof ErrorApi && e.estado !== 0) setError(e.message);
+      else await aCola();
     } finally {
       setEnviando(false);
     }
@@ -84,9 +75,36 @@ export function AsistenciaApp({ api, color }: { api: Cliente; color: string }) {
         </Pressable>
       ))}
       <Boton titulo="Guardar asistencia" color={color} cargando={enviando} alPulsar={guardar} />
-      {pendientes > 0 && <Boton titulo={`Enviar ${pendientes} listas pendientes`} borde color={color} alPulsar={() => sincronizarCola().catch(() => setError('Aún sin conexión.'))} />}
       {mensaje && <Text style={estilos.subtitulo}>{mensaje}</Text>}
       <MensajeError>{error}</MensajeError>
+    </View>
+  );
+}
+
+/**
+ * EDUN-217 · Indicador de conexión: en línea o sin conexión, cuántos registros esperan envío y
+ * los que quedaron con error (para reintentar o descartar).
+ */
+export function EstadoConexion({ color }: { color: string }) {
+  const red = useEstadoCola();
+  if (red.enLinea && !red.pendientes && !red.errores.length && !red.mensaje) return null;
+  return (
+    <View style={[estilos.tarjeta, { borderLeftWidth: 4, borderLeftColor: red.enLinea ? '#15803d' : '#b45309' }]} accessibilityLiveRegion="polite">
+      <Text style={{ fontWeight: '700', color: red.enLinea ? '#15803d' : '#b45309' }}>
+        {red.enLinea ? '● En línea' : '● Sin conexión'}{red.pendientes ? ` · ${red.pendientes} por enviar` : ''}{red.sincronizando ? ' · enviando…' : ''}
+      </Text>
+      {!red.enLinea && <Text style={estilos.subtitulo}>Lo que registres se guarda cifrado en el teléfono y se envía solo al volver la señal.</Text>}
+      {red.mensaje && <Text style={estilos.subtitulo}>{red.mensaje}</Text>}
+      {red.enLinea && red.pendientes > 0 && !red.sincronizando && <Boton titulo="Enviar ahora" borde color={color} alPulsar={() => sincronizarAhora().catch(() => undefined)} />}
+      {red.errores.map((o) => (
+        <View key={o.id} style={{ gap: 4 }}>
+          <Text style={{ color: colores.error }}>{o.tipo === 'qr' ? `Lectura de carné ${o.datos.leido_at.slice(0, 16).replace('T', ' ')}` : `Lista del ${o.datos.fecha}`}: {o.error}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}><Boton titulo="Reintentar" borde color={color} alPulsar={() => reintentarOperacion(o.id).catch(() => undefined)} /></View>
+            <View style={{ flex: 1 }}><Boton titulo="Descartar" borde color={colores.error} alPulsar={() => descartarOperacion(o.id).catch(() => undefined)} /></View>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -96,15 +114,25 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
   const [permiso, pedirPermiso] = useCameraPermissions();
   const [activo, setActivo] = useState(false);
   const [ultimo, setUltimo] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<{ texto: string; tarde: boolean } | null>(null);
+  const [resultado, setResultado] = useState<{ texto: string; tarde: boolean; guardado?: boolean } | null>(null);
+  const red = useEstadoCola();
   const leer = async (codigo: string) => {
     if (codigo === ultimo) return;
     setUltimo(codigo);
+    const leidoAt = new Date();
+    const aCola = async () => {
+      await guardarLectura({ codigo, leido_at: leidoAt.toISOString() });
+      setResultado({ texto: `Sin conexión: lectura guardada (${leidoAt.toTimeString().slice(0, 5)}); se envía al volver la señal.`, tarde: false, guardado: true });
+    };
     try {
-      const r = await api.pedir<{ alumno: string; seccion: string | null; estado: string; hora: string; repetido: boolean }>('/asistencia/qr', { metodo: 'POST', cuerpo: { codigo } });
-      setResultado({ texto: `${r.alumno} · ${r.seccion ?? ''} · ${r.hora}${r.repetido ? ' (ya registrado)' : ''}`, tarde: r.estado === 'T' });
+      if (!red.enLinea) await aCola();
+      else {
+        const r = await api.pedir<{ alumno: string; seccion: string | null; estado: string; hora: string; repetido: boolean }>('/asistencia/qr', { metodo: 'POST', cuerpo: { codigo } });
+        setResultado({ texto: `${r.alumno} · ${r.seccion ?? ''} · ${r.hora}${r.repetido ? ' (ya registrado)' : ''}`, tarde: r.estado === 'T' });
+      }
     } catch (e) {
-      setResultado({ texto: e instanceof Error ? e.message : 'No se pudo registrar.', tarde: true });
+      if (e instanceof ErrorApi && e.estado === 0) await aCola();
+      else setResultado({ texto: e instanceof Error ? e.message : 'No se pudo registrar.', tarde: true });
     }
     setTimeout(() => setUltimo(null), 2500);
   };
@@ -119,7 +147,7 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
           <Boton titulo="Cerrar escáner" borde color={color} alPulsar={() => setActivo(false)} />
         </>
       ) : <Text style={estilos.subtitulo}>Da permiso de cámara para escanear los carnés.</Text>}
-      {resultado && <Text style={{ fontSize: 16, fontWeight: '600', color: resultado.tarde ? '#b45309' : '#15803d' }}>{resultado.tarde ? 'Tardanza: ' : 'Puntual: '}{resultado.texto}</Text>}
+      {resultado && <Text style={{ fontSize: 16, fontWeight: '600', color: resultado.guardado ? colores.suave : resultado.tarde ? '#b45309' : '#15803d' }}>{resultado.guardado ? '' : resultado.tarde ? 'Tardanza: ' : 'Puntual: '}{resultado.texto}</Text>}
     </View>
   );
 }

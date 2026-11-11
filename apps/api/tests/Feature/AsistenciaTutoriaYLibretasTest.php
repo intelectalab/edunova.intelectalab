@@ -187,3 +187,40 @@ it('arma el acta y el cuadro de méritos en PDF y Excel, y la recuperación actu
     $this->get("/api/v1/actas/{$s['seccion']}/pdf", ['X-Institucion' => (string) demoId()])->assertOk()->assertHeader('Content-Type', 'application/pdf');
     $this->get("/api/v1/actas/{$s['seccion']}/xlsx", ['X-Institucion' => (string) demoId()])->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 });
+
+it('recibe en bloque las lecturas de QR hechas sin conexión: hora real, idempotente y gana el registro más reciente (EDUN-215)', function () {
+    $s = seccionS19();
+    $db = dueno();
+    $config = json_decode($db->table('instituciones')->where('id', demoId())->value('configuracion') ?? '{}', true) ?: [];
+    $db->table('instituciones')->where('id', demoId())->update(['configuracion' => json_encode(array_merge($config, ['asistencia' => ['hora_entrada' => '07:45', 'tolerancia_min' => 10]]))]);
+    $auxiliar = personaDemo('auxiliar');
+    [$carla, $diego] = $s['alumnos'];
+    $ayer = now()->subDay()->toDateString();
+    $db->table('asistencias')->whereIn('alumno_id', [$carla, $diego])->where('fecha', $ayer)->delete();
+    // El tutor corrigió a Carla como falta a las 09:00 de ayer; la lectura sin conexión de las 07:50 es más antigua.
+    enDemo($s['tutor'], 'PUT', "/asistencia/secciones/{$s['seccion']}", ['fecha' => $ayer, 'registros' => [
+        ['alumno_id' => $carla, 'estado' => 'F', 'registrado_at' => Carbon::parse("$ayer 09:00", 'America/Lima')->toIso8601String()],
+    ]])->assertOk();
+    $codigo = fn ($id) => $db->table('alumnos')->where('id', $id)->value('codigo_carne');
+    $lecturas = [
+        ['id' => 'l1', 'codigo' => $codigo($diego), 'leido_at' => Carbon::parse("$ayer 07:40", 'America/Lima')->toIso8601String()],
+        ['id' => 'l2', 'codigo' => $codigo($carla), 'leido_at' => Carbon::parse("$ayer 07:50", 'America/Lima')->toIso8601String()],
+        ['id' => 'l3', 'codigo' => 'NO-EXISTE', 'leido_at' => now()->toIso8601String()],
+        ['id' => 'l4', 'codigo' => $codigo($diego), 'leido_at' => now()->addHour()->toIso8601String()],
+    ];
+    $r = collect(enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => $lecturas])->assertOk()->json('resultados'))->keyBy('id');
+    expect($r['l1'])->toMatchArray(['ok' => true, 'estado' => 'P', 'hora' => '07:40', 'repetido' => false])
+        ->and($r['l2'])->toMatchArray(['ok' => true, 'estado' => 'F', 'conflicto' => true])
+        ->and($r['l3']['ok'])->toBeFalse()->and($r['l3']['mensaje'])->toContain('Carné')
+        ->and($r['l4']['ok'])->toBeFalse();
+    $fila = $db->table('asistencias')->where('alumno_id', $diego)->where('fecha', $ayer)->first();
+    expect($fila->estado)->toBe('P')->and($fila->origen)->toBe('offline')->and(substr($fila->hora_registro, 0, 5))->toBe('07:40');
+
+    // Reenviar el mismo bloque (se cortó la respuesta) no duplica ni cambia nada.
+    $r2 = collect(enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => array_slice($lecturas, 0, 2)])->assertOk()->json('resultados'))->keyBy('id');
+    expect($r2['l1'])->toMatchArray(['ok' => true, 'repetido' => true]);
+    expect($db->table('asistencias')->where('alumno_id', $diego)->where('fecha', $ayer)->count())->toBe(1)
+        ->and($db->table('asistencias')->where('alumno_id', $carla)->where('fecha', $ayer)->value('estado'))->toBe('F');
+    enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => [['id' => 'a', 'codigo' => 'X', 'leido_at' => 'x'], ['id' => 'a', 'codigo' => 'Y', 'leido_at' => now()->toIso8601String()]]])->assertUnprocessable();
+    enDemo(personaDemo('apoderado'), 'POST', '/asistencias/lote', ['lecturas' => $lecturas])->assertForbidden();
+});

@@ -34,6 +34,19 @@ const ARTICULOS = [
 ];
 
 /** El listado no lleva el contenido completo. */
+// EDUN-367 · Posts que solo ve el CMS al empezar (ocultos); uno por proyecto de Playwright para que
+// las pruebas en paralelo no se pisen. Al mostrarlos, su artículo se abre en el sitio.
+const POSTS_CMS = ['escritorio', 'celular'].map((p, i) => ({
+  slug: `revision-${p}`, titulo: `Post en revisión (${p})`, resumen: 'Por revisar antes de difundir.', imagen_url: null, publicado_en: `2026-11-0${5 + i}T15:00:00Z`,
+  autor_wp: 'Equipo Edunova', categoria: 'gestion', categoria_nombre: 'Gestión', contenido: '<h2>Borrador revisado</h2><p>Texto del post.</p>', actualizado_wp: null, oculto: true, wp_post_id: 100 + i,
+}));
+const postCms = (a) => ({
+  ...a, wp_post_id: a.wp_post_id ?? 1, oculto: Boolean(a.oculto), estado: a.oculto ? 'oculto' : 'publicado', revisado_at: null, wp_url: `https://blog.ejemplo.pe/${a.slug}`,
+  cambio_sin_revisar: false, editar_url: `https://blog.ejemplo.pe/wp-admin/post.php?post=${a.wp_post_id ?? 1}&action=edit`,
+});
+const asistenteSeo = { proveedor: 'simulado', modelo: 'claude-opus-5-5', proveedores: { simulado: 'Simulado (sin IA, para pruebas)', claude: 'Claude (Anthropic)' }, modelos: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'], clave_configurada: false };
+const analisisTexto = (x, min, max) => ({ largo: x.length, ideal: [min, max], estado: !x.length ? 'vacio' : x.length < min ? 'corto' : x.length > max ? 'largo' : 'bien', legibilidad: 64, nivel: 'normal' });
+
 const resumenArticulo = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => k !== 'contenido' && k !== 'actualizado_wp'));
 
 const integraciones = {
@@ -187,14 +200,14 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
   }
   const slug = /^\/api\/v1\/sitio\/blog\/([a-z0-9-]+)$/.exec(ruta)?.[1];
   if (req.method === 'GET' && slug) {
-    const a = ARTICULOS.find((x) => x.slug === slug);
+    const a = ARTICULOS.find((x) => x.slug === slug) ?? POSTS_CMS.find((x) => x.slug === slug && !x.oculto);
     if (!a) return json(res, 404, { message: 'No encontramos ese artículo.' }), true;
     return json(res, 200, { ...a, relacionados: ARTICULOS.filter((x) => x.slug !== slug).map(resumenArticulo) }), true;
   }
   if (req.method === 'GET' && ruta === '/__publicaciones') return json(res, 200, publicaciones), true;
 
   if (!ruta.startsWith('/api/v1/cms/')) return false;
-  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas|integraciones)/;
+  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas|integraciones|blog)/;
   if (!protegidas.test(ruta)) return false;
   if (!esSuperadmin()) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' }), true;
 
@@ -312,6 +325,41 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
     if ((d.meta_titulo ?? '').length > 70) return json(res, 422, { message: 'x', errors: { meta_titulo: ['El título admite hasta 70 caracteres.'] } }), true;
     Object.assign(seoInicio, d, { updated_at: new Date().toISOString() });
     return json(res, 200, { data: seoInicio, message: 'Metadatos actualizados.' }), true;
+  }
+
+  // EDUN-368 · Blog de WordPress en el CMS.
+  if (ruta === '/api/v1/cms/blog' || ruta === '/api/v1/cms/blog/sincronizar') {
+    const lista = [...POSTS_CMS, ...ARTICULOS].map(postCms);
+    return json(res, 200, { configurado: true, wp_admin: 'https://blog.ejemplo.pe/wp-admin/', ultima_sincronia: '2026-11-10T13:00:00Z', data: lista, message: 'Blog sincronizado con WordPress.' }), true;
+  }
+  const post = /^\/api\/v1\/cms\/blog\/([a-z0-9-]+)$/.exec(ruta)?.[1];
+  if (post) {
+    const a = POSTS_CMS.find((x) => x.slug === post) ?? ARTICULOS.find((x) => x.slug === post);
+    if (!a) return json(res, 404, { message: 'No encontramos ese artículo.' }), true;
+    if (req.method === 'PATCH') {
+      if (!POSTS_CMS.includes(a)) return json(res, 422, { message: 'En la API simulada solo se ocultan los posts de revisión.' }), true;
+      a.oculto = cuerpo().oculto === true;
+    }
+    return json(res, 200, { data: postCms(a), message: a.oculto ? 'El artículo ya no se muestra en el sitio.' : 'El artículo se muestra en el sitio.' }), true;
+  }
+
+  // EDUN-412 · Asistente SEO.
+  if (ruta === '/api/v1/cms/seo-asistente') {
+    if (req.method === 'PUT') Object.assign(asistenteSeo, { proveedor: cuerpo().proveedor, modelo: cuerpo().modelo });
+    return json(res, 200, { data: asistenteSeo, message: 'Asistente SEO actualizado.' }), true;
+  }
+  if (ruta === '/api/v1/cms/seo/inicio/sugerencias') {
+    const d = [
+      'Software de gestión escolar para colegios privados del Perú: matrícula, notas y pagos en línea. Pide tu demo gratuita hoy.',
+      'Gestiona tu colegio en una sola plataforma: matrícula en línea, notas por competencias y cobro de pensiones. Agenda una demo.',
+      'Edunova ordena la matrícula, la asistencia y las pensiones de tu colegio privado, con app para las familias. Conócelo gratis.',
+    ];
+    return json(res, 200, { data: { proveedor: 'simulado', titulo: 'Software de gestión escolar | Edunova', keywords: ['software escolar', 'gestión escolar', 'matrícula en línea'], descripciones: d.map((texto) => ({ texto, ...analisisTexto(texto, 120, 155) })) } }), true;
+  }
+  if (ruta === '/api/v1/cms/seo/inicio/analisis') {
+    const d = cuerpo();
+    const repetido = d.meta_titulo === 'Planes | Edunova' ? ['planes'] : [];
+    return json(res, 200, { data: { titulo: { ...analisisTexto(d.meta_titulo ?? '', 30, 60), duplicado_en: repetido }, descripcion: { ...analisisTexto(d.meta_descripcion ?? '', 120, 155), duplicado_en: [] } } }), true;
   }
 
   // EDUN-403 · Tracking e integraciones (las claves nunca se devuelven).

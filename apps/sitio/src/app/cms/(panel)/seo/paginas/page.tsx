@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { cms } from '@/contenido/provisional';
 import { URL_SITIO } from '@/lib/seo';
-import { leerPaginasSeo, leerSeo } from '../../../panel-acciones';
+import { leerAsistenteSeo, leerPaginasSeo, leerSeo } from '../../../panel-acciones';
 import { EditorSeo } from './EditorSeo';
 
-// EDUN-314 / SIT-057 · Pantalla Ajustes SEO y vista previa social (Stitch S-WEB-04).
+// EDUN-314 / SIT-057 · Pantalla Ajustes SEO y vista previa social (Stitch S-WEB-04), con el
+// asistente SEO con IA (EDUN-413 / SIT-030).
 // No muestra «Indexación activa» ni nada de Search Console: no hay verificación real.
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export default async function AjustesSeo({ searchParams }: { searchParams: Promi
   const { pagina } = await searchParams;
   const paginas = await leerPaginasSeo();
   const slug = pagina && paginas?.some((p) => p.slug === pagina) ? pagina : paginas?.[0]?.slug;
-  const datos = slug ? await leerSeo(slug) : null;
+  const [datos, asistente] = await Promise.all([slug ? leerSeo(slug) : Promise.resolve(null), leerAsistenteSeo()]);
 
   return (
     <div className="px-margin-mobile md:px-margin py-space-lg flex flex-col gap-space-md">
@@ -38,7 +39,7 @@ export default async function AjustesSeo({ searchParams }: { searchParams: Promi
               ))}
             </nav>
           )}
-          <EditorSeo key={`${datos.slug}-${datos.updated_at}`} inicial={datos} dominio={URL_SITIO} />
+          <EditorSeo key={`${datos.slug}-${datos.updated_at}`} inicial={datos} dominio={URL_SITIO} asistente={asistente} />
         </>
       )}
     </div>

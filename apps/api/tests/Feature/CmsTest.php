@@ -17,10 +17,10 @@ function comoRolCms(string $rol, callable $consulta): mixed
     });
 }
 
-it('crea las 29 tablas del esquema cms (28 del kit + feriados nacionales, EDUN-294)', function () {
+it('crea las 30 tablas del esquema cms (28 del kit + feriados nacionales, EDUN-294, y sugerencias SEO, EDUN-412)', function () {
     $tablas = DB::selectOne("select count(*) as n from information_schema.tables where table_schema = 'cms' and table_type = 'BASE TABLE'")->n;
 
-    expect($tablas)->toBe(29);
+    expect($tablas)->toBe(30);
 });
 
 it('carga las semillas neutras: 4 planes, 18 módulos y 6 en el grid', function () {

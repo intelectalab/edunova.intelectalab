@@ -10,10 +10,22 @@
       "bundleIdentifier": "pe.edunova.app",
       "infoPlist": {
         "NSFaceIDUsageDescription": "Usamos Face ID para que vuelvas a entrar a Edunova sin escribir tu contraseña."
-      }
+      },
+      "supportsTablet": false
     },
     "android": {
-      "package": "pe.edunova.app"
+      "package": "pe.edunova.app",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "blockedPermissions": [
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-secure-store",
@@ -40,7 +52,16 @@
         {
           "locationWhenInUsePermission": "Compartimos la ubicación de la movilidad con las familias solo mientras el recorrido está en curso."
         }
-      ]
-    ]
+      ],
+      "expo-updates"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
