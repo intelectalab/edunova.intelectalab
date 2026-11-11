@@ -238,3 +238,24 @@ export async function sugerirSeo(slug: string, contexto: string) {
 export async function analizarSeo(slug: string, metaTitulo: string, metaDescripcion: string) {
   return escribir<AnalisisSeo>(`/cms/seo/${encodeURIComponent(slug)}/analisis`, 'POST', { meta_titulo: metaTitulo, meta_descripcion: metaDescripcion });
 }
+
+// --- Historial del chatbot (EDUN-379 / SIT-028) ----------------------------------------------------
+
+export type FiltrosSesiones = { desde?: string; hasta?: string; resultado?: string; lead?: string; q?: string; pagina?: string };
+export type SesionChatbot = { id: number; created_at: string; resultado: string; lead_capturado: boolean; lead_id: number | null; pagina: string | null; pasos: number; ultimo: string | null };
+export type SesionesChatbot = { data: SesionChatbot[]; total: number; pagina: number; paginas: number; por_resultado: Record<string, number>; resultados: Record<string, string> };
+export type DetalleSesion = Omit<SesionChatbot, 'pasos' | 'ultimo'> & {
+  lead_nombre: string | null;
+  lead_email: string | null;
+  lead_telefono: string | null;
+  lead_estado: string | null;
+  mensajes: { rol: 'bot' | 'visitante' | 'asesor'; contenido: string; created_at: string }[];
+};
+
+export async function leerSesionesChatbot(f: FiltrosSesiones) {
+  return leer<SesionesChatbot>(`/cms/chatbot/sesiones?${query(f)}`);
+}
+
+export async function leerSesionChatbot(id: string) {
+  return /^\d+$/.test(id) ? ((await leer<{ data: DetalleSesion }>(`/cms/chatbot/sesiones/${id}`))?.data ?? null) : null;
+}

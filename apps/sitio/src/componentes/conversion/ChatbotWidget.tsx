@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from 'react';
-import { registrarLeadChatbot } from '@/app/acciones-sitio';
+import { registrarLeadChatbot, registrarSesionChatbot } from '@/app/acciones-sitio';
 import { Icono } from '@/componentes/base';
 import { chatbot as t } from '@/contenido/provisional';
 import { registrarEvento } from '@/lib/analitica';
@@ -89,6 +89,7 @@ function Captura({ recorrido, onListo }: { recorrido: string[]; onListo: () => v
  * mensajes, opciones, captura de contacto, enlaces y WhatsApp) o modo «whatsapp» (pasa directo a
  * un asesor). Fuera del horario muestra el mensaje del CMS y pide el contacto. Los contactos
  * llegan a la bandeja como source=chatbot con su consentimiento. El modo IA queda para después.
+ * EDUN-380: las conversaciones sin contacto se registran (solo el recorrido) para el historial del CMS.
  */
 export function ChatbotWidget({ config }: { config: Chatbot }) {
   const [abierto, setAbierto] = useState(false);
@@ -97,6 +98,8 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
   const [listo, setListo] = useState(false);
   const [atendiendo, setAtendiendo] = useState(true);
   const lista = useRef<HTMLOListElement>(null);
+  // EDUN-380 · Una conversación = una sesión del historial (sin datos personales: solo el recorrido).
+  const sesion = useRef<{ uuid: string; enviada: boolean } | null>(null);
   const idTitulo = useId();
   const wa = config.whatsapp ? enlaceWhatsapp(config.whatsapp, config.whatsapp_mensaje) : null;
 
@@ -120,9 +123,23 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
     }
     setLineas(actuales);
     setPaso(indice);
+    if (indice !== null && config.nodos[indice]?.tipo === 'fin') registrar('fin', actuales);
+  }
+
+  function registrar(resultado: 'whatsapp' | 'url' | 'fin' | 'abandono', actuales: Linea[] = lineas) {
+    const s = sesion.current;
+    if (!s || s.enviada || listo || actuales.length < 2) return;
+    s.enviada = true;
+    void registrarSesionChatbot({ sesion_uuid: s.uuid, resultado, recorrido: actuales.map((l) => `${l.de === 'bot' ? t.bot : t.tu}: ${l.texto}`), page_url: location.href.split('#')[0] });
+  }
+
+  function cerrar() {
+    registrar('abandono');
+    setAbierto(false);
   }
 
   function abrir() {
+    sesion.current = { uuid: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : '', enviada: false };
     const ahora = enHorario(config.horario);
     setAtendiendo(ahora);
     setAbierto(true);
@@ -148,7 +165,7 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
             <h2 id={idTitulo} className="font-title-md text-title-md">
               {config.titulo}
             </h2>
-            <button type="button" onClick={() => setAbierto(false)} aria-label={t.cerrar} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/10">
+            <button type="button" onClick={cerrar} aria-label={t.cerrar} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/10">
               <Icono nombre="close" tamano="sm" />
             </button>
           </header>
@@ -173,17 +190,25 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
               </div>
             )}
             {atendiendo && nodo?.tipo === 'url' && nodo.url && (
-              <a href={nodo.url} className={`${BOTON} self-start bg-primary text-on-primary`}>
+              <a href={nodo.url} onClick={() => registrar('url')} className={`${BOTON} self-start bg-primary text-on-primary`}>
                 {t.irPagina}
               </a>
             )}
             {wa && (config.modo === 'whatsapp' || nodo?.tipo === 'whatsapp' || !atendiendo) && !listo && (
-              <a href={wa} target="_blank" rel="noopener" className={`${BOTON} self-start bg-[#128C7E] text-white`}>
+              <a href={wa} target="_blank" rel="noopener" onClick={() => registrar('whatsapp')} className={`${BOTON} self-start bg-[#128C7E] text-white`}>
                 <Icono nombre="chat" tamano="sm" />
                 {t.escribirWhatsapp}
               </a>
             )}
-            {pedirContacto && <Captura recorrido={recorrido} onListo={() => setListo(true)} />}
+            {pedirContacto && (
+              <Captura
+                recorrido={recorrido}
+                onListo={() => {
+                  if (sesion.current) sesion.current.enviada = true; // la sesión ya quedó con el contacto
+                  setListo(true);
+                }}
+              />
+            )}
             {atendiendo && config.modo === 'flujo' && (nodo?.tipo === 'fin' || listo) && (
               <button type="button" onClick={abrir} className={`${BOTON} self-start text-primary underline`}>
                 {t.reiniciar}
@@ -194,7 +219,7 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
       )}
       <button
         type="button"
-        onClick={() => (abierto ? setAbierto(false) : abrir())}
+        onClick={() => (abierto ? cerrar() : abrir())}
         aria-expanded={abierto}
         aria-label={abierto ? t.cerrar : t.abrir}
         className="w-14 h-14 rounded-full bg-primary text-on-primary shadow-lg flex items-center justify-center hover:bg-primary-container"

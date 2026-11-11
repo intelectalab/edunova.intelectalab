@@ -137,6 +137,21 @@ export async function registrarLeadChatbot(d: { nombre: string; email: string; t
   return { ok: false, error: chatbot.error, campos: [] };
 }
 
+/** EDUN-380 · Conversación del chatbot que terminó sin dejar contacto (historial del CMS). Si falla, no molesta. */
+export async function registrarSesionChatbot(d: { sesion_uuid: string; resultado: 'whatsapp' | 'url' | 'fin' | 'abandono'; recorrido: string[]; page_url: string | null }): Promise<void> {
+  if (!/^[0-9a-f-]{36}$/i.test(d.sesion_uuid)) return;
+  try {
+    await enviar('/sitio/chatbot/sesion', {
+      sesion_uuid: d.sesion_uuid,
+      resultado: d.resultado,
+      recorrido: (d.recorrido ?? []).slice(0, 40).map((x) => String(x).slice(0, 300)),
+      page_url: d.page_url?.slice(0, 500) ?? null,
+    });
+  } catch {
+    // Sin conexión: el historial es opcional.
+  }
+}
+
 /** EDUN-306 · Copia de la elección del banner de cookies (auditoría). Si falla, no molesta al visitante. */
 export async function registrarCookies(categorias: string[]): Promise<boolean> {
   try {

@@ -44,6 +44,15 @@ const postCms = (a) => ({
   ...a, wp_post_id: a.wp_post_id ?? 1, oculto: Boolean(a.oculto), estado: a.oculto ? 'oculto' : 'publicado', revisado_at: null, wp_url: `https://blog.ejemplo.pe/${a.slug}`,
   cambio_sin_revisar: false, editar_url: `https://blog.ejemplo.pe/wp-admin/post.php?post=${a.wp_post_id ?? 1}&action=edit`,
 });
+// EDUN-380 · Historial del chatbot.
+const SESIONES_CHATBOT = [
+  { id: 1, created_at: '2026-11-10T15:00:00Z', resultado: 'captura', lead_capturado: true, lead_id: 7, pagina: '/', mensajes: [{ rol: 'bot', contenido: 'Edunova: ¿Qué necesitas?' }, { rol: 'visitante', contenido: 'Tú: Hablar con un asesor' }], lead_nombre: 'Rosa', lead_email: 'rosa@colegio.pe', lead_telefono: null, lead_estado: 'nuevo' },
+  { id: 2, created_at: '2026-11-09T15:00:00Z', resultado: 'url', lead_capturado: false, lead_id: null, pagina: '/planes', mensajes: [{ rol: 'bot', contenido: 'Edunova: ¿Qué necesitas?' }, { rol: 'visitante', contenido: 'Tú: Ver precios' }, { rol: 'bot', contenido: 'Edunova: Aquí están los planes.' }] },
+  { id: 3, created_at: '2026-11-08T15:00:00Z', resultado: 'abandono', lead_capturado: false, lead_id: null, pagina: '/funcionalidades', mensajes: [{ rol: 'bot', contenido: 'Edunova: ¿Qué necesitas?' }] },
+];
+const RESULTADOS_CHATBOT = { captura: 'Dejó su contacto', whatsapp: 'Pasó a WhatsApp', url: 'Abrió un enlace', fin: 'Llegó al final', abandono: 'Cerró a medias' };
+export const sesionesSitio = [];
+
 const asistenteSeo = { proveedor: 'simulado', modelo: 'claude-opus-5-5', proveedores: { simulado: 'Simulado (sin IA, para pruebas)', claude: 'Claude (Anthropic)' }, modelos: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'], clave_configurada: false };
 const analisisTexto = (x, min, max) => ({ largo: x.length, ideal: [min, max], estado: !x.length ? 'vacio' : x.length < min ? 'corto' : x.length > max ? 'largo' : 'bien', legibilidad: 64, nivel: 'normal' });
 
@@ -204,10 +213,16 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
     if (!a) return json(res, 404, { message: 'No encontramos ese artículo.' }), true;
     return json(res, 200, { ...a, relacionados: ARTICULOS.filter((x) => x.slug !== slug).map(resumenArticulo) }), true;
   }
+  // EDUN-380 · Conversación sin contacto desde el widget.
+  if (req.method === 'POST' && ruta === '/api/v1/sitio/chatbot/sesion') {
+    sesionesSitio.push(cuerpo());
+    return json(res, 201, { message: 'Registrado.' }), true;
+  }
+  if (req.method === 'GET' && ruta === '/__sesiones') return json(res, 200, sesionesSitio), true;
   if (req.method === 'GET' && ruta === '/__publicaciones') return json(res, 200, publicaciones), true;
 
   if (!ruta.startsWith('/api/v1/cms/')) return false;
-  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas|integraciones|blog)/;
+  const protegidas = /^\/api\/v1\/cms\/(leads\/(exportar|sincronizar)|reclamaciones|secciones|publicar|estado|dashboard|auditoria|usuarios|seo|politicas|integraciones|blog|chatbot)/;
   if (!protegidas.test(ruta)) return false;
   if (!esSuperadmin()) return json(res, 403, { message: 'No tienes acceso al Panel CMS.' }), true;
 
@@ -341,6 +356,22 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
       a.oculto = cuerpo().oculto === true;
     }
     return json(res, 200, { data: postCms(a), message: a.oculto ? 'El artículo ya no se muestra en el sitio.' : 'El artículo se muestra en el sitio.' }), true;
+  }
+
+  // EDUN-380 · Historial de sesiones del chatbot.
+  if (ruta === '/api/v1/cms/chatbot/sesiones') {
+    const q = (url.searchParams.get('q') ?? '').toLowerCase();
+    const r = url.searchParams.get('resultado');
+    const lead = url.searchParams.get('lead');
+    const lista = SESIONES_CHATBOT.filter((x) => (!r || x.resultado === r) && (!lead || x.lead_capturado === (lead === 'si')) && (!q || x.mensajes.some((m) => m.contenido.toLowerCase().includes(q))));
+    const por = Object.fromEntries(Object.keys(RESULTADOS_CHATBOT).map((k) => [k, lista.filter((x) => x.resultado === k).length]));
+    return json(res, 200, { data: lista.map((x) => ({ id: x.id, created_at: x.created_at, resultado: x.resultado, lead_capturado: x.lead_capturado, lead_id: x.lead_id, pagina: x.pagina, pasos: x.mensajes.length, ultimo: x.mensajes.at(-1).contenido })), total: lista.length, pagina: 1, paginas: 1, por_resultado: por, resultados: RESULTADOS_CHATBOT }), true;
+  }
+  const idSesion = /^\/api\/v1\/cms\/chatbot\/sesiones\/(\d+)$/.exec(ruta)?.[1];
+  if (idSesion) {
+    const x = SESIONES_CHATBOT.find((y) => y.id === Number(idSesion));
+    if (!x) return json(res, 404, { message: 'No encontramos esa sesión.' }), true;
+    return json(res, 200, { data: { lead_nombre: null, lead_email: null, lead_telefono: null, lead_estado: null, ...x } }), true;
   }
 
   // EDUN-412 · Asistente SEO.

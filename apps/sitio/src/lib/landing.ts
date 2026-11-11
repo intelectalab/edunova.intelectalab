@@ -113,7 +113,7 @@ export type Landing = {
 };
 
 /** EDUN-375 · Configuración pública del chatbot y su flujo (destinos = posiciones en «nodos»). */
-export type NodoChatbot = { tipo: 'mensaje' | 'opciones' | 'captura' | 'url' | 'whatsapp' | 'fin'; texto: string; url: string | null; siguiente: number | null; opciones: { texto: string; destino: number }[] };
+export type NodoChatbot = { tipo: 'mensaje' | 'opciones' | 'captura' | 'url' | 'whatsapp' | 'fin'; texto: string; url: string | null; siguiente: number | null; opciones: { texto: string; destino: number }[]; posicion?: { x: number; y: number } | null };
 export type Chatbot = {
   activo: boolean;
   modo: 'flujo' | 'whatsapp';

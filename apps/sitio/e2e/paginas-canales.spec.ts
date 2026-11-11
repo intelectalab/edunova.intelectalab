@@ -166,8 +166,9 @@ test.describe('Panel CMS · Sprint 11', () => {
   test('chatbot: en modo flujo se agregan pasos con opciones (EDUN-375)', async ({ page }) => {
     await page.goto('/cms/conversion/chatbot');
     await page.getByLabel('Modo').selectOption('flujo');
-    await page.getByRole('button', { name: 'Agregar paso' }).click();
-    await page.getByRole('button', { name: 'Agregar paso' }).click();
+    await page.getByRole('button', { name: 'Lista', exact: true }).click();
+    await page.getByRole('button', { name: 'Agregar paso: Mensaje' }).click();
+    await page.getByRole('button', { name: 'Agregar paso: Mensaje' }).click();
     await expect(page.locator('[data-paso]')).toHaveCount(2);
     await page.locator('[data-paso="1"]').getByLabel('Tipo de paso').selectOption('opciones');
     await expect(page.locator('[data-paso="1"]').getByLabel('Opción 1', { exact: true })).toBeVisible();

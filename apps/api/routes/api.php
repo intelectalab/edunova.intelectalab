@@ -31,6 +31,7 @@ use App\Modulos\SEG\Http\Controllers\SesionController;
 use App\Modulos\SEG\Http\Controllers\UsuariosController;
 use App\Modulos\SIA\Http\Controllers\SiagieController;
 use App\Modulos\SIT\Http\Controllers\BlogSeoCmsController;
+use App\Modulos\SIT\Http\Controllers\ChatbotCmsController;
 use App\Modulos\SIT\Http\Controllers\EditorCmsController;
 use App\Modulos\SIT\Http\Controllers\LandingController;
 use App\Modulos\SIT\Http\Controllers\LeadsCmsController;
@@ -507,6 +508,10 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::post('/seo/{slug}/sugerencias', [BlogSeoCmsController::class, 'sugerir'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}')->middleware('throttle:20,1');
     Route::post('/seo/{slug}/analisis', [BlogSeoCmsController::class, 'analizar'])->where('slug', '[a-z0-9][a-z0-9-]{0,119}');
 
+    // EDUN-380 · Historial de sesiones del chatbot.
+    Route::get('/chatbot/sesiones', [ChatbotCmsController::class, 'index']);
+    Route::get('/chatbot/sesiones/{sesion}', [ChatbotCmsController::class, 'show'])->whereNumber('sesion');
+
     // EDUN-302 · Gestión de reclamaciones.
     Route::get('/reclamaciones', [ReclamacionesCmsController::class, 'index']);
     Route::get('/reclamaciones/{reclamacion}', [ReclamacionesCmsController::class, 'show'])->whereNumber('reclamacion');
@@ -529,6 +534,8 @@ Route::prefix('sitio')->group(function () {
         Route::post('/consentimientos/cookies', [SitioLegalController::class, 'cookies']);
         // EDUN-375 · Contacto dejado en el chatbot.
         Route::post('/chatbot/lead', [SitioCanalesController::class, 'leadChatbot']);
+        // EDUN-380 · Conversación sin contacto (para el historial de sesiones del CMS).
+        Route::post('/chatbot/sesion', [SitioCanalesController::class, 'sesionChatbot']);
         // EDUN-294 · Libro de Reclamaciones virtual.
         Route::post('/reclamaciones', [ReclamacionesController::class, 'store']);
     });

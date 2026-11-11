@@ -165,6 +165,10 @@ class ReglasSecciones
                 'nodos.*.opciones' => ['sometimes', 'array', 'max:6'],
                 'nodos.*.opciones.*.texto' => ['required', 'string', 'max:60'],
                 'nodos.*.opciones.*.destino' => ['required', 'integer', 'min:0'],
+                // EDUN-380 · Posición del paso en el lienzo del constructor visual.
+                'nodos.*.posicion' => ['nullable', 'array'],
+                'nodos.*.posicion.x' => ['required_with:nodos.*.posicion', 'integer', 'between:0,3000'],
+                'nodos.*.posicion.y' => ['required_with:nodos.*.posicion', 'integer', 'between:0,3000'],
             ],
             // EDUN-338 / SIT-060 · Logos de clientes («Confían en Edunova»).
             'logos' => [

@@ -532,6 +532,7 @@ class ContenidoEntidades
                     'tipo' => $n->tipo,
                     'texto' => $contenido['texto'] ?? '',
                     'url' => $contenido['url'] ?? null,
+                    'posicion' => isset($contenido['posicion']['x'], $contenido['posicion']['y']) ? ['x' => (int) $contenido['posicion']['x'], 'y' => (int) $contenido['posicion']['y']] : null,
                     'siguiente' => $n->siguiente_id !== null ? ($posicion[$n->siguiente_id] ?? null) : null,
                     'opciones' => collect(json_decode((string) $n->opciones, true) ?: [])->map(fn ($o) => ['texto' => $o['texto'], 'destino' => $posicion[$o['destino_id']] ?? 0])->values()->all(),
                 ];
@@ -591,7 +592,8 @@ class ContenidoEntidades
         foreach ($nodos as $i => $n) {
             $ids[$i] = DB::table('cms.chatbot_nodos')->insertGetId([
                 'flujo_id' => $flujo, 'tipo' => $n['tipo'], 'orden' => $i + 1,
-                'contenido' => json_encode(array_filter(['texto' => $n['texto'], 'url' => $n['url'] ?? null]), JSON_UNESCAPED_UNICODE),
+                'contenido' => json_encode(array_filter(['texto' => $n['texto'], 'url' => $n['url'] ?? null,
+                    'posicion' => isset($n['posicion']['x'], $n['posicion']['y']) ? ['x' => (int) $n['posicion']['x'], 'y' => (int) $n['posicion']['y']] : null]), JSON_UNESCAPED_UNICODE),
             ]);
         }
         foreach ($nodos as $i => $n) {

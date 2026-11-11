@@ -158,6 +158,12 @@ DO $$ BEGIN
     RAISE EXCEPTION 'FALLO 31: aceptó un proveedor desconocido';
   EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 31 · blog visible por defecto y proveedores del asistente SEO'; END;
 
+  -- 33. Historial del chatbot: el resultado de la sesión es uno de la lista (EDUN-380)
+  BEGIN
+    INSERT INTO cms.chatbot_sesiones (sesion_uuid, resultado) VALUES (gen_random_uuid(), 'perdido');
+    RAISE EXCEPTION 'FALLO 33: aceptó un resultado desconocido';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'OK 33 · resultado de las sesiones del chatbot'; END;
+
   RAISE NOTICE 'TODAS LAS PRUEBAS PASARON';
 END $$;
 
