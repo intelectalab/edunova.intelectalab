@@ -21,7 +21,7 @@ export const landing = {
   atencion: 'Atención Lima:',
   pais: 'Perú',
   menuPrincipal: 'Menú principal',
-  iniciarSesion: 'Iniciar sesión',
+  iniciarSesion: 'Ingresar',
   solicitarDemo: 'Solicitar demo',
   central: 'Central:',
   direccion: 'Dirección:',
@@ -689,6 +689,8 @@ export function enlacePorRuta(ruta: string): EnlaceCms | undefined {
 export const cmsIngreso = {
   titulo: 'Ingresa al Panel CMS',
   subtitulo: 'Panel CMS',
+  olvidaste: '¿Olvidaste tu contraseña?',
+  recuperar: 'Recupérala desde la pantalla de ingreso de Edunova.',
   usuario: 'Correo o DNI',
   password: 'Contraseña',
   boton: 'Ingresar',
@@ -912,6 +914,22 @@ export const paginas = {
 };
 
 /** EDUN-375 / SIT-008 · Chatbot: lo fijo del widget (título, saludo y flujo salen del CMS). */
+/** Página de acceso: por dónde entra cada persona. */
+export const accesos = {
+  titulo: '¿Cómo quieres ingresar?',
+  descripcion: 'Elige tu caso. Si no recuerdas tu contraseña, en la pantalla de ingreso puedes pedir un enlace para crear una nueva.',
+  colegio: { titulo: 'Personal del colegio', descripcion: 'Dirección, secretaría, tesorería, docentes y tutores: gestión del colegio desde la web.', boton: 'Ingresar a la gestión' },
+  familia: { titulo: 'Familias', descripcion: 'Padres, madres y apoderados: notas, asistencia, pagos y comunicados. Ingresa con tu DNI.', boton: 'Ingresar como familia' },
+  equipo: { titulo: 'Equipo de Edunova', descripcion: 'Panel CMS del sitio web: contenidos, solicitudes de demo, blog, SEO y chatbot.', boton: 'Ir al Panel CMS' },
+  ayudaTitulo: '¿Problemas para entrar?',
+  ayuda: [
+    'Olvidé mi contraseña: en la pantalla de ingreso toca «¿Olvidaste tu contraseña?» y escribe tu DNI o correo.',
+    'Soy apoderado y nunca entré: el colegio te envía una invitación por correo o WhatsApp para crear tu contraseña.',
+    'Me pide un código de 6 dígitos: es el segundo factor; ábrelo en tu app de autenticación (Google Authenticator u otra).',
+    'Sigo sin poder entrar: comunícate con la secretaría de tu colegio.',
+  ],
+};
+
 export const chatbot = {
   abrir: 'Abrir el chat',
   cerrar: 'Cerrar el chat',

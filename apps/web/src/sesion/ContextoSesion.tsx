@@ -41,6 +41,11 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
         fijarToken(r.token);
         setEstado(r);
       },
+      async entrarDemo(rol) {
+        const r = await api<EstadoSesion & { token: string }>('/auth/demo', { metodo: 'POST', cuerpo: { rol } });
+        fijarToken(r.token);
+        setEstado(r);
+      },
       async elegirColegio(id) {
         setEstado(await api<EstadoSesion>('/auth/colegio', { metodo: 'POST', cuerpo: { institucion_id: id }, token }));
       },

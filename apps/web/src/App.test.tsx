@@ -46,7 +46,7 @@ describe('Ingreso', () => {
 
     expect(await screen.findByRole('heading', { name: 'Hola, Rosa' })).toBeInTheDocument();
     expect(screen.getByText('IEP San Martín de Porres')).toBeInTheDocument();
-    expect(JSON.parse(String(llamadas[0].init?.body))).toMatchObject({ usuario: '29000123', password: 'secreta' });
+    expect(JSON.parse(String(llamadas.find((l) => l.url.endsWith('/auth/ingresar'))?.init?.body))).toMatchObject({ usuario: '29000123', password: 'secreta' });
     expect(localStorage.getItem('edunova.token')).toBe('t1');
   });
 

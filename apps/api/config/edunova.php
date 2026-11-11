@@ -11,6 +11,11 @@ return [
     ],
 
     // Web de gestión (enlaces de invitación). En el VPS se publica en /app del mismo dominio.
+    // Acceso de demostración por rol (solo servidor de pruebas): sin contraseña, con el colegio ficticio.
+    'demo' => [
+        'activo' => (bool) env('EDUNOVA_DEMO_ACCESO', false),
+        'colegio' => env('EDUNOVA_DEMO_COLEGIO', 'smp'),
+    ],
     'web_url' => env('EDUNOVA_WEB_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/app'),
 
     // EDUN-27 · Comprobantes de Edunova a los colegios (cobro mensual). Los datos de la empresa

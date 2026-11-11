@@ -7,7 +7,7 @@ import { soles } from './tipos';
 
 type ArchivoBanco = { id: number; banco: string; direccion: string; lineas: number; conciliadas: number; estado: string; created_at: string; nombre_original: string | null };
 type Linea = { id: number; numero_linea: number; codigo_recaudacion: string; monto: number; saldo: number | null; resultado: string; alumno: string | null; descripcion: string | null; operacion: string | null };
-type PagoLinea = { id: number; orden: string; medio: string | null; monto: number; comision: number | null; neto: number | null; fecha_abono: string | null; conciliacion: string | null; conciliacion_detalle: string | null; created_at: string };
+type PagoLinea = { id: number; orden: string; medio: string | null; monto: number; comision: number | null; neto: number | null; fecha_abono: string | null; conciliacion: string | null; conciliacion_detalle: string | null; created_at: string; excedente: number; excedente_resuelto_at: string | null; excedente_nota: string | null };
 type Reporte = { anio: number; total: number; por_mes: { mes: string; monto: number }[]; por_concepto: { concepto: string; monto: number }[]; por_nivel: { nivel: string; monto: number }[]; proyeccion: { mes: string; esperado: number; cobrado: number; pendiente: number; porcentaje: number }[] };
 
 const RESULTADO: Record<string, string> = { conciliado: 'insignia-ok', monto_distinto: 'insignia-ambar', sin_coincidencia: 'insignia-rojo', duplicado: 'insignia-rojo', comision_distinta: 'insignia-ambar', no_abonado: 'insignia-rojo', sin_registro: 'insignia-rojo' };
@@ -96,13 +96,27 @@ export function Conciliacion() {
           });
         }} /></label>}
       </div>
+      {datos && datos.data.some((t) => t.excedente > 0 && !t.excedente_resuelto_at) && (
+        <Aviso tipo="ambar">Hay pagos en línea con excedente: la familia pagó un cargo que ya estaba pagado. Devuélvelo o aplícalo a otro cargo y márcalo como resuelto.</Aviso>
+      )}
       {datos && (
         <div className="tarjeta">
           <p>Total {soles(datos.totales.monto)} · comisión {soles(datos.totales.comision)} · neto {soles(datos.totales.neto)}</p>
           <div className="tabla-caja">
-            <table className="tabla"><thead><tr><th>Fecha</th><th>Orden</th><th>Medio</th><th>Monto</th><th>Comisión</th><th>Neto</th><th>Abono</th><th>Conciliación</th></tr></thead><tbody>
+            <table className="tabla"><thead><tr><th>Fecha</th><th>Orden</th><th>Medio</th><th>Monto</th><th>Comisión</th><th>Neto</th><th>Abono</th><th>Conciliación</th><th>Excedente</th></tr></thead><tbody>
               {datos.data.map((t) => <tr key={t.id}><td>{fechaHora(t.created_at)}</td><td><code>{t.orden}</code></td><td>{t.medio}</td><td>{soles(t.monto)}</td><td>{t.comision !== null ? soles(t.comision) : '—'}</td><td>{t.neto !== null ? soles(t.neto) : '—'}</td><td>{t.fecha_abono ?? '—'}</td>
-                <td>{t.conciliacion ? <span className={`insignia ${RESULTADO[t.conciliacion]}`}>{t.conciliacion.replace('_', ' ')}</span> : '—'}{t.conciliacion_detalle && <><br /><small className="ayuda">{t.conciliacion_detalle}</small></>}</td></tr>)}
+                <td>{t.conciliacion ? <span className={`insignia ${RESULTADO[t.conciliacion]}`}>{t.conciliacion.replace('_', ' ')}</span> : '—'}{t.conciliacion_detalle && <><br /><small className="ayuda">{t.conciliacion_detalle}</small></>}</td>
+                <td>{t.excedente > 0 ? (t.excedente_resuelto_at ? <><span className="insignia insignia-ok">{soles(t.excedente)} resuelto</span><br /><small className="ayuda">{t.excedente_nota}</small></> : <>
+                  <span className="insignia insignia-ambar">{soles(t.excedente)} por resolver</span>
+                  {puede(colegio, 'pag.pasarela.conciliar') && <><br /><button type="button" className="boton boton-borde boton-chico" onClick={() => {
+                    const nota = window.prompt('¿Cómo se resolvió? (devolución, aplicado a otro cargo…)');
+                    if (nota) accion.ejecutar(async () => {
+                      await pedir(`/pagos/conciliacion/${t.id}/excedente`, { metodo: 'POST', cuerpo: { nota } });
+                      recargar();
+                      accion.setOk('Excedente marcado como resuelto.');
+                    });
+                  }}>Marcar resuelto</button></>}
+                </>) : '—'}</td></tr>)}
             </tbody></table>
             {datos.data.length === 0 && <p className="vacio">No hay pagos en línea.</p>}
           </div>

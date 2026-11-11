@@ -202,6 +202,9 @@ class PagosEnLinea
             $saldos = collect($this->cobros->pendientes(DB::table('cargos')->whereIn('id', array_column($cargos, 'id'))->pluck('alumno_id')->unique()->all()))->keyBy('id');
             $aplicar = collect($cargos)->map(fn ($c) => ['id' => $c['id'], 'monto' => min((float) $c['monto'], (float) ($saldos[$c['id']]['saldo'] ?? 0))])->filter(fn ($c) => $c['monto'] > 0)->values()->all();
             $medio = in_array($evento['medio'], ['yape', 'plin', 'tarjeta', 'pagoefectivo'], true) ? $evento['medio'] : 'tarjeta';
+            // Lo que la familia pagó y ya no tenía a qué aplicarse (otra orden o un cobro en caja
+            // llegaron antes) queda como excedente por devolver o aplicar: no se pierde.
+            $excedente = round((float) $evento['monto'] - array_sum(array_column($aplicar, 'monto')), 2);
             $pago = null;
             if ($aplicar) {
                 $pago = $this->cobros->registrar($aplicar, [], ['pasarela_transaccion_id' => $t->id, 'apoderado_id' => $t->apoderado_id, 'medio' => $medio, 'referencia' => $t->orden], null);
@@ -216,11 +219,28 @@ class PagosEnLinea
             DB::table('pasarela_transacciones')->where('id', $t->id)->update([
                 'estado' => 'pagada', 'medio' => $medio, 'comision' => $evento['comision'], 'neto' => $evento['comision'] !== null ? round($evento['monto'] - $evento['comision'], 2) : null,
                 'fecha_abono' => $evento['fecha_abono'], 'payload' => $cuerpo, 'pago_id' => $pago, 'procesada_at' => now(),
+                'excedente' => max(0, $excedente),
             ]);
+            if ($excedente > 0.009) {
+                Log::warning("Pago en línea {$t->orden} con excedente de S/ {$excedente}: los cargos ya estaban pagados.");
+                $this->auditoria->registrar('pago_en_linea_excedente', 'pasarela_transacciones', (int) $t->id, null, ['orden' => $t->orden, 'excedente' => $excedente]);
+            }
             $this->auditoria->registrar('pago_en_linea_confirmado', 'pasarela_transacciones', (int) $t->id, null, ['orden' => $t->orden, 'monto' => $evento['monto'], 'pago_id' => $pago]);
 
             return ['estado' => 'pagada', 'http' => 200];
         });
+    }
+
+    /** Excedente devuelto a la familia o aplicado a otro cargo: queda anotado quién y cómo. */
+    public function resolverExcedente(int $id, string $nota, int $usuarioId): void
+    {
+        $t = DB::table('pasarela_transacciones')->where('id', $id)->lockForUpdate()->first();
+        abort_if(! $t, 404);
+        if ((float) $t->excedente <= 0 || $t->excedente_resuelto_at) {
+            throw ValidationException::withMessages(['excedente' => ['Ese pago no tiene un excedente pendiente.']]);
+        }
+        DB::table('pasarela_transacciones')->where('id', $id)->update(['excedente_resuelto_at' => now(), 'excedente_resuelto_por' => $usuarioId, 'excedente_nota' => trim($nota)]);
+        $this->auditoria->registrar('pago_en_linea_excedente_resuelto', 'pasarela_transacciones', $id, null, ['nota' => trim($nota)]);
     }
 
     /** Página de pago simulada: arma el aviso firmado como lo haría la pasarela y lo procesa. */

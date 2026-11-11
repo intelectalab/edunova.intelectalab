@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
 import { AsistenciaApp, EstadoConexion, NotasApp, PuertaQrApp } from './academico';
 import { useSincronizacion } from './colaDispositivo';
+import { JustificarApp } from './justificaciones';
 import { AgendaApp, ComunicadosApp } from './comunicacion';
 import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
 import { EstadoCuentaApp, RatificacionApp } from './familia';
@@ -180,6 +181,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {colegio.roles.includes('apoderado') && <ConveniosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <ComunicadosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <NotasApp api={api} color={color} />}
+        {colegio.roles.includes('apoderado') && <JustificarApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <AgendaApp api={api} />}
         {colegio.roles.includes('apoderado') && (
           <>

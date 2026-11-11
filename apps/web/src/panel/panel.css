@@ -624,3 +624,249 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Pulido general: transiciones, foco visible, tablas legibles y carga sin saltos ─────────── */
+
+.boton,
+.lateral a,
+.pestanas button,
+.tarjeta,
+.campo input,
+.campo select,
+.campo textarea,
+.control {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.boton:focus-visible,
+.lateral a:focus-visible,
+.pestanas button:focus-visible,
+.lateral-pie button:focus-visible,
+.boton-ayuda:focus-visible {
+  outline: 2px solid var(--en-primario);
+  outline-offset: 2px;
+}
+
+.lateral a:focus-visible,
+.lateral-pie button:focus-visible {
+  outline-color: #fff;
+}
+
+.boton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Los textos largos (motivos, comunicados) necesitan alto: antes heredaban 40 px. */
+.campo textarea {
+  height: auto;
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.campo input:hover,
+.campo select:hover,
+.campo textarea:hover {
+  border-color: var(--en-texto2);
+}
+
+.tabla tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.tabla tbody tr:hover {
+  background: var(--en-suave);
+}
+
+.tabla th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Cada pantalla entra con un leve fundido (sin movimiento si el sistema pide menos animación). */
+.contenido > :not(.boton-ayuda) {
+  animation: entrar 0.18s ease-out;
+}
+
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Mientras se descarga una pantalla: esqueleto en vez de una página en blanco. */
+.esqueleto {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 8px;
+}
+
+.esqueleto span {
+  display: block;
+  height: 18px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--en-suave) 25%, var(--en-suave2) 50%, var(--en-suave) 75%);
+  background-size: 200% 100%;
+  animation: brillo 1.1s linear infinite;
+}
+
+.esqueleto span:first-child { width: 40%; height: 28px; }
+.esqueleto span:nth-child(2) { width: 70%; }
+.esqueleto span:nth-child(3) { width: 100%; height: 180px; border-radius: var(--en-radio-lg); }
+
+@keyframes brillo {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.aviso-carga {
+  color: var(--en-texto2);
+}
+
+/* ── Ayuda por pantalla ───────────────────────────────────────────────────────────────────── */
+
+.contenido {
+  position: relative;
+}
+
+.boton-ayuda {
+  float: right;
+  margin: 0 0 8px 12px;
+  height: 34px;
+  padding: 0 14px 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--en-linea2);
+  background: var(--en-tarjeta);
+  color: var(--en-primario-activo, var(--en-primario));
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--en-sombra-1);
+}
+
+.boton-ayuda span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--en-primario);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.boton-ayuda:hover {
+  border-color: var(--en-primario);
+}
+
+.panel-ayuda {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  width: min(380px, 100vw);
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--en-tarjeta);
+  border-left: 1px solid var(--en-linea);
+  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+  padding: 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  animation: deslizar 0.18s ease-out;
+}
+
+@keyframes deslizar {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.panel-ayuda-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.panel-ayuda h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--en-navy);
+}
+
+.panel-ayuda h3 {
+  margin: 16px 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--en-texto2);
+}
+
+.panel-ayuda ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel-ayuda li {
+  position: relative;
+  padding-left: 26px;
+}
+
+.panel-ayuda li::before {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ayuda-si li::before {
+  content: '✓';
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.ayuda-no li::before {
+  content: '✕';
+  background: var(--en-rojo-suave);
+  color: var(--en-rojo);
+}
+
+.ayuda-consejo {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: var(--en-radio-md);
+  background: var(--en-suave2);
+  color: var(--en-texto);
+}
+
+.ayuda-pie {
+  margin-top: 18px;
+  font-size: 14px;
+  color: var(--en-texto2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

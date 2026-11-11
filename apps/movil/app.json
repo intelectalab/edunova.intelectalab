@@ -53,7 +53,14 @@
           "locationWhenInUsePermission": "Compartimos la ubicación de la movilidad con las familias solo mientras el recorrido está en curso."
         }
       ],
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Usamos tus fotos solo para adjuntar el sustento de una justificación.",
+          "cameraPermission": "Usamos la cámara para fotografiar el sustento de una justificación o leer el QR del carné."
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"

@@ -163,6 +163,15 @@ class FinanzasController
         return response()->json($this->recaudacion->conciliar($d['reporte']));
     }
 
+    /** Revisión: el excedente de un pago en línea se devolvió o se aplicó a otro cargo. */
+    public function resolverExcedente(Request $request, int $transaccion): JsonResponse
+    {
+        $d = $request->validate(['nota' => ['required', 'string', 'min:5', 'max:300']], ['nota.required' => 'Indica cómo se resolvió (devolución, aplicado a otro cargo…).']);
+        app(PagosEnLinea::class)->resolverExcedente($transaccion, $d['nota'], (int) $request->user()->id);
+
+        return response()->json(['message' => 'Excedente resuelto.']);
+    }
+
     // ── EDUN-83 · Reportes financieros
 
     public function reportes(Request $request): JsonResponse

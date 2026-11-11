@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { salirCms } from '@/app/cms/acciones';
 import { Chip, Icono } from '@/componentes/base';
+import { AyudaCms } from './AyudaCms';
+import { BarraNavegacion } from './BarraNavegacion';
 import { BotonesEditor, FranjaEstado } from './EditorCms';
 import { cms, enlacePorRuta, enlacesPara, sitio } from '@/contenido/provisional';
 
@@ -112,6 +114,9 @@ export function MarcoCms({ usuario, sitioPublico, children }: { usuario: Usuario
       </aside>
 
       <div className="lg:pl-20 xl:pl-menu-cms min-h-screen bg-background flex flex-col">
+        <Suspense fallback={null}>
+          <BarraNavegacion />
+        </Suspense>
         <header className="sticky top-0 z-30 h-20 bg-surface/90 backdrop-blur-xl shadow-sm px-margin-mobile md:px-gutter flex items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-md min-w-0">
             <button
@@ -145,6 +150,7 @@ export function MarcoCms({ usuario, sitioPublico, children }: { usuario: Usuario
             </span>
           </div>
           <div className="flex items-center gap-space-sm shrink-0">
+            <AyudaCms />
             <a
               href="/"
               target="_blank"

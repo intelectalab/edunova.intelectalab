@@ -91,6 +91,10 @@ class Asistencia
         if ($actual && Carbon::parse($actual->registrado_at)->greaterThan($cuando)) {
             return false; // Conflicto: ya hay un registro más reciente.
         }
+        // EDUN-96 · Una falta en un día ya justificado (justificación aceptada) entra como J.
+        if ($estado === 'F' && Justificaciones::cubre($alumnoId, $fecha)) {
+            $estado = 'J';
+        }
         $fila = ['estado' => $estado, 'hora_registro' => $hora ?? ($actual->hora_registro ?? null), 'registrado_por' => $usuarioId, 'origen' => $origen, 'registrado_at' => $cuando];
         if ($actual) {
             DB::table('asistencias')->where('id', $actual->id)->update($fila);
@@ -103,6 +107,15 @@ class Asistencia
         }
 
         return true;
+    }
+
+    private function avisarCorreccion(int $alumnoId, string $estado, string $hora): void
+    {
+        $alumno = DB::table('alumnos')->where('id', $alumnoId)->value('nombres');
+        $usuarios = DB::table('alumno_apoderado as aa')->join('apoderados as p', 'p.id', '=', 'aa.apoderado_id')->where('aa.alumno_id', $alumnoId)->whereNotNull('p.user_id')->pluck('p.user_id')->map(fn ($u) => (int) $u)->all();
+        if ($usuarios) {
+            $this->push->enviar($usuarios, 'asistencia', "Corrección: {$alumno} sí asistió", "Se registró su llegada a las {$hora} con el carné".($estado === 'T' ? ' (tardanza).' : '.'), ['pantalla' => 'inicio', 'id' => $alumnoId]);
+        }
     }
 
     private function avisarPadres(int $alumnoId, string $estado): void
@@ -144,6 +157,16 @@ class Asistencia
         $config = json_decode(DB::table('instituciones')->where('id', ContextoInstitucion::requerido())->value('configuracion') ?? '{}', true)['asistencia'] ?? [];
         $limite = Carbon::parse($hoy.' '.($config['hora_entrada'] ?? '08:00'), config('app.timezone'))->addMinutes((int) ($config['tolerancia_min'] ?? 0));
         $estado = $ahora->greaterThan($limite) ? 'T' : 'P';
+        // Una falta («no lo vi») registrada después no borra una llegada comprobada con el carné:
+        // la lectura gana y la falta pasa a P o T con la hora real (y se corrige el aviso).
+        if ($previa && $previa->estado === 'F' && Carbon::parse($previa->registrado_at)->greaterThan($ahora)) {
+            DB::table('asistencias')->where('id', $previa->id)->update(['estado' => $estado, 'hora_registro' => $ahora->format('H:i:s'), 'origen' => $cuando ? 'offline' : 'qr', 'registrado_por' => $usuarioId]);
+            if ($previa->notificado_at) {
+                $this->avisarCorreccion((int) $alumno['id'], $estado, $ahora->format('H:i'));
+            }
+
+            return ['alumno' => $nombre, 'seccion' => $alumno['seccion'], 'estado' => $estado, 'hora' => $ahora->format('H:i'), 'repetido' => false, 'corrigio_falta' => true];
+        }
         if (! $this->registrar((int) $alumno['id'], (int) $seccion, $hoy, $estado, $ahora, $ahora->format('H:i:s'), $cuando ? 'offline' : 'qr', $usuarioId)) {
             return ['alumno' => $nombre, 'seccion' => $alumno['seccion'], 'estado' => $previa->estado, 'hora' => $ahora->format('H:i'), 'repetido' => true, 'conflicto' => true];
         }

@@ -25,7 +25,6 @@ export async function generateMetadata() {
   return metadatosLanding(await obtenerLanding());
 }
 
-const URL_INGRESO = process.env.EDUNOVA_WEB_URL ?? 'http://localhost:5174';
 
 /** Cada sección movible de la landing y cómo se pinta. */
 function seccion(clave: string, datos: Landing) {
@@ -94,7 +93,7 @@ export default async function Inicio() {
       {jsonLdLanding(datos).map((bloque, i) => (
         <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: scriptJsonLd(bloque) }} />
       ))}
-      <Cabecera aviso={s.barra_superior?.aviso ?? ''} telefono={(c.telefono_central as string | null) ?? null} menu={datos.menu.principal} urlIngreso={URL_INGRESO} />
+      <Cabecera aviso={s.barra_superior?.aviso ?? ''} telefono={(c.telefono_central as string | null) ?? null} menu={datos.menu.principal} urlIngreso="/ingresar" />
       <main className="w-full pt-28 bg-surface">
         <Hero datos={hero} />
         <Cifras contadores={datos.contadores ?? []} />

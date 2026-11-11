@@ -7,7 +7,8 @@ import { PantallaDosPasos } from './seg/PantallaDosPasos';
 import { PantallaInvitacion } from './seg/PantallaInvitacion';
 import { ProveedorSesion } from './sesion/ContextoSesion';
 import { sesionLista, useSesion } from './sesion/contexto';
-import { PantallaIngreso } from './sesion/PantallaIngreso';
+import { PantallaIngreso, PantallaRestablecer } from './sesion/PantallaIngreso';
+import { datosRestablecer } from './sesion/restablecer';
 
 /** Enlace de invitación: ?invitacion=<token> (EDUN-36). */
 function tokenInvitacion(): string | null {
@@ -18,6 +19,7 @@ function tokenInvitacion(): string | null {
 function Contenido() {
   const { cargando, estado, salir } = useSesion();
   const [invitacion, setInvitacion] = useState(tokenInvitacion);
+  const [restablecer, setRestablecer] = useState(datosRestablecer);
 
   if (invitacion) {
     return (
@@ -27,6 +29,18 @@ function Contenido() {
           window.history.replaceState(null, '', window.location.pathname);
           setInvitacion(null);
           // Si en este navegador había otra sesión abierta, el invitado ingresa con la suya.
+          if (estado) void salir();
+        }}
+      />
+    );
+  }
+  if (restablecer) {
+    return (
+      <PantallaRestablecer
+        {...restablecer}
+        alTerminar={() => {
+          window.history.replaceState(null, '', window.location.pathname);
+          setRestablecer(null);
           if (estado) void salir();
         }}
       />

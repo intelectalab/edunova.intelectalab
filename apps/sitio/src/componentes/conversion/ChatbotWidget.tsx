@@ -130,7 +130,10 @@ export function ChatbotWidget({ config }: { config: Chatbot }) {
     const s = sesion.current;
     if (!s || s.enviada || listo || actuales.length < 2) return;
     s.enviada = true;
-    void registrarSesionChatbot({ sesion_uuid: s.uuid, resultado, recorrido: actuales.map((l) => `${l.de === 'bot' ? t.bot : t.tu}: ${l.texto}`), page_url: location.href.split('#')[0] });
+    const datos = { sesion_uuid: s.uuid, resultado, recorrido: actuales.map((l) => `${l.de === 'bot' ? t.bot : t.tu}: ${l.texto}`), page_url: location.href.split('#')[0] };
+    // sendBeacon sobrevive a la navegación (al abrir un enlace o WhatsApp); si no existe, la acción del servidor.
+    const enviado = typeof navigator !== 'undefined' && 'sendBeacon' in navigator && navigator.sendBeacon('/api/chatbot-sesion', new Blob([JSON.stringify(datos)], { type: 'application/json' }));
+    if (!enviado) void registrarSesionChatbot(datos);
   }
 
   function cerrar() {

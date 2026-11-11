@@ -66,7 +66,7 @@ test.describe('Panel CMS · Sprint 8', () => {
   });
 
   test('reclamaciones: filtra vencidos, exige la respuesta y la envía (EDUN-302)', async ({ page }, info) => {
-    await page.goto('/cms/reclamaciones');
+    await page.goto('/cms/reclamaciones', { waitUntil: 'networkidle' }); // con la carga en streaming, se espera a que hidrate
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Libro de Reclamaciones');
     await expect(page.locator('[data-indicador="vencidos"]')).toHaveText('1');
     await page.getByRole('link', { name: /Vencidos sin respuesta/ }).click();

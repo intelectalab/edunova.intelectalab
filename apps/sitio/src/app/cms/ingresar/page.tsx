@@ -20,6 +20,10 @@ export default async function IngresarCms({ searchParams }: { searchParams: Prom
         </div>
         <h1 className="font-headline-md text-headline-md text-primary">{cmsIngreso.titulo}</h1>
         <FormularioIngreso volver={volver ?? '/cms'} />
+        <p className="font-body-sm text-body-sm text-on-surface-variant">
+          {cmsIngreso.olvidaste}{' '}
+          <a href={process.env.EDUNOVA_WEB_URL ?? 'http://localhost:5174'} className="text-primary font-semibold underline">{cmsIngreso.recuperar}</a>
+        </p>
       </div>
     </main>
   );

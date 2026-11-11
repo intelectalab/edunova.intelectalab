@@ -1,13 +1,22 @@
-import { lazy, Suspense, useState, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { moduloActivo, puede, useSesion, type Colegio } from '../sesion/contexto';
 import { estiloMarca, useRuta } from './ruta';
 import { NOMBRE_ROL, useImagenApi } from './utilidades';
 import './panel.css';
+import { AYUDA } from './ayuda';
 
 // Cada pantalla se descarga recién al abrirla (el bundle inicial ya no lleva las ~50 pantallas).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy() exige ComponentType<any>
 function perezoso<M, K extends keyof M>(cargar: () => Promise<M>, nombre: K) {
+  CARGADORES.push(cargar);
   return lazy(async () => ({ default: (await cargar())[nombre] as M[K] & ComponentType<any> }));
+}
+const CARGADORES: (() => Promise<unknown>)[] = [];
+/** Tras entrar, descarga las pantallas en segundo plano: al tocar el menú abren al instante. */
+function precargarPantallas() {
+  const correr = () => CARGADORES.forEach((c) => void c().catch(() => undefined));
+  if ('requestIdleCallback' in window) window.requestIdleCallback(correr, { timeout: 3000 });
+  else setTimeout(correr, 1500);
 }
 const Admision = perezoso(() => import('../adm/Admision'), 'Admision');
 const Alumnos = perezoso(() => import('../adm/Alumnos'), 'Alumnos');
@@ -54,6 +63,8 @@ const ConectorMoodle = perezoso(() => import('../mdl/ConectorMoodle'), 'Conector
 const Auditoria = perezoso(() => import('../seg/Auditoria'), 'Auditoria');
 const MiPerfil = perezoso(() => import('../seg/MiPerfil'), 'MiPerfil');
 const Usuarios = perezoso(() => import('../seg/Usuarios'), 'Usuarios');
+const JustificacionesTutor = perezoso(() => import('../cal/Justificaciones'), 'JustificacionesTutor');
+const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
 
 type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode; oculta?: boolean };
 
@@ -110,6 +121,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Académico',
     visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.asistencia.registrar', 'cal.asistencia.ver'),
     pantalla: () => <AsistenciaDiaria />,
+  },
+  {
+    ruta: 'justificaciones',
+    nombre: 'Justificaciones',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.asistencia.justificar'),
+    pantalla: () => <JustificacionesTutor />,
   },
   {
     ruta: 'tutoria',
@@ -315,6 +333,13 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <MisHijos />,
   },
   {
+    ruta: 'justificar',
+    nombre: 'Justificar inasistencia',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado'),
+    pantalla: () => <MisJustificaciones />,
+  },
+  {
     ruta: 'mis-notas',
     nombre: 'Notas y libretas',
     grupo: 'Familia',
@@ -394,6 +419,12 @@ export function Marco() {
   const visibles = PAGINAS.filter((p) => p.visible(colegio));
   const actual = visibles.find((p) => p.ruta === ruta) ?? visibles[0];
   const grupos = [...new Set(visibles.filter((p) => !p.oculta).map((p) => p.grupo))];
+  // La ayuda queda abierta solo para la pantalla donde se pidió.
+  const [ayudaDe, setAyudaDe] = useState<string | null>(null);
+  const ayuda = ayudaDe === actual.ruta;
+  const setAyuda = (v: boolean) => setAyudaDe(v ? actual.ruta : null);
+  const textoAyuda = AYUDA[actual.ruta];
+  useEffect(precargarPantallas, []);
 
   return (
     <div className="marco" style={estiloMarca(colegio.marca?.color_primario)}>
@@ -434,8 +465,27 @@ export function Marco() {
         </div>
       </aside>
       <main className="contenido">
-        <Suspense fallback={<p className="aviso-carga" role="status">Cargando…</p>}>{actual.pantalla()}</Suspense>
+        {textoAyuda && (
+          <button type="button" className="boton-ayuda" aria-expanded={ayuda} aria-controls="panel-ayuda" onClick={() => setAyuda(!ayuda)}>
+            <span aria-hidden="true">?</span> Ayuda
+          </button>
+        )}
+        <Suspense fallback={<div className="esqueleto" role="status" aria-label="Cargando"><span /><span /><span /></div>}>{actual.pantalla()}</Suspense>
       </main>
+      {ayuda && textoAyuda && (
+        <aside id="panel-ayuda" className="panel-ayuda" aria-labelledby="titulo-ayuda">
+          <div className="panel-ayuda-cabecera">
+            <h2 id="titulo-ayuda">Ayuda · {actual.nombre}</h2>
+            <button type="button" className="boton boton-chico boton-borde" onClick={() => setAyuda(false)}>Cerrar</button>
+          </div>
+          <p>{textoAyuda.para}</p>
+          <h3>Puedes</h3>
+          <ul className="ayuda-si">{textoAyuda.puedes.map((x) => <li key={x}>{x}</li>)}</ul>
+          {textoAyuda.noPuedes && <><h3>No se puede</h3><ul className="ayuda-no">{textoAyuda.noPuedes.map((x) => <li key={x}>{x}</li>)}</ul></>}
+          {textoAyuda.consejo && <p className="ayuda-consejo">{textoAyuda.consejo}</p>}
+          <p className="ayuda-pie">¿No encuentras lo que buscas? Escríbenos desde <a href="#/soporte">Soporte</a>.</p>
+        </aside>
+      )}
     </div>
   );
 }

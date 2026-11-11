@@ -51,7 +51,7 @@ services:
 
   s3:
     # Almacenamiento compatible con S3 para desarrollo (la imagen de MinIO ya no se publica).
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.50
     # Con identidades configuradas el acceso anónimo queda denegado: el bucket es privado (EDUN-207).
     # Claves solo de desarrollo; en la nube vienen del gestor de secretos.
     command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/identidades.json

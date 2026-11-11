@@ -121,6 +121,8 @@ class Cobros
                 'estado' => DB::raw("CASE WHEN estado IN ('anulado','exonerado') THEN estado WHEN pagado - $m <= 0.001 THEN 'pendiente' ELSE 'parcial' END"),
             ]);
         }
+        // Lo que ese pago había cubierto de un convenio vuelve a deberse (de la última cuota hacia atrás).
+        Convenios::alAnular(DB::table('pago_aplicaciones')->where('pago_id', $pagoId)->get(['cargo_id as id', 'monto'])->map(fn ($a) => ['id' => (int) $a->id, 'monto' => (float) $a->monto])->all());
         DB::table('pagos')->where('id', $pagoId)->update(['estado' => 'anulado', 'anulado_at' => now(), 'anulado_por' => $usuarioId, 'motivo_anulacion' => $motivo]);
         $this->auditoria->registrar('pago_anulado', 'pagos', $pagoId, ['estado' => 'valido'], ['estado' => 'anulado', 'motivo' => $motivo]);
     }

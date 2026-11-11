@@ -34,6 +34,12 @@ class SesionController
         return response()->json(['token' => $r['token']] + $this->estado($r['usuario'], $token));
     }
 
+    /** Respuesta de ingreso para un token ya creado (acceso de demostración). */
+    public function conToken(User $usuario, string $plano, ?PersonalAccessToken $token): JsonResponse
+    {
+        return response()->json(['token' => $plano] + $this->estado($usuario, $token));
+    }
+
     public function elegirColegio(Request $request): JsonResponse
     {
         $datos = $request->validate(['institucion_id' => ['required', 'integer']], ['institucion_id.required' => 'Elige un colegio.']);

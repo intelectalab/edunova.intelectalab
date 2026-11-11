@@ -162,6 +162,30 @@ class Convenios
         }
     }
 
+    /** Al anular un pago: descuenta lo aplicado a las cuotas, de la última pagada hacia atrás. */
+    public static function alAnular(array $aplicados): void
+    {
+        $porConvenio = DB::table('convenio_cargos as cc')->join('convenios_fraccionamiento as cf', 'cf.id', '=', 'cc.convenio_fraccionamiento_id')
+            ->whereIn('cc.cargo_id', array_column($aplicados, 'id'))->whereIn('cf.estado', ['vigente', 'cumplido'])->get(['cc.cargo_id', 'cf.id as convenio', 'cf.estado'])->groupBy('convenio');
+        $montos = collect($aplicados)->mapWithKeys(fn ($a) => [(int) $a['id'] => (float) $a['monto']]);
+        $hoy = now()->toDateString();
+        foreach ($porConvenio as $convenio => $filas) {
+            $restante = round($filas->sum(fn ($f) => $montos[(int) $f->cargo_id] ?? 0), 2);
+            foreach (DB::table('convenio_cuotas')->where('convenio_fraccionamiento_id', $convenio)->where('pagado', '>', 0)->orderByDesc('numero')->lockForUpdate()->get() as $q) {
+                if ($restante <= 0) {
+                    break;
+                }
+                $quita = min($restante, (float) $q->pagado);
+                DB::table('convenio_cuotas')->where('id', $q->id)->update(['pagado' => round((float) $q->pagado - $quita, 2),
+                    'estado' => $q->vencimiento < $hoy ? 'vencida' : 'pendiente']);
+                $restante = round($restante - $quita, 2);
+            }
+            if ($filas->first()->estado === 'cumplido') {
+                DB::table('convenios_fraccionamiento')->where('id', $convenio)->update(['estado' => 'vigente']);
+            }
+        }
+    }
+
     /** Recordatorio 3 días antes, cuotas vencidas e incumplimiento a los 30 días (regla 17). */
     public function revisar(): array
     {

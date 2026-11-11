@@ -81,7 +81,7 @@ test('constructor: arrastrar un paso cambia su posición y «Ordenar» lo vuelve
 });
 
 test('historial: filtra por resultado, contacto y texto, y abre la conversación (EDUN-381)', async ({ page }) => {
-  await page.goto('/cms/conversion/chatbot');
+  await page.goto('/cms/conversion/chatbot', { waitUntil: 'networkidle' });
   await page.getByRole('link', { name: 'Historial de sesiones' }).click();
   await expect(page).toHaveURL(/\/cms\/conversion\/chatbot\/sesiones$/);
   await expect(page.getByRole('heading', { name: '3 sesiones' })).toBeVisible();

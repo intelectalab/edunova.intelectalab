@@ -63,10 +63,12 @@ export function crearCliente(base: string, obtener: () => { token: string | null
     cabeceras,
     async pedir<T>(ruta: string, { metodo = 'GET', cuerpo }: Opciones = {}): Promise<T> {
       const h = cabeceras();
-      if (cuerpo !== undefined) h['Content-Type'] = 'application/json';
+      // Un FormData (fotos, archivos) va como multipart: el sistema pone su propio Content-Type.
+      const esFormulario = typeof FormData !== 'undefined' && cuerpo instanceof FormData;
+      if (cuerpo !== undefined && !esFormulario) h['Content-Type'] = 'application/json';
       let r: Response;
       try {
-        r = await fetcher(`${raiz}${ruta}`, { method: metodo, headers: h, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) });
+        r = await fetcher(`${raiz}${ruta}`, { method: metodo, headers: h, body: cuerpo === undefined ? undefined : esFormulario ? (cuerpo as FormData) : JSON.stringify(cuerpo) });
       } catch {
         throw new ErrorApi('Sin conexión con Edunova. Revisa tu internet.', 0);
       }

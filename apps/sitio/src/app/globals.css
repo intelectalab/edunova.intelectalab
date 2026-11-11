@@ -70,3 +70,9 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Barra de progreso al navegar en el Panel CMS. */
+@keyframes avance {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

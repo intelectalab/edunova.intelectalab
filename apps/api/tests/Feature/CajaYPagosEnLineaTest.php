@@ -183,4 +183,18 @@ it('el director conecta la pasarela en pruebas y la familia paga en línea; el w
     $comprobante = $s->json('orden.comprobante.id');
     enDemo($f['usuario'], 'GET', "/familia/comprobantes/$comprobante")->assertOk()->assertJsonStructure(['url']);
     enDemo(familiaConDeuda()['usuario'], 'GET', "/familia/comprobantes/$comprobante")->assertNotFound();
+    // Revisión: dos órdenes del mismo cargo pagadas: la segunda no se pierde, queda como excedente.
+    $g = familiaConDeuda();
+    $o1 = enDemo($g['usuario'], 'POST', '/familia/pagos/ordenes', ['cargos' => [$g['vencido']]])->assertCreated()->json('orden');
+    $o2 = enDemo($g['usuario'], 'POST', '/familia/pagos/ordenes', ['cargos' => [$g['vencido']]])->assertCreated()->json('orden');
+    enDemo($g['usuario'], 'POST', "/familia/pagos/ordenes/$o1/simulacion", ['resultado' => 'pagada', 'medio' => 'yape'])->assertOk();
+    enDemo($g['usuario'], 'POST', "/familia/pagos/ordenes/$o2/simulacion", ['resultado' => 'pagada', 'medio' => 'yape'])->assertOk();
+    $t2 = dueno()->table('pasarela_transacciones')->where('orden', $o2)->first();
+    expect($t2->estado)->toBe('pagada')->and((float) $t2->excedente)->toEqual((float) $t2->monto)->and($t2->pago_id)->toBeNull();
+    $conc = enDemo($director, 'GET', '/pagos/conciliacion')->assertOk();
+    expect(collect($conc->json('data'))->firstWhere('orden', $o2)['excedente'])->toEqual((float) $t2->monto);
+    enDemo($director, 'POST', "/pagos/conciliacion/{$t2->id}/excedente", ['nota' => 'x'])->assertUnprocessable();
+    enDemo($director, 'POST', "/pagos/conciliacion/{$t2->id}/excedente", ['nota' => 'Devuelto por transferencia'])->assertOk();
+    enDemo($director, 'POST', "/pagos/conciliacion/{$t2->id}/excedente", ['nota' => 'Devuelto otra vez'])->assertUnprocessable();
+    expect(dueno()->table('pasarela_transacciones')->find($t2->id)->excedente_nota)->toBe('Devuelto por transferencia');
 });

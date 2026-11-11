@@ -197,7 +197,7 @@ it('recibe en bloque las lecturas de QR hechas sin conexión: hora real, idempot
     [$carla, $diego] = $s['alumnos'];
     $ayer = now()->subDay()->toDateString();
     $db->table('asistencias')->whereIn('alumno_id', [$carla, $diego])->where('fecha', $ayer)->delete();
-    // El tutor corrigió a Carla como falta a las 09:00 de ayer; la lectura sin conexión de las 07:50 es más antigua.
+    // El tutor marcó a Carla como falta a las 09:00 de ayer; la lectura sin conexión de las 07:50 prueba que llegó.
     enDemo($s['tutor'], 'PUT', "/asistencia/secciones/{$s['seccion']}", ['fecha' => $ayer, 'registros' => [
         ['alumno_id' => $carla, 'estado' => 'F', 'registrado_at' => Carbon::parse("$ayer 09:00", 'America/Lima')->toIso8601String()],
     ]])->assertOk();
@@ -210,7 +210,8 @@ it('recibe en bloque las lecturas de QR hechas sin conexión: hora real, idempot
     ];
     $r = collect(enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => $lecturas])->assertOk()->json('resultados'))->keyBy('id');
     expect($r['l1'])->toMatchArray(['ok' => true, 'estado' => 'P', 'hora' => '07:40', 'repetido' => false])
-        ->and($r['l2'])->toMatchArray(['ok' => true, 'estado' => 'F', 'conflicto' => true])
+        // Revisión: la falta marcada después no borra la llegada comprobada con el carné.
+        ->and($r['l2'])->toMatchArray(['ok' => true, 'estado' => 'P', 'corrigio_falta' => true])
         ->and($r['l3']['ok'])->toBeFalse()->and($r['l3']['mensaje'])->toContain('Carné')
         ->and($r['l4']['ok'])->toBeFalse();
     $fila = $db->table('asistencias')->where('alumno_id', $diego)->where('fecha', $ayer)->first();
@@ -220,7 +221,7 @@ it('recibe en bloque las lecturas de QR hechas sin conexión: hora real, idempot
     $r2 = collect(enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => array_slice($lecturas, 0, 2)])->assertOk()->json('resultados'))->keyBy('id');
     expect($r2['l1'])->toMatchArray(['ok' => true, 'repetido' => true]);
     expect($db->table('asistencias')->where('alumno_id', $diego)->where('fecha', $ayer)->count())->toBe(1)
-        ->and($db->table('asistencias')->where('alumno_id', $carla)->where('fecha', $ayer)->value('estado'))->toBe('F');
+        ->and($db->table('asistencias')->where('alumno_id', $carla)->where('fecha', $ayer)->value('estado'))->toBe('P');
     enDemo($auxiliar, 'POST', '/asistencias/lote', ['lecturas' => [['id' => 'a', 'codigo' => 'X', 'leido_at' => 'x'], ['id' => 'a', 'codigo' => 'Y', 'leido_at' => now()->toIso8601String()]]])->assertUnprocessable();
     enDemo(personaDemo('apoderado'), 'POST', '/asistencias/lote', ['lecturas' => $lecturas])->assertForbidden();
 });

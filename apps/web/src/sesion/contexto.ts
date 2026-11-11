@@ -32,6 +32,8 @@ export type Sesion = {
   estado: EstadoSesion | null;
   token: string | null;
   ingresar: (usuario: string, password: string) => Promise<void>;
+  /** Acceso de demostración por rol (solo si el servidor lo activa). */
+  entrarDemo: (rol: string) => Promise<void>;
   elegirColegio: (id: number) => Promise<void>;
   salir: () => Promise<void>;
   /** Vuelve a pedir /auth/yo (tras el segundo factor o al cambiar la marca). */

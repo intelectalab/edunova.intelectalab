@@ -144,8 +144,8 @@ class Recaudacion
     {
         return DB::table('pasarela_transacciones as t')->where('t.estado', 'pagada')
             ->when($mes, fn ($q, $v) => $q->whereRaw("to_char(t.created_at at time zone 'America/Lima', 'YYYY-MM') = ?", [$v]))->orderByDesc('t.id')->limit(500)
-            ->get(['t.id', 't.orden', 't.proveedor', 't.medio', 't.monto', 't.comision', 't.neto', 't.fecha_abono', 't.conciliacion', 't.conciliacion_detalle', 't.created_at'])
-            ->map(fn ($t) => array_merge((array) $t, ['monto' => (float) $t->monto, 'comision' => $t->comision !== null ? (float) $t->comision : null, 'neto' => $t->neto !== null ? (float) $t->neto : null]))->all();
+            ->get(['t.id', 't.orden', 't.proveedor', 't.medio', 't.monto', 't.comision', 't.neto', 't.fecha_abono', 't.conciliacion', 't.conciliacion_detalle', 't.created_at', 't.excedente', 't.excedente_resuelto_at', 't.excedente_nota'])
+            ->map(fn ($t) => array_merge((array) $t, ['monto' => (float) $t->monto, 'comision' => $t->comision !== null ? (float) $t->comision : null, 'neto' => $t->neto !== null ? (float) $t->neto : null, 'excedente' => (float) $t->excedente]))->all();
     }
 
     /** Reporte de abonos de la pasarela (CSV con orden, monto, comisión, neto y fecha de abono). */

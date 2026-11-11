@@ -57,7 +57,7 @@ export function Cabecera({ aviso, telefono, menu, urlIngreso }: { aviso: string;
             </nav>
           </div>
           <div className="flex items-center gap-space-sm md:gap-space-md shrink-0">
-            <a href={urlIngreso} className="hidden sm:inline-flex px-space-md py-space-sm rounded-lg font-label-lg text-label-lg text-primary hover:bg-surface-container">
+            <a href={urlIngreso} className="inline-flex px-space-sm sm:px-space-md py-space-sm rounded-lg font-label-lg text-label-lg text-primary hover:bg-surface-container">
               {landing.iniciarSesion}
             </a>
             <a href="#demo" className="px-space-md py-space-sm rounded-lg bg-accion hover:bg-accion-hover text-accion-texto font-label-lg text-label-lg shadow-sm whitespace-nowrap">

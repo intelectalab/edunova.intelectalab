@@ -91,8 +91,18 @@ it('crea el convenio con cuotas y acta, la familia firma en la app, dirección a
     $o = enDemo($f['usuario'], 'POST', "/familia/convenios/$id/cuotas/2/pago")->assertCreated();
     expect($o->json('monto'))->toEqual(250);
     enDemo($f['usuario'], 'POST', '/familia/pagos/ordenes/'.$o->json('orden').'/simulacion', ['resultado' => 'pagada', 'medio' => 'yape'])->assertOk();
-    pagarS22([['id' => $f['cargos'][2], 'monto' => 300]]);
+    $ultimo = pagarS22([['id' => $f['cargos'][2], 'monto' => 300]]);
     expect(dueno()->table('convenios_fraccionamiento')->find($id)->estado)->toBe('cumplido');
+
+    // Revisión: anular el último pago vuelve a abrir la cuota 3 y el convenio.
+    DB::transaction(function () use ($ultimo) {
+        ContextoInstitucion::fijar(demoId());
+        app(Cobros::class)->anular($ultimo, 'Prueba de anulación', null);
+    });
+    $cuota3 = dueno()->table('convenio_cuotas')->where('convenio_fraccionamiento_id', $id)->where('numero', 3)->first();
+    expect((float) $cuota3->pagado)->toEqual(0)->and($cuota3->estado)->toBe('pendiente')
+        ->and(dueno()->table('convenio_cuotas')->where('convenio_fraccionamiento_id', $id)->where('numero', 2)->value('estado'))->toBe('pagada')
+        ->and(dueno()->table('convenios_fraccionamiento')->find($id)->estado)->toBe('vigente');
 });
 
 it('marca incumplido el convenio con una cuota vencida más de 30 días', function () {

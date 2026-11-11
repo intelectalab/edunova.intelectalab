@@ -9,6 +9,7 @@ use App\Modulos\ADM\Http\Controllers\InstitucionController;
 use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
+use App\Modulos\CAL\Http\Controllers\JustificacionesController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
 use App\Modulos\COM\Http\Controllers\ComunicacionController;
@@ -21,6 +22,7 @@ use App\Modulos\PAG\Http\Controllers\FinanzasController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
+use App\Modulos\SEG\Http\Controllers\AccesoController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
 use App\Modulos\SEG\Http\Controllers\DispositivosController;
@@ -54,6 +56,11 @@ Route::post('/correo/eventos', EventosCorreoController::class)->middleware('thro
 // EDUN-35 · Sesión: ingreso con DNI o correo, elección de colegio, quién soy y salir.
 Route::prefix('auth')->group(function () {
     Route::post('/ingresar', [SesionController::class, 'ingresar'])->middleware('throttle:ingreso');
+    // Formas fáciles de entrar: recuperar la contraseña y acceso de demostración (servidor de pruebas).
+    Route::post('/recuperar', [AccesoController::class, 'recuperar'])->middleware('throttle:5,1');
+    Route::post('/restablecer', [AccesoController::class, 'restablecer'])->middleware('throttle:10,1');
+    Route::get('/demo', [AccesoController::class, 'opcionesDemo']);
+    Route::post('/demo', [AccesoController::class, 'entrarDemo'])->middleware('throttle:20,1');
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/colegio', [SesionController::class, 'elegirColegio']);
         Route::get('/yo', [SesionController::class, 'yo']);
@@ -311,6 +318,7 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/pagos/recaudacion/{archivo}', [FinanzasController::class, 'lineas'])->whereNumber('archivo')->middleware('permiso:pag.recaudacion.ver');
         Route::get('/pagos/conciliacion', [FinanzasController::class, 'conciliacion'])->middleware('permiso:pag.pasarela.conciliar|pag.pasarela.ver');
         Route::post('/pagos/conciliacion', [FinanzasController::class, 'conciliar'])->middleware(['permiso:pag.pasarela.conciliar', 'throttle:10,1']);
+        Route::post('/pagos/conciliacion/{transaccion}/excedente', [FinanzasController::class, 'resolverExcedente'])->whereNumber('transaccion')->middleware('permiso:pag.pasarela.conciliar');
         Route::get('/pagos/reportes', [FinanzasController::class, 'reportes'])->middleware('permiso:pag.reportes.ver');
         Route::get('/pagos/reportes/excel', [FinanzasController::class, 'reportesExcel'])->middleware(['permiso:pag.reportes.exportar', 'throttle:20,1']);
 
@@ -380,6 +388,12 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::put('/asistencia/secciones/{seccion}', [SeguimientoController::class, 'guardar'])->whereNumber('seccion')->middleware(['permiso:cal.asistencia.registrar', 'throttle:120,1']);
         Route::post('/asistencia/qr', [SeguimientoController::class, 'qr'])->middleware(['permiso:cal.asistencia.registrar', 'throttle:600,1']);
         Route::post('/asistencias/lote', [SeguimientoController::class, 'loteQr'])->middleware(['permiso:cal.asistencia.registrar', 'throttle:120,1']);
+        // EDUN-96 · Justificación de inasistencias.
+        Route::get('/asistencia/justificaciones', [JustificacionesController::class, 'bandeja'])->middleware('permiso:cal.asistencia.justificar');
+        Route::post('/asistencia/justificaciones/{justificacion}', [JustificacionesController::class, 'resolver'])->whereNumber('justificacion')->middleware('permiso:cal.asistencia.justificar');
+        Route::get('/familia/justificaciones', [JustificacionesController::class, 'misJustificaciones']);
+        Route::post('/familia/justificaciones', [JustificacionesController::class, 'solicitar'])->middleware('throttle:20,1');
+        Route::get('/justificaciones/{justificacion}/sustento', [JustificacionesController::class, 'sustento'])->whereNumber('justificacion');
 
         // Conducta, tutoría y alertas (EDUN-101/102/103).
         Route::get('/tutoria/alumnos/{alumno}', [SeguimientoController::class, 'historial'])->whereNumber('alumno')->middleware('permiso:cal.conducta.ver|cal.conducta.registrar');
