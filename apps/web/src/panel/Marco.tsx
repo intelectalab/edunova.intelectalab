@@ -17,6 +17,8 @@ import { Siagie } from '../sia/Siagie';
 import { Agenda, Bitacora, Comunicados, MisComunicados, Reclamos } from '../com/Comunicacion';
 import { Citas, Mensajes } from '../com/Mensajes';
 import { Morosidad } from '../pag/Morosidad';
+import { Convenios, MisConvenios } from '../pag/Convenios';
+import { Conciliacion, Recaudacion, ReportesFinancieros } from '../pag/Finanzas';
 import { Caja } from '../pag/Caja';
 import { Comprobantes } from '../pag/Comprobantes';
 import { Pasarela } from '../pag/Pasarela';
@@ -196,6 +198,34 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <Morosidad />,
   },
   {
+    ruta: 'convenios',
+    nombre: 'Convenios',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.convenios.ver'),
+    pantalla: () => <Convenios />,
+  },
+  {
+    ruta: 'recaudacion',
+    nombre: 'Recaudación bancaria',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.recaudacion.ver'),
+    pantalla: () => <Recaudacion />,
+  },
+  {
+    ruta: 'conciliacion',
+    nombre: 'Conciliación en línea',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.pasarela.conciliar', 'pag.pasarela.ver'),
+    pantalla: () => <Conciliacion />,
+  },
+  {
+    ruta: 'reportes',
+    nombre: 'Reportes financieros',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.reportes.ver'),
+    pantalla: () => <ReportesFinancieros />,
+  },
+  {
     ruta: 'facturacion',
     nombre: 'Facturación electrónica',
     grupo: 'Pagos',
@@ -243,6 +273,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Comunicación',
     visible: (c) => moduloActivo(c, 'COM') && puede(c, 'com.comunicados.ver'),
     pantalla: () => <Bitacora />,
+  },
+  {
+    ruta: 'mis-convenios',
+    nombre: 'Mis convenios',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'PAG'),
+    pantalla: () => <MisConvenios />,
   },
   {
     ruta: 'mis-comunicados',

@@ -71,8 +71,8 @@ export async function api<T>(ruta: string, opciones: OpcionesApi = {}): Promise<
 }
 
 /** Descarga binaria con sesión (logo, exportaciones). */
-export async function apiArchivo(ruta: string, token: string | null): Promise<Blob> {
-  const respuesta = await pedir(ruta, { token });
+export async function apiArchivo(ruta: string, token: string | null, opciones: { metodo?: string; cuerpo?: unknown } = {}): Promise<Blob> {
+  const respuesta = await pedir(ruta, { token, ...opciones });
   if (!respuesta.ok) throw await error(respuesta);
   return respuesta.blob();
 }

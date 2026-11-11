@@ -126,7 +126,7 @@ class PagosEnLinea
      * @param  list<int>  $hijos
      * @return array{orden: string, url: string, monto: float}
      */
-    public function crearOrden(array $cargoIds, array $hijos, int $usuarioId, ?string $email): array
+    public function crearOrden(array $cargoIds, array $hijos, int $usuarioId, ?string $email, array $montos = []): array
     {
         $cuenta = $this->cuentaActiva();
         if (! $cuenta) {
@@ -136,6 +136,10 @@ class PagosEnLinea
         $elegidos = collect($cargoIds)->unique()->map(fn ($id) => $pendientes->get((int) $id));
         if ($elegidos->isEmpty() || $elegidos->contains(null)) {
             throw ValidationException::withMessages(['cargos' => ['Elige cargos pendientes de tus hijos que ya estén emitidos (no se pagan cuotas futuras).']]);
+        }
+        // EDUN-87 · Con montos (cuota de un convenio) se paga solo esa parte de cada cargo.
+        if ($montos) {
+            $elegidos = $elegidos->map(fn ($c) => array_merge($c, ['saldo' => min((float) $c['saldo'], round((float) ($montos[$c['id']] ?? $c['saldo']), 2))]));
         }
         $monto = round($elegidos->sum('saldo'), 2);
         $orden = 'EDU-'.ContextoInstitucion::requerido().'-'.Str::upper(Str::random(12));

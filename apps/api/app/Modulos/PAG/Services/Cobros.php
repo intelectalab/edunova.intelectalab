@@ -96,6 +96,8 @@ class Cobros
         $this->auditoria->registrar('pago_registrado', 'pagos', $pago, null, ['monto' => $total, 'medio' => $medio, 'cargos' => $ids]);
         // EDUN-55 · Pagar la matrícula de una ratificación la confirma.
         Ratificacion::alPagar($ids);
+        // EDUN-86 · Lo pagado a cargos de un convenio vigente cubre sus cuotas en orden.
+        Convenios::alPagar(array_map(fn ($c) => ['id' => (int) $c['id'], 'monto' => round((float) $c['monto'], 2)], $cargos));
 
         return $pago;
     }

@@ -14,8 +14,10 @@ use App\Modulos\CAL\Http\Controllers\SeguimientoController;
 use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
+use App\Modulos\MOV\Http\Controllers\AppPersonalController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
 use App\Modulos\PAG\Http\Controllers\ConfiguracionPagosController;
+use App\Modulos\PAG\Http\Controllers\FinanzasController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
@@ -287,6 +289,29 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/pagos/morosidad/{apoderado}/gestiones', [CobranzaController::class, 'gestionCobranza'])->whereNumber('apoderado')->middleware('permiso:pag.cobranza.gestionar');
         Route::post('/pagos/morosidad/recordatorio', [CobranzaController::class, 'recordatorioMasivo'])->middleware(['permiso:pag.cobranza.gestionar', 'throttle:5,1']);
 
+        // Sprint 22 · Convenios (EDUN-84/85/86/87).
+        Route::get('/pagos/convenios', [FinanzasController::class, 'convenios'])->middleware('permiso:pag.convenios.ver');
+        Route::get('/pagos/convenios/elegibles/{apoderado}', [FinanzasController::class, 'elegibles'])->whereNumber('apoderado')->middleware('permiso:pag.convenios.crear');
+        Route::post('/pagos/convenios/simulacion', [FinanzasController::class, 'simular'])->middleware('permiso:pag.convenios.crear');
+        Route::post('/pagos/convenios', [FinanzasController::class, 'crear'])->middleware('permiso:pag.convenios.crear');
+        Route::post('/pagos/convenios/{convenio}/firma', [FinanzasController::class, 'firmaPapel'])->whereNumber('convenio')->middleware('permiso:pag.convenios.crear');
+        Route::post('/pagos/convenios/{convenio}/aprobacion', [FinanzasController::class, 'aprobar'])->whereNumber('convenio')->middleware('permiso:pag.convenios.aprobar');
+        Route::post('/pagos/convenios/{convenio}/anulacion', [FinanzasController::class, 'anular'])->whereNumber('convenio')->middleware('permiso:pag.convenios.anular');
+        Route::get('/pagos/convenios/{convenio}/acta', [FinanzasController::class, 'acta'])->whereNumber('convenio')->middleware('permiso:pag.convenios.ver');
+        Route::get('/familia/convenios', [FinanzasController::class, 'misConvenios']);
+        Route::post('/familia/convenios/{convenio}/firma', [FinanzasController::class, 'firmarApp'])->whereNumber('convenio')->middleware('throttle:10,1');
+        Route::post('/familia/convenios/{convenio}/cuotas/{cuota}/pago', [FinanzasController::class, 'pagarCuota'])->whereNumber('convenio')->whereNumber('cuota')->middleware('throttle:20,1');
+
+        // Recaudación bancaria, conciliación en línea y reportes (EDUN-79/80/89/83).
+        Route::get('/pagos/recaudacion', [FinanzasController::class, 'recaudacion'])->middleware('permiso:pag.recaudacion.ver');
+        Route::post('/pagos/recaudacion/deudas', [FinanzasController::class, 'archivoDeudas'])->middleware(['permiso:pag.recaudacion.procesar', 'throttle:10,1']);
+        Route::post('/pagos/recaudacion/pagos', [FinanzasController::class, 'archivoPagos'])->middleware(['permiso:pag.recaudacion.procesar', 'throttle:10,1']);
+        Route::get('/pagos/recaudacion/{archivo}', [FinanzasController::class, 'lineas'])->whereNumber('archivo')->middleware('permiso:pag.recaudacion.ver');
+        Route::get('/pagos/conciliacion', [FinanzasController::class, 'conciliacion'])->middleware('permiso:pag.pasarela.conciliar|pag.pasarela.ver');
+        Route::post('/pagos/conciliacion', [FinanzasController::class, 'conciliar'])->middleware(['permiso:pag.pasarela.conciliar', 'throttle:10,1']);
+        Route::get('/pagos/reportes', [FinanzasController::class, 'reportes'])->middleware('permiso:pag.reportes.ver');
+        Route::get('/pagos/reportes/excel', [FinanzasController::class, 'reportesExcel'])->middleware(['permiso:pag.reportes.exportar', 'throttle:20,1']);
+
         // EDUN-82 · Estado de cuenta de la familia.
         Route::get('/familia/estado-cuenta', [CobranzaController::class, 'estadoCuenta']);
 
@@ -416,6 +441,17 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/reclamos/{reclamo}/respuesta', [ComunicacionController::class, 'responderReclamo'])->whereNumber('reclamo')->middleware('permiso:com.reclamaciones.responder');
         Route::get('/notificaciones/bitacora', [ComunicacionController::class, 'bitacora'])->middleware('permiso:com.comunicados.ver');
     });
+
+    // EDUN-199 · App del personal: movilidad y enfermería.
+    Route::middleware('modulo:MOV')->group(function () {
+        Route::get('/movilidad/mis-rutas', [AppPersonalController::class, 'rutas'])->middleware('permiso:mov.movilidad.registrar|mov.seguimiento.transmitir');
+        Route::post('/movilidad/rutas/{ruta}/recorridos', [AppPersonalController::class, 'iniciar'])->whereNumber('ruta')->middleware('permiso:mov.seguimiento.transmitir');
+        Route::post('/movilidad/recorridos/{recorrido}/posiciones', [AppPersonalController::class, 'posiciones'])->whereNumber('recorrido')->middleware(['permiso:mov.seguimiento.transmitir', 'throttle:240,1']);
+        Route::post('/movilidad/recorridos/{recorrido}/eventos', [AppPersonalController::class, 'evento'])->whereNumber('recorrido')->middleware('permiso:mov.movilidad.registrar');
+        Route::post('/movilidad/recorridos/{recorrido}/fin', [AppPersonalController::class, 'finalizar'])->whereNumber('recorrido')->middleware('permiso:mov.seguimiento.transmitir');
+    });
+    Route::get('/salud/alumnos', [AppPersonalController::class, 'buscarAlumno'])->middleware('permiso:sal.salud.registrar');
+    Route::post('/salud/atenciones', [AppPersonalController::class, 'atender'])->middleware(['permiso:sal.salud.registrar', 'throttle:60,1']);
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.
     Route::middleware('modulo:MDL')->group(function () {

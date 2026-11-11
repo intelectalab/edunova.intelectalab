@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
 import { AsistenciaApp, NotasApp, PuertaQrApp } from './academico';
 import { AgendaApp, ComunicadosApp } from './comunicacion';
+import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
 import { EstadoCuentaApp, RatificacionApp } from './familia';
 import { colorDeMarca, iniciales, textoSobre } from './marca';
 import { Boton, Campo, colores, estilos, MensajeError, Tarjeta } from './ui';
@@ -171,6 +172,9 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {colegio.estado === 'suspendido' && <MensajeError>El acceso del colegio está pausado. Comunícate con el colegio.</MensajeError>}
         {colegio.roles.some((r) => ['docente', 'tutor', 'auxiliar', 'coordinador'].includes(r)) && <AsistenciaApp api={api} color={color} />}
         {colegio.roles.some((r) => ['auxiliar', 'porteria'].includes(r)) && <PuertaQrApp api={api} color={color} />}
+        {colegio.roles.some((r) => ['conductor', 'movilidad'].includes(r)) && <RecorridoApp api={api} color={color} />}
+        {colegio.roles.includes('enfermeria') && <EnfermeriaApp api={api} color={color} />}
+        {colegio.roles.includes('apoderado') && <ConveniosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <ComunicadosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <NotasApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <AgendaApp api={api} />}

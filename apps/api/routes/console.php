@@ -7,6 +7,7 @@ use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
+use App\Modulos\PAG\Services\Convenios;
 use App\Modulos\PLA\Services\MesaDeAyuda;
 use App\Modulos\PLA\Services\Suspensiones;
 use App\Modulos\SEG\Services\AlmacenArchivos;
@@ -107,3 +108,14 @@ Artisan::command('com:recordatorios', function () {
 })->purpose('Recordatorio de eventos de mañana y reclamos por vencer');
 Schedule::command('com:programados')->everyMinute()->withoutOverlapping();
 Schedule::command('com:recordatorios')->dailyAt('08:00')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-86 · Convenios: recordatorio de cuota, cuotas vencidas e incumplidos (30 días).
+Artisan::command('pag:convenios', function () {
+    foreach (DB::connection('plataforma')->table('convenios_fraccionamiento')->where('estado', 'vigente')->distinct()->pluck('institucion_id') as $inst) {
+        DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+            app(Convenios::class)->revisar();
+        });
+    }
+})->purpose('Revisa las cuotas de los convenios de fraccionamiento');
+Schedule::command('pag:convenios')->dailyAt('07:30')->timezone('America/Lima')->withoutOverlapping();

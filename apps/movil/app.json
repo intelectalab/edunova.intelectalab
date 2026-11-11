@@ -34,6 +34,12 @@
         {
           "cameraPermission": "Usamos la cámara para leer el código QR del carné en la puerta."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Compartimos la ubicación de la movilidad con las familias solo mientras el recorrido está en curso."
+        }
       ]
     ]
   }

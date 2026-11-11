@@ -18,9 +18,9 @@ export function Titulo({ migas, titulo, descripcion, children }: { migas: string
 export function Aviso({ tipo = 'info', children }: { tipo?: 'info' | 'error' | 'ok' | 'ambar'; children: ReactNode }) {
   if (!children) return null;
   return (
-    <p className={`aviso${tipo === 'info' ? '' : ` aviso-${tipo}`}`} role={tipo === 'error' ? 'alert' : 'status'}>
+    <div className={`aviso${tipo === 'info' ? '' : ` aviso-${tipo}`}`} role={tipo === 'error' ? 'alert' : 'status'}>
       {children}
-    </p>
+    </div>
   );
 }
 
