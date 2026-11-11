@@ -3,6 +3,7 @@
 namespace App\Modulos\ADM\Services;
 
 use App\Modulos\Compartido\ContextoInstitucion;
+use App\Modulos\PAG\Services\GeneradorCargos;
 use App\Modulos\SEG\Services\Auditoria;
 use Dompdf\Dompdf;
 use Illuminate\Support\Carbon;
@@ -75,52 +76,17 @@ class Matriculas
     }
 
     /**
-     * Cargos del cronograma del año (del nivel, o el general): matrícula y cuota de ingreso
-     * siempre; pensiones desde el mes de la matrícula. Aplica los beneficios del alumno.
+     * Cargos de la matrícula (los genera PAG al matricular; aquí solo se asegura y se cuentan).
      *
      * @return array{creados: int, cronograma: bool}
      */
     public function generarCargos(int $matriculaId): array
     {
-        $m = DB::table('matriculas as m')->join('secciones as s', 's.id', '=', 'm.seccion_id')->join('grados as g', 'g.id', '=', 's.grado_id')
-            ->where('m.id', $matriculaId)->first(['m.id', 'm.alumno_id', 'm.anio_escolar_id', 'm.fecha_matricula', 'g.nivel']);
-        $cronograma = DB::table('cronogramas')->where('anio_escolar_id', $m->anio_escolar_id)
-            ->where(fn ($q) => $q->where('nivel', $m->nivel)->orWhereNull('nivel'))->orderByRaw('nivel is null')->value('id');
-        if (! $cronograma) {
-            return ['creados' => 0, 'cronograma' => false];
-        }
-        $beneficios = DB::table('alumno_beneficios as ab')->join('beneficios as b', 'b.id', '=', 'ab.beneficio_id')
-            ->where('ab.alumno_id', $m->alumno_id)->where('ab.anio_escolar_id', $m->anio_escolar_id)->where('b.activo', true)->get(['b.tipo', 'b.valor', 'b.aplica_a']);
-        $mesMatricula = substr((string) $m->fecha_matricula, 0, 7);
-        $creados = 0;
-        foreach (DB::table('cronograma_cuotas as cc')->join('conceptos_cobro as cp', 'cp.id', '=', 'cc.concepto_cobro_id')
-            ->where('cc.cronograma_id', $cronograma)->orderBy('cc.numero')
-            ->get(['cc.id', 'cc.concepto_cobro_id', 'cc.mes', 'cc.emision', 'cc.vencimiento', 'cc.monto', 'cp.nombre', 'cp.tipo']) as $c) {
-            if ($c->tipo === 'pension' && $c->mes < $mesMatricula) {
-                continue; // Ingresó a mitad de año: no se cobran las pensiones anteriores.
-            }
-            if (DB::table('cargos')->where('matricula_id', $matriculaId)->where('cronograma_cuota_id', $c->id)->exists()) {
-                continue;
-            }
-            $descuento = 0.0;
-            foreach ($beneficios as $b) {
-                if ($b->aplica_a === $c->tipo) {
-                    $descuento += $b->tipo === 'porcentaje' ? round($c->monto * $b->valor / 100, 2) : (float) $b->valor;
-                }
-            }
-            DB::table('cargos')->insert([
-                'institucion_id' => ContextoInstitucion::requerido(), 'alumno_id' => $m->alumno_id, 'matricula_id' => $matriculaId,
-                'concepto_cobro_id' => $c->concepto_cobro_id, 'cronograma_cuota_id' => $c->id,
-                'descripcion' => $c->tipo === 'pension' ? "{$c->nombre} ".Carbon::parse($c->mes.'-01')->locale('es')->translatedFormat('F Y') : $c->nombre,
-                'emision' => $c->emision, 'vencimiento' => $c->vencimiento, 'monto' => $c->monto, 'descuento' => min($descuento, (float) $c->monto),
-            ]);
-            $creados++;
-        }
+        $r = app(GeneradorCargos::class)->generar($matriculaId);
 
-        return ['creados' => $creados, 'cronograma' => true];
+        return ['creados' => DB::table('cargos')->where('matricula_id', $matriculaId)->count(), 'cronograma' => $r['cronograma']];
     }
 
-    /** Constancia de matrícula en PDF. */
     public function constancia(int $matriculaId): string
     {
         $m = DB::table('matriculas as m')

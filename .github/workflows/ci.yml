@@ -111,3 +111,26 @@ jobs:
         run: pnpm e2e
       - name: Auditoría de dependencias JS
         run: pnpm audit --prod
+
+  movil:
+    name: App móvil (tipos, lint, Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/movil
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/movil/package-lock.json
+
+      # Proyecto Expo fuera del workspace de pnpm (React Native necesita node_modules sin enlaces).
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Auditoría de dependencias de la app (altas y críticas)
+        run: npm audit --omit=dev --audit-level=high

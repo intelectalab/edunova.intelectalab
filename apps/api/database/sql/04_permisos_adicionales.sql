@@ -19,3 +19,19 @@ INSERT INTO rol_permiso (rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r, permisos p
 WHERE r.codigo IN ('promotor', 'director') AND p.codigo IN ('pla.tickets.ver', 'pla.tickets.crear')
 ON CONFLICT DO NOTHING;
+
+-- Sprint 16 · Descuentos y becas (PAG-H04 / EDUN-72): tesorería los propone con sustento y
+-- dirección los aprueba. El director ve conceptos y cronogramas.
+INSERT INTO permisos (codigo, modulo, descripcion)
+VALUES ('pag.beneficios.aprobar', 'PAG', 'Descuentos y becas: aprobar')
+ON CONFLICT (codigo) DO NOTHING;
+
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id FROM roles r, permisos p
+WHERE r.codigo IN ('superadmin', 'promotor', 'director') AND p.codigo = 'pag.beneficios.aprobar'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id FROM roles r, permisos p
+WHERE r.codigo = 'director' AND p.codigo = 'pag.conceptos.ver'
+ON CONFLICT DO NOTHING;

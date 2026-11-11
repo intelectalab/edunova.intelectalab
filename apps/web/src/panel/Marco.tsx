@@ -6,6 +6,9 @@ import { Configuracion } from '../adm/Configuracion';
 import { Horarios } from '../adm/Horarios';
 import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
 import { MisHijos } from '../familia/MisHijos';
+import { Beneficios } from '../pag/Beneficios';
+import { ConceptosYCronogramas } from '../pag/Conceptos';
+import { ProveedoresFacturacion } from '../pag/Facturacion';
 import { SoporteColegio } from '../pla/SoporteColegio';
 import { Personal } from '../adm/Personal';
 import { PlanEstudios } from '../adm/PlanEstudios';
@@ -86,6 +89,27 @@ const PAGINAS: Pagina[] = [
     grupo: 'Matrícula',
     visible: (c) => moduloActivo(c, 'ADM') && puede(c, 'sia.nomina.importar', 'sia.plantillas.validar'),
     pantalla: () => <PendientesSiagie />,
+  },
+  {
+    ruta: 'conceptos',
+    nombre: 'Conceptos y cronogramas',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.conceptos.ver'),
+    pantalla: () => <ConceptosYCronogramas />,
+  },
+  {
+    ruta: 'becas',
+    nombre: 'Descuentos y becas',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.conceptos.ver', 'pag.beneficios.aprobar'),
+    pantalla: () => <Beneficios />,
+  },
+  {
+    ruta: 'facturacion',
+    nombre: 'Facturación electrónica',
+    grupo: 'Pagos',
+    visible: (c) => moduloActivo(c, 'PAG') && puede(c, 'pag.comprobantes.ver'),
+    pantalla: () => <ProveedoresFacturacion />,
   },
   {
     ruta: 'familia',

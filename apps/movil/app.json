@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Edunova",
+    "slug": "edunova",
+    "scheme": "edunova",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "pe.edunova.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Usamos Face ID para que vuelvas a entrar a Edunova sin escribir tu contraseña."
+      }
+    },
+    "android": {
+      "package": "pe.edunova.app"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Usamos Face ID para que vuelvas a entrar a Edunova sin escribir tu contraseña."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#047857"
+        }
+      ]
+    ]
+  }
+}

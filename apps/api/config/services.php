@@ -65,6 +65,16 @@ return [
         'umbral' => (float) env('RECAPTCHA_UMBRAL', 0.5),
     ],
 
+    // EDUN-90 · Proveedores de facturación electrónica: «codigo:Nombre,codigo:Nombre».
+    'facturacion' => [
+        'proveedores' => env('FACTURACION_PROVEEDORES', 'proveedor_a:Proveedor A,proveedor_b:Proveedor B'),
+    ],
+
+    // EDUN-196 · Notificaciones push de la app (Expo entrega por APNs y FCM).
+    'expo' => [
+        'push_url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+    ],
+
     // EDUN-208 · Webhook de rebotes y quejas del proveedor de correo.
     'correo' => [
         'webhook_secreto' => env('CORREO_WEBHOOK_SECRETO'),

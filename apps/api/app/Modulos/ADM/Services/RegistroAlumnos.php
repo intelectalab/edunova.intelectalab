@@ -3,6 +3,7 @@
 namespace App\Modulos\ADM\Services;
 
 use App\Modulos\Compartido\ContextoInstitucion;
+use App\Modulos\PAG\Services\GeneradorCargos;
 use App\Modulos\SEG\Services\ActivacionFamilias;
 use App\Modulos\SEG\Services\Auditoria;
 use Illuminate\Database\Query\Builder;
@@ -220,10 +221,12 @@ class RegistroAlumnos
                 throw ValidationException::withMessages(['seccion_id' => ["{$seccion->nombre} ya no tiene vacantes."]]);
             }
         }
-        DB::table('matriculas')->insert([
+        $matricula = DB::table('matriculas')->insertGetId([
             'institucion_id' => ContextoInstitucion::requerido(), 'alumno_id' => $alumnoId, 'anio_escolar_id' => $seccion->anio_escolar_id,
             'seccion_id' => $seccionId, 'tipo' => $tipo, 'estado' => 'matriculado', 'origen' => $origen,
         ]);
+        // EDUN-71 · Al pasar a matriculado se crean los cargos del cronograma.
+        app(GeneradorCargos::class)->generar((int) $matricula);
         // EDUN-53 · Si vino de admisión, el postulante pasa a «matriculado».
         Admision::alMatricular($alumnoId);
     }

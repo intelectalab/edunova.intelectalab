@@ -11,11 +11,13 @@ use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
+use App\Modulos\PAG\Http\Controllers\ConfiguracionPagosController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
+use App\Modulos\SEG\Http\Controllers\DispositivosController;
 use App\Modulos\SEG\Http\Controllers\DosPasosController;
 use App\Modulos\SEG\Http\Controllers\FamiliaController;
 use App\Modulos\SEG\Http\Controllers\InvitacionesController;
@@ -53,6 +55,13 @@ Route::prefix('auth')->group(function () {
             Route::post('/activar', [DosPasosController::class, 'activar']);
             Route::post('/verificar', [DosPasosController::class, 'verificar']);
             Route::post('/respaldos', [DosPasosController::class, 'respaldos']);
+        });
+        // EDUN-195 / EDUN-196 · App móvil: token de push del dispositivo y preferencias por tipo.
+        Route::middleware('throttle:30,1')->group(function () {
+            Route::post('/dispositivos', [DispositivosController::class, 'registrar']);
+            Route::delete('/dispositivos', [DispositivosController::class, 'quitar']);
+            Route::get('/notificaciones/preferencias', [DispositivosController::class, 'preferencias']);
+            Route::put('/notificaciones/preferencias', [DispositivosController::class, 'guardarPreferencias']);
         });
     });
 });
@@ -230,6 +239,36 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/anios-escolares/{anio}', [AniosEscolaresController::class, 'show'])->whereNumber('anio')->middleware('permiso:adm.configuracion.ver');
         Route::post('/anios-escolares', [AniosEscolaresController::class, 'store'])->middleware('permiso:adm.configuracion.editar');
         Route::put('/anios-escolares/{anio}', [AniosEscolaresController::class, 'update'])->whereNumber('anio')->middleware('permiso:adm.configuracion.editar');
+    });
+
+    Route::post('/notificaciones/prueba', [DispositivosController::class, 'probar'])->middleware('throttle:30,1');
+
+    // Sprint 16 · Configuración de pagos (PAG-02/03 y facturación).
+    Route::middleware('modulo:PAG')->group(function () {
+        // EDUN-69 / EDUN-70 · Conceptos y cronogramas.
+        Route::get('/pagos/conceptos', [ConfiguracionPagosController::class, 'conceptos'])->middleware('permiso:pag.conceptos.ver');
+        Route::get('/pagos/cronogramas', [ConfiguracionPagosController::class, 'cronogramas'])->middleware('permiso:pag.conceptos.ver');
+        Route::middleware('permiso:pag.conceptos.editar')->group(function () {
+            Route::post('/pagos/conceptos', [ConfiguracionPagosController::class, 'guardarConcepto']);
+            Route::put('/pagos/conceptos/{concepto}', [ConfiguracionPagosController::class, 'guardarConcepto'])->whereNumber('concepto');
+            Route::post('/pagos/cronogramas', [ConfiguracionPagosController::class, 'guardarCronograma']);
+            Route::put('/pagos/cronogramas/{cronograma}', [ConfiguracionPagosController::class, 'guardarCronograma'])->whereNumber('cronograma');
+            Route::delete('/pagos/cronogramas/{cronograma}', [ConfiguracionPagosController::class, 'eliminarCronograma'])->whereNumber('cronograma');
+            Route::post('/pagos/cronogramas/copiar', [ConfiguracionPagosController::class, 'copiarCronogramas']);
+            Route::post('/pagos/beneficios', [ConfiguracionPagosController::class, 'guardarTipoBeneficio']);
+            Route::put('/pagos/beneficios/{beneficio}', [ConfiguracionPagosController::class, 'guardarTipoBeneficio'])->whereNumber('beneficio');
+        });
+
+        // EDUN-72 · Descuentos y becas: tesorería propone con sustento, dirección aprueba.
+        Route::get('/pagos/beneficios', [ConfiguracionPagosController::class, 'beneficios'])->middleware('permiso:pag.conceptos.ver|pag.beneficios.aprobar');
+        Route::post('/pagos/beneficios/asignaciones', [ConfiguracionPagosController::class, 'asignarBeneficio'])->middleware('permiso:pag.conceptos.editar|pag.beneficios.aprobar');
+        Route::patch('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'resolverBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
+        Route::delete('/pagos/beneficios/asignaciones/{asignacion}', [ConfiguracionPagosController::class, 'quitarBeneficio'])->whereNumber('asignacion')->middleware('permiso:pag.beneficios.aprobar');
+
+        // EDUN-90 · Proveedores de facturación electrónica.
+        Route::get('/pagos/proveedores-facturacion', [ConfiguracionPagosController::class, 'proveedores'])->middleware('permiso:pag.comprobantes.ver');
+        Route::post('/pagos/proveedores-facturacion', [ConfiguracionPagosController::class, 'guardarProveedor'])->middleware('permiso:pag.comprobantes.emitir');
+        Route::put('/pagos/proveedores-facturacion/{proveedor}', [ConfiguracionPagosController::class, 'guardarProveedor'])->whereNumber('proveedor')->middleware('permiso:pag.comprobantes.emitir');
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.
