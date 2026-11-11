@@ -1,40 +1,59 @@
-import { useState, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type ComponentType, type ReactNode } from 'react';
 import { moduloActivo, puede, useSesion, type Colegio } from '../sesion/contexto';
-import { Admision } from '../adm/Admision';
-import { Alumnos } from '../adm/Alumnos';
-import { Configuracion } from '../adm/Configuracion';
-import { Horarios } from '../adm/Horarios';
-import { CondicionesEconomicas, ConsentimientosColegio, PendientesSiagie } from '../adm/Matricula';
-import { MisHijos } from '../familia/MisHijos';
-import { MisPagos, PagoSimulado } from '../familia/MisPagos';
-import { Ratificacion } from '../familia/Ratificacion';
-import { CierrePeriodo } from '../cal/Cierre';
-import { Notas } from '../cal/Notas';
-import { LibretasYActas } from '../cal/Libretas';
-import { AlertasRiesgo, AsistenciaDiaria, TutoriaAlumno } from '../cal/Seguimiento';
-import { MisNotas } from '../familia/MisNotas';
-import { Siagie } from '../sia/Siagie';
-import { Agenda, Bitacora, Comunicados, MisComunicados, Reclamos } from '../com/Comunicacion';
-import { Citas, Mensajes } from '../com/Mensajes';
-import { Morosidad } from '../pag/Morosidad';
-import { Convenios, MisConvenios } from '../pag/Convenios';
-import { Conciliacion, Recaudacion, ReportesFinancieros } from '../pag/Finanzas';
-import { Caja } from '../pag/Caja';
-import { Comprobantes } from '../pag/Comprobantes';
-import { Pasarela } from '../pag/Pasarela';
-import { Beneficios } from '../pag/Beneficios';
-import { ConceptosYCronogramas } from '../pag/Conceptos';
-import { ProveedoresFacturacion } from '../pag/Facturacion';
-import { SoporteColegio } from '../pla/SoporteColegio';
-import { Personal } from '../adm/Personal';
-import { PlanEstudios } from '../adm/PlanEstudios';
-import { ConectorMoodle } from '../mdl/ConectorMoodle';
-import { Auditoria } from '../seg/Auditoria';
-import { MiPerfil } from '../seg/MiPerfil';
-import { Usuarios } from '../seg/Usuarios';
 import { estiloMarca, useRuta } from './ruta';
 import { NOMBRE_ROL, useImagenApi } from './utilidades';
 import './panel.css';
+
+// Cada pantalla se descarga recién al abrirla (el bundle inicial ya no lleva las ~50 pantallas).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy() exige ComponentType<any>
+function perezoso<M, K extends keyof M>(cargar: () => Promise<M>, nombre: K) {
+  return lazy(async () => ({ default: (await cargar())[nombre] as M[K] & ComponentType<any> }));
+}
+const Admision = perezoso(() => import('../adm/Admision'), 'Admision');
+const Alumnos = perezoso(() => import('../adm/Alumnos'), 'Alumnos');
+const Configuracion = perezoso(() => import('../adm/Configuracion'), 'Configuracion');
+const Horarios = perezoso(() => import('../adm/Horarios'), 'Horarios');
+const CondicionesEconomicas = perezoso(() => import('../adm/Matricula'), 'CondicionesEconomicas');
+const ConsentimientosColegio = perezoso(() => import('../adm/Matricula'), 'ConsentimientosColegio');
+const PendientesSiagie = perezoso(() => import('../adm/Matricula'), 'PendientesSiagie');
+const MisHijos = perezoso(() => import('../familia/MisHijos'), 'MisHijos');
+const MisPagos = perezoso(() => import('../familia/MisPagos'), 'MisPagos');
+const PagoSimulado = perezoso(() => import('../familia/MisPagos'), 'PagoSimulado');
+const Ratificacion = perezoso(() => import('../familia/Ratificacion'), 'Ratificacion');
+const CierrePeriodo = perezoso(() => import('../cal/Cierre'), 'CierrePeriodo');
+const Notas = perezoso(() => import('../cal/Notas'), 'Notas');
+const LibretasYActas = perezoso(() => import('../cal/Libretas'), 'LibretasYActas');
+const AlertasRiesgo = perezoso(() => import('../cal/Seguimiento'), 'AlertasRiesgo');
+const AsistenciaDiaria = perezoso(() => import('../cal/Seguimiento'), 'AsistenciaDiaria');
+const TutoriaAlumno = perezoso(() => import('../cal/Seguimiento'), 'TutoriaAlumno');
+const MisNotas = perezoso(() => import('../familia/MisNotas'), 'MisNotas');
+const Siagie = perezoso(() => import('../sia/Siagie'), 'Siagie');
+const Agenda = perezoso(() => import('../com/Comunicacion'), 'Agenda');
+const Bitacora = perezoso(() => import('../com/Comunicacion'), 'Bitacora');
+const Comunicados = perezoso(() => import('../com/Comunicacion'), 'Comunicados');
+const MisComunicados = perezoso(() => import('../com/Comunicacion'), 'MisComunicados');
+const Reclamos = perezoso(() => import('../com/Comunicacion'), 'Reclamos');
+const Citas = perezoso(() => import('../com/Mensajes'), 'Citas');
+const Mensajes = perezoso(() => import('../com/Mensajes'), 'Mensajes');
+const Morosidad = perezoso(() => import('../pag/Morosidad'), 'Morosidad');
+const Convenios = perezoso(() => import('../pag/Convenios'), 'Convenios');
+const MisConvenios = perezoso(() => import('../pag/Convenios'), 'MisConvenios');
+const Conciliacion = perezoso(() => import('../pag/Finanzas'), 'Conciliacion');
+const Recaudacion = perezoso(() => import('../pag/Finanzas'), 'Recaudacion');
+const ReportesFinancieros = perezoso(() => import('../pag/Finanzas'), 'ReportesFinancieros');
+const Caja = perezoso(() => import('../pag/Caja'), 'Caja');
+const Comprobantes = perezoso(() => import('../pag/Comprobantes'), 'Comprobantes');
+const Pasarela = perezoso(() => import('../pag/Pasarela'), 'Pasarela');
+const Beneficios = perezoso(() => import('../pag/Beneficios'), 'Beneficios');
+const ConceptosYCronogramas = perezoso(() => import('../pag/Conceptos'), 'ConceptosYCronogramas');
+const ProveedoresFacturacion = perezoso(() => import('../pag/Facturacion'), 'ProveedoresFacturacion');
+const SoporteColegio = perezoso(() => import('../pla/SoporteColegio'), 'SoporteColegio');
+const Personal = perezoso(() => import('../adm/Personal'), 'Personal');
+const PlanEstudios = perezoso(() => import('../adm/PlanEstudios'), 'PlanEstudios');
+const ConectorMoodle = perezoso(() => import('../mdl/ConectorMoodle'), 'ConectorMoodle');
+const Auditoria = perezoso(() => import('../seg/Auditoria'), 'Auditoria');
+const MiPerfil = perezoso(() => import('../seg/MiPerfil'), 'MiPerfil');
+const Usuarios = perezoso(() => import('../seg/Usuarios'), 'Usuarios');
 
 type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode; oculta?: boolean };
 
@@ -414,7 +433,9 @@ export function Marco() {
           </button>
         </div>
       </aside>
-      <main className="contenido">{actual.pantalla()}</main>
+      <main className="contenido">
+        <Suspense fallback={<p className="aviso-carga" role="status">Cargando…</p>}>{actual.pantalla()}</Suspense>
+      </main>
     </div>
   );
 }
