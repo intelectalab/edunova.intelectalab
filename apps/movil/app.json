@@ -28,6 +28,12 @@
         {
           "color": "#047857"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Usamos la cámara para leer el código QR del carné en la puerta."
+        }
       ]
     ]
   }

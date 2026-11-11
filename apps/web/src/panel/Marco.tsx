@@ -10,6 +10,9 @@ import { MisPagos, PagoSimulado } from '../familia/MisPagos';
 import { Ratificacion } from '../familia/Ratificacion';
 import { CierrePeriodo } from '../cal/Cierre';
 import { Notas } from '../cal/Notas';
+import { LibretasYActas } from '../cal/Libretas';
+import { AlertasRiesgo, AsistenciaDiaria, TutoriaAlumno } from '../cal/Seguimiento';
+import { MisNotas } from '../familia/MisNotas';
 import { Caja } from '../pag/Caja';
 import { Comprobantes } from '../pag/Comprobantes';
 import { Pasarela } from '../pag/Pasarela';
@@ -75,6 +78,34 @@ const PAGINAS: Pagina[] = [
     grupo: 'Académico',
     visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.notas.revisar'),
     pantalla: () => <CierrePeriodo />,
+  },
+  {
+    ruta: 'asistencia',
+    nombre: 'Asistencia',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.asistencia.registrar', 'cal.asistencia.ver'),
+    pantalla: () => <AsistenciaDiaria />,
+  },
+  {
+    ruta: 'tutoria',
+    nombre: 'Tutoría y conducta',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.conducta.registrar', 'cal.conducta.ver'),
+    pantalla: () => <TutoriaAlumno />,
+  },
+  {
+    ruta: 'alertas',
+    nombre: 'Alertas de riesgo',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.alertas.ver'),
+    pantalla: () => <AlertasRiesgo />,
+  },
+  {
+    ruta: 'libretas',
+    nombre: 'Libretas y actas',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.libretas.ver'),
+    pantalla: () => <LibretasYActas />,
   },
   {
     ruta: 'alumnos',
@@ -159,6 +190,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado'),
     pantalla: () => <MisHijos />,
+  },
+  {
+    ruta: 'mis-notas',
+    nombre: 'Notas y libretas',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'CAL'),
+    pantalla: () => <MisNotas />,
   },
   {
     ruta: 'ratificacion',

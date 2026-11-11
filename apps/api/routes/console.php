@@ -1,5 +1,7 @@
 <?php
 
+use App\Modulos\CAL\Services\Tutoria;
+use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
@@ -10,6 +12,7 @@ use App\Modulos\SIT\Services\BibliotecaMedios;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 
@@ -64,3 +67,17 @@ Artisan::command('plataforma:suspensiones', function (Suspensiones $suspensiones
 // En el VPS, edunova-programador.timer corre «php artisan schedule:run» cada minuto.
 Schedule::command('soporte:vigilar-sla')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('plataforma:suspensiones')->dailyAt('07:00')->timezone('America/Lima');
+
+// EDUN-103 · Alertas de riesgo: se evalúan cada mañana en cada colegio activo.
+Artisan::command('cal:alertas', function () {
+    $total = 0;
+    foreach (DB::connection('plataforma')->table('instituciones')->whereIn('estado', ['activo', 'implementacion'])->pluck('id') as $inst) {
+        $total += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Tutoria::class)->evaluarAlertas();
+        });
+    }
+    $this->info("Alertas nuevas: {$total}");
+})->purpose('Evalúa las reglas de riesgo académico en cada colegio');
+Schedule::command('cal:alertas')->dailyAt('06:30')->timezone('America/Lima')->withoutOverlapping();

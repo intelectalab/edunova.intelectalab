@@ -10,6 +10,7 @@ use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
+use App\Modulos\CAL\Http\Controllers\SeguimientoController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
@@ -333,6 +334,32 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/notas/periodos/{periodo}/recordatorio', [NotasController::class, 'recordar'])->whereNumber('periodo')->middleware(['permiso:cal.notas.revisar', 'throttle:5,1']);
         Route::post('/notas/periodos/{periodo}/cierre', [NotasController::class, 'cerrar'])->whereNumber('periodo')->middleware('permiso:cal.notas.cerrar');
         Route::post('/notas/periodos/{periodo}/reapertura', [NotasController::class, 'reabrir'])->whereNumber('periodo')->middleware('permiso:cal.notas.reabrir');
+
+        // Sprint 19 · Asistencia (EDUN-94/95).
+        Route::get('/asistencia/secciones', [SeguimientoController::class, 'secciones'])->middleware('permiso:cal.asistencia.registrar|cal.asistencia.ver');
+        Route::get('/asistencia/secciones/{seccion}', [SeguimientoController::class, 'lista'])->whereNumber('seccion')->middleware('permiso:cal.asistencia.registrar|cal.asistencia.ver');
+        Route::put('/asistencia/secciones/{seccion}', [SeguimientoController::class, 'guardar'])->whereNumber('seccion')->middleware(['permiso:cal.asistencia.registrar', 'throttle:120,1']);
+        Route::post('/asistencia/qr', [SeguimientoController::class, 'qr'])->middleware(['permiso:cal.asistencia.registrar', 'throttle:600,1']);
+
+        // Conducta, tutoría y alertas (EDUN-101/102/103).
+        Route::get('/tutoria/alumnos/{alumno}', [SeguimientoController::class, 'historial'])->whereNumber('alumno')->middleware('permiso:cal.conducta.ver|cal.conducta.registrar');
+        Route::post('/tutoria/alumnos/{alumno}/conducta', [SeguimientoController::class, 'conducta'])->whereNumber('alumno')->middleware('permiso:cal.conducta.registrar');
+        Route::post('/tutoria/alumnos/{alumno}/entrevistas', [SeguimientoController::class, 'entrevista'])->whereNumber('alumno')->middleware('permiso:cal.conducta.registrar');
+        Route::get('/alertas', [SeguimientoController::class, 'alertas'])->middleware('permiso:cal.alertas.ver');
+        Route::post('/alertas/evaluacion', [SeguimientoController::class, 'evaluarAlertas'])->middleware(['permiso:cal.alertas.gestionar', 'throttle:10,1']);
+        Route::patch('/alertas/{alerta}', [SeguimientoController::class, 'seguirAlerta'])->whereNumber('alerta')->middleware('permiso:cal.alertas.gestionar');
+
+        // Libretas, acta, méritos y recuperación (EDUN-99/104/105).
+        Route::get('/libretas', [SeguimientoController::class, 'libretas'])->middleware('permiso:cal.libretas.ver');
+        Route::post('/libretas', [SeguimientoController::class, 'generarLibretas'])->middleware(['permiso:cal.libretas.generar', 'throttle:10,1']);
+        Route::post('/libretas/publicacion', [SeguimientoController::class, 'publicarLibretas'])->middleware('permiso:cal.libretas.publicar');
+        Route::get('/actas/{seccion}', [SeguimientoController::class, 'acta'])->whereNumber('seccion')->middleware('permiso:cal.libretas.ver');
+        Route::get('/actas/{seccion}/{formato}', [SeguimientoController::class, 'actaArchivo'])->whereNumber('seccion')->whereIn('formato', ['pdf', 'xlsx'])->middleware(['permiso:cal.libretas.ver', 'throttle:20,1']);
+        Route::put('/recuperacion', [SeguimientoController::class, 'recuperacion'])->middleware('permiso:cal.notas.aprobar');
+
+        // La familia ve notas y libretas publicadas, sin bloqueo por deuda (EDUN-100).
+        Route::get('/familia/notas', [SeguimientoController::class, 'notasFamilia']);
+        Route::get('/familia/libretas/{libreta}', [SeguimientoController::class, 'libretaFamilia'])->whereNumber('libreta');
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.
