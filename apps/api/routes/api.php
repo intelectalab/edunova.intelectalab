@@ -44,6 +44,7 @@ use App\Modulos\SIT\Http\Controllers\ReclamacionesController;
 use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use App\Modulos\SIT\Http\Controllers\SitioCanalesController;
 use App\Modulos\SIT\Http\Controllers\SitioLegalController;
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Support\Facades\Route;
 
 // Todas las rutas quedan bajo /api/v1 (bootstrap/app.php, apiPrefix).
@@ -509,6 +510,7 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     // EDUN-403 · Tracking e integraciones (las claves nunca se devuelven).
     Route::get('/integraciones', [PanelCmsController::class, 'integraciones']);
     Route::put('/integraciones', [PanelCmsController::class, 'guardarIntegraciones']);
+    Route::post('/integraciones/probar/{servicio}', [PanelCmsController::class, 'probarIntegracion'])->whereIn('servicio', Integraciones::PRUEBAS)->middleware('throttle:10,1');
     Route::post('/politicas/{tipo}', [PanelCmsController::class, 'publicarPolitica'])->whereIn('tipo', ['privacidad', 'terminos', 'seguridad', 'cookies']);
 
     // EDUN-368 · Blog de WordPress: lista, vista previa, mostrar u ocultar y sincronizar.

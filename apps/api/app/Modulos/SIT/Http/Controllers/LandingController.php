@@ -46,6 +46,8 @@ class LandingController
                 // EDUN-371 · Todas las visibles, con su categoría (página /preguntas-frecuentes).
                 'faq' => DB::table('cms.faq')->where('visible', true)->orderBy('orden')->limit(100)->get(['pregunta', 'respuesta', 'categoria']),
                 'tracking' => $this->tracking(),
+                // Clave pública de reCAPTCHA v3 (va en el HTML del Libro de Reclamaciones).
+                'recaptcha_sitio' => Integraciones::recaptcha()['sitio'],
                 'popup' => $this->popup(),
                 'logos' => $this->logos(),
                 // EDUN-347 · Videos por módulo para /funcionalidades.

@@ -7,6 +7,7 @@ use Anthropic\Core\Exceptions\APIConnectionException;
 use Anthropic\Core\Exceptions\APIStatusException;
 use Anthropic\Core\Exceptions\AuthenticationException;
 use Anthropic\Core\Exceptions\RateLimitException;
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -41,9 +42,9 @@ class GeneradorSeoClaude implements GeneradorSeo
 
     public function sugerir(array $pagina, string $modelo): array
     {
-        $clave = config('services.anthropic.clave');
+        $clave = Integraciones::claveIa();
         if (! $this->cliente && ! $clave) {
-            throw ValidationException::withMessages(['proveedor' => ['Falta configurar la clave de la IA en el servidor. Usa el proveedor «simulado» mientras tanto.']]);
+            throw ValidationException::withMessages(['proveedor' => ['Falta la clave de Anthropic: cárgala en Tracking e integraciones (proveedor Anthropic). Usa el proveedor «simulado» mientras tanto.']]);
         }
         $cliente = $this->cliente ?? new Client(apiKey: $clave);
         $datos = json_encode([

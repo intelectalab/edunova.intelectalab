@@ -2,6 +2,7 @@
 
 namespace App\Modulos\Compartido\Correo;
 
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,7 +18,7 @@ class EventosCorreoController
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $secreto = (string) config('services.correo.webhook_secreto');
+        $secreto = Integraciones::secretoCorreo();
         $esperada = hash_hmac('sha256', $request->getContent(), $secreto);
         if ($secreto === '' || ! hash_equals($esperada, (string) $request->header('X-Edunova-Firma'))) {
             return response()->json(['message' => 'Firma no válida.'], 401);

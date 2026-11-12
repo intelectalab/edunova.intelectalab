@@ -5,6 +5,7 @@ namespace App\Modulos\SEG\Http\Controllers;
 use App\Models\User;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\SEG\Correo\RecuperarClave;
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,10 +85,11 @@ class AccesoController
 
     public function opcionesDemo(): JsonResponse
     {
-        if (! config('edunova.demo.activo')) {
+        $demo = Integraciones::demo();
+        if (! $demo['activo']) {
             return response()->json(['activo' => false, 'roles' => []]);
         }
-        $inst = DB::connection('propietario')->table('instituciones')->where('slug', config('edunova.demo.colegio'))->first(['id', 'nombre']);
+        $inst = DB::connection('propietario')->table('instituciones')->where('slug', $demo['colegio'])->first(['id', 'nombre']);
         $roles = $inst ? DB::connection('propietario')->table('membresias as m')->join('roles as r', 'r.id', '=', 'm.rol_id')
             ->where('m.institucion_id', $inst->id)->whereIn('r.codigo', self::ROLES_DEMO)->distinct()->get(['r.codigo', 'r.nombre'])
             ->sortBy(fn ($r) => array_search($r->codigo, self::ROLES_DEMO, true))->values() : collect();
@@ -97,10 +99,11 @@ class AccesoController
 
     public function entrarDemo(Request $request): JsonResponse
     {
-        abort_unless(config('edunova.demo.activo'), 404);
+        $demo = Integraciones::demo();
+        abort_unless($demo['activo'], 404);
         $d = $request->validate(['rol' => ['required', Rule::in(self::ROLES_DEMO)]]);
         $db = DB::connection('propietario');
-        $inst = (int) $db->table('instituciones')->where('slug', config('edunova.demo.colegio'))->value('id');
+        $inst = (int) $db->table('instituciones')->where('slug', $demo['colegio'])->value('id');
         $userId = $db->table('membresias as m')->join('roles as r', 'r.id', '=', 'm.rol_id')->join('users as u', 'u.id', '=', 'm.user_id')
             ->where('m.institucion_id', $inst)->where('r.codigo', $d['rol'])->orderBy('u.id')->value('u.id');
         abort_if(! $userId, 404, 'No hay un usuario de demostración con ese rol.');

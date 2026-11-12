@@ -130,6 +130,65 @@ it('integraciones: valida los IDs, cifra las claves, no las devuelve ni las audi
         ->assertOk()->assertJsonPath('data.crm.token.configurado', false);
 });
 
+it('integraciones: reCAPTCHA, alertas, correo, IA y demo se configuran desde el panel y ganan al .env', function () {
+    Sanctum::actingAs(superadmin());
+    config(['services.recaptcha.secreto' => null, 'services.alertas.webhook' => null, 'services.correo.webhook_secreto' => null, 'services.anthropic.clave' => null, 'edunova.demo.activo' => false]);
+    $this->putJson('/api/v1/cms/integraciones', integracionesBase(['recaptcha' => ['sitio' => 'corta', 'umbral' => 2]]))
+        ->assertUnprocessable()->assertJsonValidationErrors(['recaptcha.sitio', 'recaptcha.umbral']);
+    $this->putJson('/api/v1/cms/integraciones', integracionesBase(['demo' => ['activo' => true, 'colegio' => 'no-existe']]))
+        ->assertUnprocessable()->assertJsonValidationErrors('demo.colegio');
+
+    $r = $this->putJson('/api/v1/cms/integraciones', integracionesBase([
+        'ia' => ['proveedor' => 'anthropic', 'clave' => 'sk-ant-clave-del-panel'],
+        'recaptcha' => ['sitio' => str_repeat('A', 40), 'secreto' => 'secreto-recaptcha-panel', 'umbral' => 0.7],
+        'alertas' => ['webhook' => 'https://alertas.test/panel'],
+        'correo' => ['webhook_secreto' => str_repeat('s', 32)],
+        'demo' => ['activo' => true, 'colegio' => 'smp'],
+    ]))->assertOk();
+    expect($r->json('data.recaptcha.secreto.configurado'))->toBeTrue()->and($r->json('data.alertas.webhook.configurado'))->toBeTrue()
+        ->and($r->json('data.demo.activo'))->toBeTrue()->and($r->json('data.conectores'))->toHaveKeys(['pasarela_simulada', 'facturacion_simulada', 'whatsapp_simulado'])
+        ->and(json_encode($r->json()))->not->toContain('secreto-recaptcha-panel')->not->toContain('alertas.test/panel')->not->toContain('sk-ant-clave');
+
+    Cache::forget('edunova:integraciones');
+    expect(Integraciones::recaptcha())->toBe(['sitio' => str_repeat('A', 40), 'secreto' => 'secreto-recaptcha-panel', 'umbral' => 0.7])
+        ->and(Integraciones::webhookAlertas())->toBe('https://alertas.test/panel')
+        ->and(Integraciones::secretoCorreo())->toBe(str_repeat('s', 32))
+        ->and(Integraciones::claveIa())->toBe('sk-ant-clave-del-panel');
+    $this->getJson('/api/v1/sitio/landing')->assertJsonPath('recaptcha_sitio', str_repeat('A', 40));
+    $this->getJson('/api/v1/auth/demo')->assertJsonPath('activo', true);
+
+    // Guardar sin las partes nuevas no las borra (clientes anteriores del panel).
+    $this->putJson('/api/v1/cms/integraciones', integracionesBase(['ia' => ['proveedor' => 'anthropic']]))->assertOk()
+        ->assertJsonPath('data.alertas.webhook.configurado', true)->assertJsonPath('data.ia.clave.configurado', true);
+
+    // Apagar la demo desde el panel la apaga aunque el .env la tenga encendida.
+    config(['edunova.demo.activo' => true]);
+    $this->putJson('/api/v1/cms/integraciones', integracionesBase(['demo' => ['activo' => false, 'colegio' => 'smp']]))->assertOk();
+    Cache::forget('edunova:integraciones');
+    $this->getJson('/api/v1/auth/demo')->assertJsonPath('activo', false);
+});
+
+it('integraciones: «probar conexión» de WordPress, CRM, alertas y SMTP con lo guardado', function () {
+    Sanctum::actingAs(superadmin());
+    Http::fake([
+        'blog.prueba/wp-json/*' => Http::response([['id' => 1]], 200, ['X-WP-Total' => '7']),
+        'crm.test/*' => Http::response(['ok' => true]),
+        'alertas.test/*' => Http::response('', 500),
+    ]);
+    $this->postJson('/api/v1/cms/integraciones/probar/wordpress')->assertOk()->assertJsonPath('ok', false);
+    $this->postJson('/api/v1/cms/integraciones/probar/desconocido')->assertNotFound();
+
+    $this->putJson('/api/v1/cms/integraciones', integracionesBase([
+        'wordpress' => ['url' => 'https://blog.prueba'], 'crm' => ['url' => 'https://crm.test/leads', 'token' => 'tok-crm'],
+        'alertas' => ['webhook' => 'https://alertas.test/hook'],
+    ]))->assertOk();
+    $this->postJson('/api/v1/cms/integraciones/probar/wordpress')->assertOk()->assertJsonPath('ok', true)->assertJsonPath('mensaje', 'Conectado con WordPress: 7 artículos publicados.');
+    $this->postJson('/api/v1/cms/integraciones/probar/crm')->assertOk()->assertJsonPath('ok', true);
+    Http::assertSent(fn ($r) => $r->url() === 'https://crm.test/leads' && $r->hasHeader('Authorization', 'Bearer tok-crm') && $r['prueba'] === true);
+    $this->postJson('/api/v1/cms/integraciones/probar/alertas')->assertOk()->assertJsonPath('ok', false);
+    $this->postJson('/api/v1/cms/integraciones/probar/smtp')->assertOk()->assertJsonPath('ok', false);
+});
+
 // --- EDUN-363 · Blog desde WordPress --------------------------------------------------------
 
 it('blog: trae los artículos de WordPress, limpia el HTML y muestra el artículo con relacionados', function () {

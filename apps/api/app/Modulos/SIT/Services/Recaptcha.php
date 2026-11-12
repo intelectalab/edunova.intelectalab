@@ -15,7 +15,7 @@ class Recaptcha
 {
     public function activo(): bool
     {
-        return (string) config('services.recaptcha.secreto') !== '';
+        return Integraciones::recaptcha()['secreto'] !== null;
     }
 
     public function valido(?string $token, string $accion, ?string $ip): bool
@@ -29,7 +29,7 @@ class Recaptcha
 
         try {
             $r = Http::asForm()->timeout(5)->post('https://www.google.com/recaptcha/api/siteverify', [
-                'secret' => config('services.recaptcha.secreto'),
+                'secret' => Integraciones::recaptcha()['secreto'],
                 'response' => $token,
                 'remoteip' => $ip,
             ])->json();
@@ -41,6 +41,6 @@ class Recaptcha
 
         return ($r['success'] ?? false) === true
             && ($r['action'] ?? $accion) === $accion
-            && (float) ($r['score'] ?? 0) >= (float) config('services.recaptcha.umbral', 0.5);
+            && (float) ($r['score'] ?? 0) >= Integraciones::recaptcha()['umbral'];
     }
 }

@@ -149,13 +149,19 @@ export async function publicarPolitica(tipo: string, d: { version: string; vigen
 
 // --- Tracking e integraciones (EDUN-403) ----------------------------------------------------
 
-type ClaveGuardada = { configurado: boolean };
+/** «servidor»: no hay valor en el panel pero sí en el .env del servidor (se usa ese). */
+type ClaveGuardada = { configurado: boolean; servidor?: boolean };
 export type IntegracionesCms = {
   tracking: Record<'gtm' | 'ga4' | 'meta_pixel' | 'linkedin' | 'clarity' | 'search_console', { valor: string | null; activo: boolean }>;
   crm: { url: string | null; token: ClaveGuardada };
   smtp: { host: string | null; puerto: number; usuario: string | null; cifrado: string; remitente: string | null; clave: ClaveGuardada };
   ia: { proveedor: string | null; clave: ClaveGuardada };
   wordpress: { url: string | null };
+  recaptcha: { sitio: string | null; umbral: number; secreto: ClaveGuardada };
+  alertas: { webhook: ClaveGuardada };
+  correo: { webhook_secreto: ClaveGuardada };
+  demo: { activo: boolean; colegio: string; colegios: { slug: string; nombre: string }[] };
+  conectores: { produccion: boolean; pasarela_simulada: boolean; facturacion_simulada: boolean; whatsapp_simulado: boolean };
 };
 
 /** Lo que se envía: las claves van como texto nuevo o null para mantenerlas; *_borrar las elimina. */
@@ -165,7 +171,13 @@ export type CambiosIntegraciones = {
   smtp: { host: string | null; puerto: number; usuario: string | null; cifrado: string; remitente: string | null; clave: string | null; clave_borrar: boolean };
   ia: { proveedor: string | null; clave: string | null; clave_borrar: boolean };
   wordpress: { url: string | null };
+  recaptcha: { sitio: string | null; umbral: number; secreto: string | null; secreto_borrar: boolean };
+  alertas: { webhook: string | null; webhook_borrar: boolean };
+  correo: { webhook_secreto: string | null; webhook_secreto_borrar: boolean };
+  demo: { activo: boolean; colegio: string | null };
 };
+
+export type ServicioPrueba = 'wordpress' | 'smtp' | 'crm' | 'alertas';
 
 export async function leerIntegraciones() {
   return (await leer<{ data: IntegracionesCms }>('/cms/integraciones'))?.data ?? null;
@@ -173,6 +185,12 @@ export async function leerIntegraciones() {
 
 export async function guardarIntegraciones(d: CambiosIntegraciones) {
   return escribir<IntegracionesCms>('/cms/integraciones', 'PUT', d);
+}
+
+/** «Probar conexión» con lo ya guardado. */
+export async function probarIntegracion(servicio: ServicioPrueba) {
+  const r = await escribir<{ ok: boolean; mensaje: string }>(`/cms/integraciones/probar/${servicio}`, 'POST', {});
+  return r.ok ? r.datos : { ok: false, mensaje: r.mensaje };
 }
 
 // --- Blog de WordPress (EDUN-367 / SIT-023) ------------------------------------------------------

@@ -129,9 +129,18 @@ export const ayudaCms: Record<string, AyudaPantalla> = {
   },
   '/cms/integraciones': {
     titulo: 'Tracking e integraciones',
-    para: 'Google Tag Manager, Analytics, píxeles, CRM y WordPress.',
-    puedes: ['Activar o desactivar cada integración.'],
-    noPuedes: ['Ver las claves guardadas: se guardan cifradas.'],
+    para: 'Todas las conexiones del sitio y del sistema, sin tocar el servidor: medición, WordPress, correo (SMTP), CRM, reCAPTCHA, IA, alertas y el acceso de demostración.',
+    puedes: [
+      'Activar o desactivar cada etiqueta de medición.',
+      'Conectar WordPress, el SMTP, el CRM y las alertas, y comprobarlos con «Probar conexión».',
+      'Encender o apagar la demostración por rol y elegir su colegio.',
+      'Ver si la pasarela, la facturación y WhatsApp funcionan simulados o con el conector real.',
+    ],
+    noPuedes: [
+      'Ver las claves guardadas: se guardan cifradas.',
+      'Cambiar aquí los conectores simulados: se cambian en el servidor, porque en producción permitirían marcar pagos sin cobrar.',
+    ],
+    consejo: 'Guarda antes de probar: la prueba usa lo guardado. Si una clave dice «se usa la del servidor», ya funciona con la del .env.',
   },
   '/cms/usuarios': {
     titulo: 'Usuarios con acceso',

@@ -2,6 +2,7 @@
 
 namespace App\Modulos\Compartido\Monitoreo;
 
+use App\Modulos\SIT\Services\Integraciones;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -95,7 +96,7 @@ class Monitoreo
             return false;
         }
         Log::warning('Alerta de monitoreo', ['texto' => $texto]);
-        $url = config('services.alertas.webhook');
+        $url = Integraciones::webhookAlertas();
         if ($url) {
             try {
                 Http::timeout(5)->post($url, ['text' => $texto, 'content' => $texto])->throw();

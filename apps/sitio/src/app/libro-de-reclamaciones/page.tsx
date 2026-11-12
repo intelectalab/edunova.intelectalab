@@ -60,7 +60,7 @@ export default async function PaginaLibro() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-space-lg items-start">
-          <FormularioReclamo claveRecaptcha={process.env.RECAPTCHA_SITIO || null} />
+          <FormularioReclamo claveRecaptcha={datos?.recaptcha_sitio || process.env.RECAPTCHA_SITIO || null} />
 
           <aside className="flex flex-col gap-space-md">
             <section aria-labelledby="titulo-plazo" className="p-space-md rounded-2xl bg-primary text-on-primary flex flex-col gap-1">

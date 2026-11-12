@@ -64,6 +64,11 @@ const integraciones = {
   smtp: { host: null, puerto: 587, usuario: null, cifrado: 'tls', remitente: null, clave: { configurado: false } },
   ia: { proveedor: null, clave: { configurado: false } },
   wordpress: { url: 'https://blog.ejemplo.test' },
+  recaptcha: { sitio: null, umbral: 0.5, secreto: { configurado: false, servidor: false } },
+  alertas: { webhook: { configurado: false, servidor: true } },
+  correo: { webhook_secreto: { configurado: false, servidor: false } },
+  demo: { activo: true, colegio: 'smp', colegios: [{ slug: 'smp', nombre: 'IEP San Martín de Porres' }] },
+  conectores: { produccion: false, pasarela_simulada: true, facturacion_simulada: true, whatsapp_simulado: true },
 };
 
 export const popupLanding = {
@@ -394,6 +399,11 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
   }
 
   // EDUN-403 · Tracking e integraciones (las claves nunca se devuelven).
+  if (req.method === 'POST' && ruta.startsWith('/api/v1/cms/integraciones/probar/')) {
+    const servicio = ruta.split('/').pop();
+    if (servicio === 'wordpress') return json(res, 200, { ok: true, mensaje: 'Conectado con WordPress: 3 artículos publicados.' }), true;
+    return json(res, 200, { ok: false, mensaje: 'Primero configura y guarda el servicio.' }), true;
+  }
   if (ruta === '/api/v1/cms/integraciones') {
     if (req.method === 'GET') return json(res, 200, { data: integraciones }), true;
     const d = cuerpo();
@@ -401,6 +411,7 @@ export function atenderPanel(req, res, datos, { json, esSuperadmin }) {
     if (ga4 && !/^G-[A-Z0-9]{6,12}$/.test(ga4)) return json(res, 422, { message: 'x', errors: { 'tracking.ga4.valor': ['El ID de GA4 tiene la forma G-XXXXXXXXXX.'] } }), true;
     integraciones.tracking = d.tracking;
     integraciones.crm = { url: d.crm.url, token: { configurado: d.crm.token_borrar ? false : Boolean(d.crm.token) || integraciones.crm.token.configurado } };
+    if (d.demo) integraciones.demo = { ...integraciones.demo, activo: d.demo.activo, colegio: d.demo.colegio ?? integraciones.demo.colegio };
     return json(res, 200, { data: integraciones, message: 'Integraciones actualizadas.' }), true;
   }
 

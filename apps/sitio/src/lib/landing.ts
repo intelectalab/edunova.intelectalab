@@ -102,6 +102,8 @@ export type Landing = {
   menu: { principal: ItemMenu[]; footer: ItemMenu[] };
   /** EDUN-306 · Contenedor de GTM; solo se carga con consentimiento de analítica o marketing. */
   tracking?: Tracking;
+  /** Clave pública de reCAPTCHA v3 cargada en el Panel CMS. */
+  recaptcha_sitio?: string | null;
   /** EDUN-271 · Popup de salida (null si está apagado en el CMS). */
   popup?: ConfigPopup | null;
   /** EDUN-338 · Logos autorizados y visibles. */

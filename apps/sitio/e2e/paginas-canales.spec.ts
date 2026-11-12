@@ -163,6 +163,21 @@ test.describe('Panel CMS · Sprint 11', () => {
     await expect(page.getByText('El ID de GA4 tiene la forma G-XXXXXXXXXX.')).toBeVisible();
   });
 
+  test('integraciones: se prueba la conexión, se cambia la demo y se ven los conectores simulados', async ({ page }) => {
+    await page.goto('/cms/integraciones');
+    await page.locator('[data-probar="wordpress"]').getByRole('button', { name: 'Probar conexión' }).click();
+    await expect(page.locator('[data-probar="wordpress"]').getByRole('status')).toHaveText('Conectado con WordPress: 3 artículos publicados.');
+    await expect(page.getByText('Se usa la del servidor (.env) · escribe una aquí para reemplazarla')).toBeVisible();
+    await expect(page.locator('[data-conectores]').getByText('Simulado (pruebas)')).toHaveCount(3);
+    const demo = page.getByRole('switch', { name: 'Ofrecer la demostración por rol' });
+    // La API simulada guarda el estado entre proyectos: se invierte lo que haya.
+    const antes = await demo.isChecked();
+    await demo.setChecked(!antes, { force: true });
+    await page.getByRole('button', { name: 'Guardar y aplicar' }).click();
+    await expect(page.getByText('Integraciones actualizadas.').first()).toBeVisible();
+    await expect(demo).toBeChecked({ checked: !antes });
+  });
+
   test('chatbot: en modo flujo se agregan pasos con opciones (EDUN-375)', async ({ page }) => {
     await page.goto('/cms/conversion/chatbot');
     await page.getByLabel('Modo').selectOption('flujo');

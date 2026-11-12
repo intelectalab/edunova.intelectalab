@@ -38,7 +38,7 @@ class AsistenteSeo
             'proveedores' => self::PROVEEDORES,
             'modelos' => self::MODELOS,
             // Solo se informa si hay clave; nunca se devuelve.
-            'clave_configurada' => (bool) config('services.anthropic.clave'),
+            'clave_configurada' => Integraciones::claveIa() !== null,
         ];
     }
 

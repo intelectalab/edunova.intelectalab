@@ -46,6 +46,12 @@ class PanelCmsController
         return response()->json(['data' => $this->integraciones->guardar($d, $request->user(), $request->ip()), 'message' => 'Integraciones actualizadas.']);
     }
 
+    /** «Probar conexión» de WordPress, SMTP, CRM o alertas con lo ya guardado. */
+    public function probarIntegracion(Request $request, string $servicio): JsonResponse
+    {
+        return response()->json($this->integraciones->probar($servicio, $request->user()));
+    }
+
     public function dashboard(): JsonResponse
     {
         return response()->json($this->panel->dashboard())->header('Cache-Control', 'no-store');
