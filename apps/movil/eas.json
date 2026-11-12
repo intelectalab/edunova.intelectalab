@@ -13,6 +13,7 @@
     "pruebas": {
       "distribution": "internal",
       "channel": "pruebas",
+      "env": { "EXPO_PUBLIC_API_URL": "https://edunova.intelectalab.com/api/v1" },
       "android": { "buildType": "apk" }
     },
     "produccion": {
