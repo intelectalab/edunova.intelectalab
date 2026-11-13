@@ -34,6 +34,39 @@ Un error del servidor se reintenta hasta 5 veces; un rechazo por datos queda «c
 reintentar o descartar. El indicador de la pantalla de inicio muestra en línea / sin conexión y
 cuántos registros esperan. Los conflictos los resuelve la hora real de cada registro.
 
+## Justificar inasistencias (EDUN-96)
+
+Los apoderados envían la justificación con una foto del sustento (cámara o galería, con
+`expo-image-picker`); el tutor la acepta o rechaza en la web y la falta pasa de F a J.
+
+## APK de pruebas (Android)
+
+Para instalar en un celular sin pasar por la tienda. Se compila en la PC con Android Studio
+(su JDK y el SDK de Android), sin cuenta de Expo:
+
+```bash
+npx expo prebuild --platform android --no-install
+```
+
+En `android/gradle.properties` (la carpeta `android/` no se sube a git):
+
+```properties
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1536m
+reactNativeArchitectures=arm64-v8a
+```
+
+Luego, con `JAVA_HOME` apuntando al `jbr` de Android Studio y la dirección de la API:
+
+```bash
+cd android && EXPO_PUBLIC_API_URL=https://<servidor>/api/v1 NODE_ENV=production ./gradlew assembleRelease
+```
+
+El APK queda en `android/app/build/outputs/apk/release/app-release.apk`, firmado con la clave de
+depuración: sirve para pruebas, no para Google Play. Con cuenta de Expo, `eas build -p android
+--profile pruebas` hace lo mismo en la nube. Las notificaciones push necesitan el `projectId` de EAS.
+
+`npx expo prebuild` cambia los scripts `android` e `ios` de `package.json`: no subas ese cambio.
+
 ## Tiendas y actualizaciones OTA (EDUN-198)
 
 Perfiles de EAS en `eas.json` y `expo-updates` por versión de la app. Los pasos que dependen de

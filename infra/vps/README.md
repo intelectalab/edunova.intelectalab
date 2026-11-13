@@ -21,6 +21,35 @@ systemctl enable --now edunova-despliegue.timer
 journalctl -u edunova-despliegue -f   # ver los despliegues
 ```
 
+## Servidor de pruebas
+
+`APP_ENV=production` también en el servidor de pruebas, así que los conectores simulados y la demo
+se encienden a propósito en `apps/api/.env`:
+
+```sh
+PASARELA_SIMULADA=true
+FACTURACION_SIMULADA=true
+WHATSAPP_SIMULADO=true
+EDUNOVA_DEMO_ACCESO=true      # o desde Panel CMS → Tracking e integraciones
+```
+
+En un servidor de producción real no se definen (o van en `false`). Lo demás (SMTP, CRM,
+WordPress, reCAPTCHA, IA, alertas) se carga en el Panel CMS.
+
+Datos de prueba en el colegio ficticio (idempotente):
+
+```sh
+cd /var/www/edunova/apps/api
+sudo -u www-data env EDUNOVA_DATOS_PRUEBA=true php artisan db:seed --class=DatosPruebaSeeder --database=propietario --force
+```
+
+APK de pruebas de la app: se sirve desde `/var/www/edunova-descargas/` con un bloque
+`location = /descargas/edunova-pruebas.apk` en el sitio de nginx (ver `apps/movil/README.md` para
+compilarlo). No se actualiza con el despliegue: hay que compilarlo y copiarlo de nuevo.
+
+Las credenciales de acceso se guardan solo en el servidor (root) y en `privado/` de cada PC del
+equipo, nunca en el repositorio.
+
 ## Respaldos (EDUN-205)
 
 - `respaldar.sh` (diario, `edunova-respaldo.timer`): `pg_dump` de la base y copia de los buckets
@@ -54,7 +83,9 @@ Guarda `RESPALDO_CLAVE` también fuera del servidor: sin ella los respaldos no s
 - `vigilar.sh` (cada 5 minutos, `edunova-vigilancia.timer`) corre esa revisión y comprueba desde
   afuera que el sitio y la API respondan.
 - Los registros ocultan contraseñas, tokens, documentos y datos de salud (`LimpiarDatosSensibles`).
-- Los avisos van a `ALERTAS_WEBHOOK_URL` (en `apps/api/.env` y en `/etc/edunova/respaldo.env`).
+- Los avisos van al webhook de alertas: el del Panel CMS (Tracking e integraciones, con «Probar
+  conexión») o `ALERTAS_WEBHOOK_URL` en `apps/api/.env`. Los scripts de respaldo leen el de
+  `/etc/edunova/respaldo.env`.
 
 ```sh
 install -m 644 infra/vps/edunova-vigilancia.* /etc/systemd/system/

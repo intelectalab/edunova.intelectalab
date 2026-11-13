@@ -28,3 +28,6 @@ playwright-report/
 # Configuración local de Claude Code
 /.claude/
 .next-e2e/
+
+# Credenciales y datos de acceso (nunca se publican)
+/privado/
