@@ -16,12 +16,14 @@ use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\MOV\Http\Controllers\AppPersonalController;
+use App\Modulos\MOV\Http\Controllers\ConfiguracionMovilidadController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
 use App\Modulos\PAG\Http\Controllers\ConfiguracionPagosController;
 use App\Modulos\PAG\Http\Controllers\FinanzasController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
+use App\Modulos\POR\Http\Controllers\SalidasController;
 use App\Modulos\SEG\Http\Controllers\AccesoController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
@@ -467,7 +469,35 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/movilidad/recorridos/{recorrido}/posiciones', [AppPersonalController::class, 'posiciones'])->whereNumber('recorrido')->middleware(['permiso:mov.seguimiento.transmitir', 'throttle:240,1']);
         Route::post('/movilidad/recorridos/{recorrido}/eventos', [AppPersonalController::class, 'evento'])->whereNumber('recorrido')->middleware('permiso:mov.movilidad.registrar');
         Route::post('/movilidad/recorridos/{recorrido}/fin', [AppPersonalController::class, 'finalizar'])->whereNumber('recorrido')->middleware('permiso:mov.seguimiento.transmitir');
+        Route::post('/movilidad/eventos/lote', [AppPersonalController::class, 'eventosLote'])->middleware(['permiso:mov.movilidad.registrar', 'throttle:60,1']);
+
+        // EDUN-161 / EDUN-162 · Configuración en la web: unidades, personal, rutas, paraderos y alumnos.
+        Route::get('/movilidad/configuracion', [ConfiguracionMovilidadController::class, 'resumen'])->middleware('permiso:mov.movilidad.ver|mov.movilidad.gestionar');
+        Route::get('/movilidad/rutas/{ruta}/alumnos', [ConfiguracionMovilidadController::class, 'alumnos'])->whereNumber('ruta')->middleware('permiso:mov.movilidad.ver|mov.movilidad.gestionar');
+        Route::middleware('permiso:mov.movilidad.gestionar')->group(function () {
+            Route::post('/movilidad/unidades', [ConfiguracionMovilidadController::class, 'guardarUnidad']);
+            Route::put('/movilidad/unidades/{unidad}', [ConfiguracionMovilidadController::class, 'guardarUnidad'])->whereNumber('unidad');
+            Route::delete('/movilidad/unidades/{unidad}', [ConfiguracionMovilidadController::class, 'eliminarUnidad'])->whereNumber('unidad');
+            Route::post('/movilidad/personal', [ConfiguracionMovilidadController::class, 'guardarPersonal']);
+            Route::put('/movilidad/personal/{persona}', [ConfiguracionMovilidadController::class, 'guardarPersonal'])->whereNumber('persona');
+            Route::post('/movilidad/rutas', [ConfiguracionMovilidadController::class, 'guardarRuta']);
+            Route::put('/movilidad/rutas/{ruta}', [ConfiguracionMovilidadController::class, 'guardarRuta'])->whereNumber('ruta');
+            Route::put('/movilidad/rutas/{ruta}/paraderos', [ConfiguracionMovilidadController::class, 'guardarParaderos'])->whereNumber('ruta');
+            Route::put('/movilidad/rutas/{ruta}/alumnos', [ConfiguracionMovilidadController::class, 'guardarAlumnos'])->whereNumber('ruta');
+            Route::get('/movilidad/alumnos', [ConfiguracionMovilidadController::class, 'buscarAlumnos']);
+        });
     });
+    // EDUN-214 · Portería: lista del turno (para verificar sin señal) y salidas verificadas.
+    Route::middleware('modulo:POR')->group(function () {
+        Route::get('/porteria/lista', [SalidasController::class, 'lista'])->middleware(['permiso:por.salidas.verificar', 'throttle:30,1']);
+        Route::get('/porteria/alumnos', [SalidasController::class, 'buscar'])->middleware('permiso:por.salidas.verificar');
+        Route::get('/porteria/alumnos/{alumno}/pueden-recoger', [SalidasController::class, 'puedenRecoger'])->whereNumber('alumno')->middleware('permiso:por.salidas.verificar');
+        Route::post('/porteria/salidas', [SalidasController::class, 'registrar'])->middleware(['permiso:por.salidas.verificar', 'throttle:120,1']);
+        Route::post('/porteria/salidas/lote', [SalidasController::class, 'lote'])->middleware(['permiso:por.salidas.verificar', 'throttle:60,1']);
+        Route::get('/porteria/salidas', [SalidasController::class, 'delDia'])->middleware('permiso:por.salidas.ver|por.salidas.verificar');
+    });
+    // EDUN-176 · Enfermería: quién puede retirar a un alumno derivado (sin depender del módulo de portería).
+    Route::get('/salud/alumnos/{alumno}/pueden-recoger', [SalidasController::class, 'puedenRecoger'])->whereNumber('alumno')->middleware('permiso:sal.salud.registrar');
     Route::get('/salud/alumnos', [AppPersonalController::class, 'buscarAlumno'])->middleware('permiso:sal.salud.registrar');
     Route::post('/salud/atenciones', [AppPersonalController::class, 'atender'])->middleware(['permiso:sal.salud.registrar', 'throttle:60,1']);
 

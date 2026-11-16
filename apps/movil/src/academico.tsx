@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ErrorApi, type Cliente } from './api';
-import type { Lote } from './cola';
+import { describir, type Lote } from './cola';
 import { descartarOperacion, guardarLectura, guardarLista, reintentarOperacion, sincronizarAhora, useEstadoCola } from './colaDispositivo';
-import { Boton, colores, estilos, MensajeError } from './ui';
+import { Boton, Campo, colores, estilos, MensajeError } from './ui';
 
 type Alumno = { id: number; nombre: string; estado: 'P' | 'T' | 'F' | 'J' };
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -98,7 +98,7 @@ export function EstadoConexion({ color }: { color: string }) {
       {red.enLinea && red.pendientes > 0 && !red.sincronizando && <Boton titulo="Enviar ahora" borde color={color} alPulsar={() => sincronizarAhora().catch(() => undefined)} />}
       {red.errores.map((o) => (
         <View key={o.id} style={{ gap: 4 }}>
-          <Text style={{ color: colores.error }}>{o.tipo === 'qr' ? `Lectura de carné ${o.datos.leido_at.slice(0, 16).replace('T', ' ')}` : `Lista del ${o.datos.fecha}`}: {o.error}</Text>
+          <Text style={{ color: colores.error }}>{describir(o)}: {o.error}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <View style={{ flex: 1 }}><Boton titulo="Reintentar" borde color={color} alPulsar={() => reintentarOperacion(o.id).catch(() => undefined)} /></View>
             <View style={{ flex: 1 }}><Boton titulo="Descartar" borde color={colores.error} alPulsar={() => descartarOperacion(o.id).catch(() => undefined)} /></View>
@@ -115,6 +115,7 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
   const [activo, setActivo] = useState(false);
   const [ultimo, setUltimo] = useState<string | null>(null);
   const [resultado, setResultado] = useState<{ texto: string; tarde: boolean; guardado?: boolean } | null>(null);
+  const [dni, setDni] = useState('');
   const red = useEstadoCola();
   const leer = async (codigo: string) => {
     if (codigo === ultimo) return;
@@ -138,7 +139,7 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
   };
   return (
     <View style={estilos.tarjeta}>
-      <Text style={estilos.etiqueta}>Puerta: QR del carné</Text>
+      <Text style={estilos.etiqueta}>Puerta: QR del carné o DNI</Text>
       {!activo ? (
         <Boton titulo="Abrir escáner" color={color} alPulsar={async () => { if (!permiso?.granted) await pedirPermiso(); setActivo(true); }} />
       ) : permiso?.granted ? (
@@ -147,6 +148,9 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
           <Boton titulo="Cerrar escáner" borde color={color} alPulsar={() => setActivo(false)} />
         </>
       ) : <Text style={estilos.subtitulo}>Da permiso de cámara para escanear los carnés.</Text>}
+      {/* EDUN-186 · Sin carné: se registra con el DNI (o carné de extranjería) del alumno. */}
+      <Campo etiqueta="¿Olvidó el carné? DNI del alumno" value={dni} onChangeText={(t) => setDni(t.replace(/\s/g, '').toUpperCase())} keyboardType="default" autoCapitalize="characters" maxLength={12} />
+      <Boton titulo="Registrar con DNI" borde color={color} deshabilitado={!/^(\d{8}|[A-Z0-9]{9,12})$/.test(dni)} alPulsar={async () => { await leer(dni); setDni(''); }} />
       {resultado && <Text style={{ fontSize: 16, fontWeight: '600', color: resultado.guardado ? colores.suave : resultado.tarde ? '#b45309' : '#15803d' }}>{resultado.guardado ? '' : resultado.tarde ? 'Tardanza: ' : 'Puntual: '}{resultado.texto}</Text>}
     </View>
   );

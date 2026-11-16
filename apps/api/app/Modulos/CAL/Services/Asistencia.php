@@ -137,7 +137,7 @@ class Asistencia
     {
         $alumno = app(Carnes::class)->buscar($codigo);
         if (! $alumno || $alumno['estado'] !== 'activo') {
-            throw ValidationException::withMessages(['codigo' => ['Carné no reconocido o alumno inactivo.']]);
+            throw ValidationException::withMessages(['codigo' => ['Carné o DNI no reconocido, o alumno inactivo.']]);
         }
         $ahora = ($cuando ?? now())->copy()->timezone(config('app.timezone'));
         if ($ahora->greaterThan(now()->addMinutes(5)) || $ahora->lessThan(now()->subDays(7)->startOfDay())) {

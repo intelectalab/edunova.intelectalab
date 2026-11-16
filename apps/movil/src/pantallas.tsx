@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PorteriaApp } from './porteria';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
@@ -176,6 +177,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         <EstadoConexion color={color} />
         {colegio.roles.some((r) => ['docente', 'tutor', 'auxiliar', 'coordinador'].includes(r)) && <AsistenciaApp api={api} color={color} />}
         {colegio.roles.some((r) => ['auxiliar', 'porteria'].includes(r)) && <PuertaQrApp api={api} color={color} />}
+        {colegio.roles.includes('porteria') && <PorteriaApp api={api} color={color} />}
         {colegio.roles.some((r) => ['conductor', 'movilidad'].includes(r)) && <RecorridoApp api={api} color={color} />}
         {colegio.roles.includes('enfermeria') && <EnfermeriaApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <ConveniosApp api={api} color={color} />}

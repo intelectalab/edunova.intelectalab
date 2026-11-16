@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import type { Cliente } from './api';
+import { guardarOperacion, useEstadoCola } from './colaDispositivo';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
+import { detenerSeguimiento, guardarPosiciones, iniciarSeguimiento, recorridoEnCurso, SEGUNDOS_POSICION } from './ubicacion';
 
 type Ruta = { id: number; nombre: string; placa: string | null; recorridos: { id: number; sentido: string; estado: string }[]; alumnos: { asignacion_id: number; nombres: string; apellido_paterno: string; paradero: string }[] };
 type Cuota = { numero: number; vencimiento: string; monto: number; pagado: number; estado: string };
@@ -11,60 +13,84 @@ type Convenio = { id: number; numero: string; estado: string; monto_total: numbe
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 /**
- * EDUN-199 · Conductor y auxiliar de movilidad: inicia el recorrido, comparte la ubicación solo
- * mientras está en curso y marca quién subió o bajó (la familia recibe el aviso).
+ * EDUN-199 / EDUN-163 / EDUN-165 · Conductor y auxiliar de movilidad: inicia el recorrido, comparte
+ * la ubicación solo mientras está en curso (también en segundo plano) y marca quién subió o bajó.
+ * Las marcas, la ubicación y el fin se guardan cifrados y se envían solos: funciona sin señal.
  */
 export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
   const [rutas, setRutas] = useState<Ruta[] | null>(null);
-  const [activo, setActivo] = useState<{ ruta: Ruta; recorrido: number; sentido: 'ida' | 'vuelta' } | null>(null);
+  const [activo, setActivo] = useState<{ ruta: Ruta; recorrido: number; sentido: 'ida' | 'vuelta'; modo: 'segundo_plano' | 'primer_plano' } | null>(null);
   const [marcados, setMarcados] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [iniciando, setIniciando] = useState(false);
   const reloj = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cargar = useCallback(() => api.pedir<{ data: Ruta[] }>('/movilidad/mis-rutas').then((r) => setRutas(r.data)).catch(() => setRutas([])), [api]);
+  const red = useEstadoCola();
+  const parar = () => {
+    if (reloj.current) clearInterval(reloj.current);
+    reloj.current = null;
+  };
+  // Sin permiso «siempre»: se toma la ubicación cada 20 s con la app abierta.
+  const enPrimerPlano = (recorrido: number) => {
+    parar();
+    const tomar = () => Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((l) => guardarPosiciones(recorrido, [l])).catch(() => undefined);
+    void tomar();
+    reloj.current = setInterval(tomar, SEGUNDOS_POSICION * 1000);
+  };
+  const cargar = useCallback(async () => {
+    try {
+      const lista = (await api.pedir<{ data: Ruta[] }>('/movilidad/mis-rutas')).data;
+      setRutas(lista);
+      // La app se cerró con un recorrido en curso: se retoma donde quedó.
+      const guardado = await recorridoEnCurso();
+      const ruta = lista.find((r) => r.recorridos.some((x) => x.id === guardado && x.estado === 'en_curso'));
+      const rec = ruta?.recorridos.find((x) => x.id === guardado);
+      if (ruta && rec) {
+        const modo = await iniciarSeguimiento(rec.id);
+        setActivo({ ruta, recorrido: rec.id, sentido: rec.sentido as 'ida' | 'vuelta', modo });
+        if (modo === 'primer_plano') enPrimerPlano(rec.id);
+      }
+    } catch {
+      setRutas((r) => r ?? []);
+    }
+  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    cargar();
-    return () => { if (reloj.current) clearInterval(reloj.current); };
+    void cargar();
+    return parar;
   }, [cargar]);
   if (!rutas?.length) return null;
 
-  const enviarPosicion = async (recorrido: number) => {
-    try {
-      const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      await api.pedir(`/movilidad/recorridos/${recorrido}/posiciones`, { metodo: 'POST', cuerpo: { posiciones: [{
-        latitud: p.coords.latitude, longitud: p.coords.longitude, velocidad_kmh: p.coords.speed !== null ? p.coords.speed * 3.6 : null,
-        precision_m: p.coords.accuracy !== null ? Math.round(p.coords.accuracy) : null, registrado_at: new Date(p.timestamp).toISOString(),
-      }] } });
-    } catch {
-      // Sin señal o sin GPS: se reintenta en el siguiente ciclo.
-    }
-  };
   const iniciar = async (ruta: Ruta, sentido: 'ida' | 'vuelta') => {
     setError(null);
+    if (!red.enLinea) return setError('Para iniciar el recorrido necesitas señal. Después puedes seguir sin conexión.');
     const permiso = await Location.requestForegroundPermissionsAsync();
     if (permiso.status !== 'granted') return setError('Da permiso de ubicación para compartir el recorrido con las familias.');
+    setIniciando(true);
     try {
       const r = await api.pedir<{ recorrido_id: number }>(`/movilidad/rutas/${ruta.id}/recorridos`, { metodo: 'POST', cuerpo: { sentido } });
-      setActivo({ ruta, recorrido: r.recorrido_id, sentido });
+      const modo = await iniciarSeguimiento(r.recorrido_id);
+      setActivo({ ruta, recorrido: r.recorrido_id, sentido, modo });
       setMarcados({});
-      await enviarPosicion(r.recorrido_id);
-      reloj.current = setInterval(() => enviarPosicion(r.recorrido_id), 20000);
+      if (modo === 'primer_plano') enPrimerPlano(r.recorrido_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo iniciar.');
+    } finally {
+      setIniciando(false);
     }
   };
   const finalizar = async () => {
     if (!activo) return;
-    if (reloj.current) clearInterval(reloj.current);
-    await api.pedir(`/movilidad/recorridos/${activo.recorrido}/fin`, { metodo: 'POST' }).catch(() => undefined);
+    parar();
+    await detenerSeguimiento();
+    await guardarOperacion('mov_fin', { recorrido_id: activo.recorrido, finalizado_at: new Date().toISOString() });
     setActivo(null);
-    cargar();
+    void cargar();
   };
   const marcar = async (asignacion: number, tipo: 'subio' | 'bajo' | 'no_subio') => {
+    setMarcados({ ...marcados, [asignacion]: tipo });
     try {
-      await api.pedir(`/movilidad/recorridos/${activo!.recorrido}/eventos`, { metodo: 'POST', cuerpo: { asignacion_id: asignacion, tipo } });
-      setMarcados({ ...marcados, [asignacion]: tipo });
+      await guardarOperacion('mov_evento', { recorrido_id: activo!.recorrido, asignacion_id: asignacion, tipo, ocurrido_at: new Date().toISOString() });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo registrar.');
+      setError(e instanceof Error ? e.message : 'No se pudo guardar la marca.');
     }
   };
 
@@ -75,20 +101,23 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
         <View key={r.id} style={{ gap: 6 }}>
           <Text style={{ color: colores.texto, fontWeight: '600' }}>{r.nombre}{r.placa ? ` · ${r.placa}` : ''} · {r.alumnos.length} alumnos</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}><Boton titulo="Iniciar ida" color={color} alPulsar={() => iniciar(r, 'ida')} /></View>
-            <View style={{ flex: 1 }}><Boton titulo="Iniciar vuelta" borde color={color} alPulsar={() => iniciar(r, 'vuelta')} /></View>
+            <View style={{ flex: 1 }}><Boton titulo="Iniciar ida" color={color} deshabilitado={iniciando} alPulsar={() => iniciar(r, 'ida')} /></View>
+            <View style={{ flex: 1 }}><Boton titulo="Iniciar vuelta" borde color={color} deshabilitado={iniciando} alPulsar={() => iniciar(r, 'vuelta')} /></View>
           </View>
         </View>
       )) : (
         <>
-          <Text style={{ color: '#15803d' }}>En curso: {activo.ruta.nombre}. Se comparte la ubicación cada 20 segundos.</Text>
+          <Text style={{ color: '#15803d' }}>
+            En curso: {activo.ruta.nombre}. {activo.modo === 'segundo_plano' ? 'La ubicación se comparte aunque bloquees el teléfono.' : 'La ubicación se comparte con la app abierta (da permiso «siempre» para seguir con la pantalla apagada).'}
+          </Text>
+          {!red.enLinea && <Text style={estilos.subtitulo}>Sin señal: las marcas y la ubicación se guardan y se envían al volver la conexión.</Text>}
           {activo.ruta.alumnos.map((a) => (
             <View key={a.asignacion_id} style={estilos.fila}>
               <Text style={{ flex: 1, color: colores.texto }}>{a.nombres} {a.apellido_paterno}{'\n'}<Text style={{ color: colores.suave }}>{a.paradero}</Text></Text>
               {marcados[a.asignacion_id] ? <Text style={{ color: colores.suave }}>{marcados[a.asignacion_id].replace('_', ' ')}</Text> : (
                 <View style={{ flexDirection: 'row', gap: 6 }}>
-                  <Pressable accessibilityRole="button" onPress={() => marcar(a.asignacion_id, activo.sentido === 'vuelta' ? 'bajo' : 'subio')} style={{ padding: 8, borderRadius: 8, backgroundColor: color }}><Text style={{ color: '#fff' }}>✓</Text></Pressable>
-                  <Pressable accessibilityRole="button" onPress={() => marcar(a.asignacion_id, 'no_subio')} style={{ padding: 8, borderRadius: 8, borderWidth: 1, borderColor: colores.error }}><Text style={{ color: colores.error }}>✕</Text></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`${a.nombres}: ${activo.sentido === 'vuelta' ? 'bajó' : 'subió'}`} onPress={() => marcar(a.asignacion_id, activo.sentido === 'vuelta' ? 'bajo' : 'subio')} style={{ padding: 8, borderRadius: 8, backgroundColor: color }}><Text style={{ color: '#fff' }}>✓</Text></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`${a.nombres}: no subió`} onPress={() => marcar(a.asignacion_id, 'no_subio')} style={{ padding: 8, borderRadius: 8, borderWidth: 1, borderColor: colores.error }}><Text style={{ color: colores.error }}>✕</Text></Pressable>
                 </View>
               )}
             </View>
@@ -101,7 +130,12 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
   );
 }
 
-/** EDUN-199 · Enfermería: atención rápida en tópico con aviso al padre. */
+type Recoge = { id: number | null; nombres: string; numero_documento: string; parentesco: string; apoderado: boolean };
+
+/**
+ * EDUN-199 / EDUN-176 · Enfermería: atención rápida en tópico con aviso al padre. Si el alumno se
+ * va (derivado), se elige quién lo retira entre sus apoderados y autorizados, y queda la salida.
+ */
 export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
   const [q, setQ] = useState('');
   const [resultados, setResultados] = useState<{ id: number; nombres: string; apellido_paterno: string }[]>([]);
@@ -109,6 +143,8 @@ export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
   const [motivo, setMotivo] = useState('');
   const [accion, setAccion] = useState('');
   const [derivado, setDerivado] = useState(false);
+  const [recogen, setRecogen] = useState<Recoge[] | null>(null);
+  const [retira, setRetira] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const buscar = async () => {
@@ -118,12 +154,26 @@ export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
       setError(e instanceof Error ? e.message : 'No se pudo buscar.');
     }
   };
+  const cambiarDerivado = async (v: boolean) => {
+    setDerivado(v);
+    setRetira(null);
+    if (v && alumno && !recogen) {
+      try {
+        setRecogen((await api.pedir<{ data: Recoge[] }>(`/salud/alumnos/${alumno.id}/pueden-recoger`)).data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo cargar quién puede retirarlo.');
+      }
+    }
+  };
+  const limpiar = () => {
+    setAlumno(null); setMotivo(''); setAccion(''); setDerivado(false); setQ(''); setResultados([]); setRecogen(null); setRetira(null);
+  };
   return (
     <View style={estilos.tarjeta}>
       <Text style={estilos.etiqueta}>Tópico: atención rápida</Text>
       {!alumno ? (
         <>
-          <Campo etiqueta="Alumno (nombre o código del carné)" value={q} onChangeText={setQ} onSubmitEditing={buscar} />
+          <Campo etiqueta="Alumno (nombre, DNI o código del carné)" value={q} onChangeText={setQ} onSubmitEditing={buscar} />
           <Boton titulo="Buscar" borde color={color} deshabilitado={q.trim().length < 3} alPulsar={buscar} />
           {resultados.map((a) => <Pressable key={a.id} accessibilityRole="button" onPress={() => setAlumno(a)} style={estilos.fila}><Text style={{ color: colores.texto }}>{a.apellido_paterno}, {a.nombres}</Text></Pressable>)}
         </>
@@ -132,17 +182,32 @@ export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
           <Text style={{ color: colores.texto, fontWeight: '600' }}>{alumno.nombres} {alumno.apellido_paterno}</Text>
           <Campo etiqueta="Motivo" value={motivo} onChangeText={setMotivo} />
           <Campo etiqueta="Qué se hizo" value={accion} onChangeText={setAccion} multiline />
-          <View style={estilos.fila}><Text style={{ flex: 1, color: colores.texto }}>Derivado (requiere que lo recojan)</Text><Switch accessibilityLabel="Derivado" value={derivado} trackColor={{ true: color }} onValueChange={setDerivado} /></View>
-          <Boton titulo="Registrar y avisar a la familia" color={color} deshabilitado={!motivo.trim() || !accion.trim()} alPulsar={async () => {
+          <View style={estilos.fila}><Text style={{ flex: 1, color: colores.texto }}>Derivado (requiere que lo recojan)</Text><Switch accessibilityLabel="Derivado" value={derivado} trackColor={{ true: color }} onValueChange={cambiarDerivado} /></View>
+          {derivado && recogen && (
+            <View style={{ gap: 6 }}>
+              <Text style={estilos.subtitulo}>¿Quién lo retira ahora? Verifica su documento. Si lo recogen más tarde, registra la salida en portería.</Text>
+              {recogen.length === 0 && <Text style={{ color: colores.error }}>No tiene apoderados ni autorizados para recogerlo: comunícate con la familia.</Text>}
+              {recogen.map((p) => (
+                <Pressable key={p.numero_documento} accessibilityRole="radio" accessibilityState={{ selected: retira === p.numero_documento }} onPress={() => setRetira(retira === p.numero_documento ? null : p.numero_documento)}
+                  style={[estilos.fila, { borderWidth: 1, borderRadius: 8, padding: 8, borderColor: retira === p.numero_documento ? color : colores.borde }]}>
+                  <Text style={{ flex: 1, color: colores.texto }}>{p.nombres} · {p.parentesco}{'\n'}<Text style={{ color: colores.suave }}>Documento {p.numero_documento}</Text></Text>
+                  {retira === p.numero_documento && <Text style={{ color }}>✓</Text>}
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Boton titulo={retira ? 'Registrar, entregar y avisar' : 'Registrar y avisar a la familia'} color={color} deshabilitado={!motivo.trim() || !accion.trim()} alPulsar={async () => {
+            setError(null);
             try {
-              await api.pedir('/salud/atenciones', { metodo: 'POST', cuerpo: { alumno_id: alumno.id, motivo, accion, derivado, avisar_padre: true } });
-              setMensaje(`Atención de ${alumno.nombres} registrada; la familia fue avisada.`);
-              setAlumno(null); setMotivo(''); setAccion(''); setDerivado(false); setQ(''); setResultados([]);
+              await api.pedir('/salud/atenciones', { metodo: 'POST', cuerpo: { alumno_id: alumno.id, motivo, accion, derivado, avisar_padre: true, retiro_documento: derivado ? retira : null } });
+              const quien = recogen?.find((p) => p.numero_documento === retira);
+              setMensaje(`Atención de ${alumno.nombres} registrada${quien ? `; salió con ${quien.nombres}` : ''}. La familia fue avisada.`);
+              limpiar();
             } catch (e) {
               setError(e instanceof Error ? e.message : 'No se pudo registrar.');
             }
           }} />
-          <Boton titulo="Cancelar" borde color={colores.suave} alPulsar={() => setAlumno(null)} />
+          <Boton titulo="Cancelar" borde color={colores.suave} alPulsar={limpiar} />
         </>
       )}
       {mensaje && <Text style={estilos.subtitulo}>{mensaje}</Text>}

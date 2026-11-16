@@ -3,6 +3,7 @@
 namespace App\Modulos\MOV\Http\Controllers;
 
 use App\Modulos\MOV\Services\AppPersonal;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -41,9 +42,23 @@ class AppPersonalController
         return response()->json(['message' => 'Registrado.'], 201);
     }
 
+    /** EDUN-163 · Marcas de subida y bajada guardadas sin conexión. */
+    public function eventosLote(Request $request): JsonResponse
+    {
+        $d = $request->validate([
+            'eventos' => ['required', 'array', 'min:1', 'max:100'], 'eventos.*.id' => ['required', 'string', 'max:40', 'distinct'],
+            'eventos.*.recorrido_id' => ['required', 'integer'], 'eventos.*.asignacion_id' => ['required', 'integer'],
+            'eventos.*.tipo' => ['required', Rule::in(['subio', 'bajo', 'no_subio'])], 'eventos.*.ocurrido_at' => ['required', 'date'],
+            'eventos.*.latitud' => ['nullable', 'numeric', 'between:-90,90'], 'eventos.*.longitud' => ['nullable', 'numeric', 'between:-180,180'],
+        ]);
+
+        return response()->json($this->app->eventosLote($request->user(), $d['eventos']));
+    }
+
     public function finalizar(Request $request, int $recorrido): JsonResponse
     {
-        $this->app->finalizar($request->user(), $recorrido);
+        $d = $request->validate(['finalizado_at' => ['nullable', 'date']]);
+        $this->app->finalizar($request->user(), $recorrido, isset($d['finalizado_at']) ? Carbon::parse($d['finalizado_at']) : null);
 
         return response()->json(['message' => 'Recorrido finalizado.']);
     }
@@ -58,10 +73,10 @@ class AppPersonalController
     public function atender(Request $request): JsonResponse
     {
         $d = $request->validate(['alumno_id' => ['required', 'integer'], 'motivo' => ['required', 'string', 'max:200'], 'accion' => ['required', 'string', 'max:2000'],
-            'derivado' => ['boolean'], 'retirado_por' => ['nullable', 'string', 'max:150'], 'avisar_padre' => ['boolean']],
+            'derivado' => ['boolean'], 'retiro_documento' => ['nullable', 'string', 'max:15'], 'avisar_padre' => ['boolean']],
             ['motivo.required' => 'Indica el motivo de la atención.', 'accion.required' => 'Indica qué se hizo.']);
 
-        return response()->json(['id' => $this->app->atender((int) $d['alumno_id'], $d['motivo'], $d['accion'], (bool) ($d['derivado'] ?? false), $d['retirado_por'] ?? null,
+        return response()->json(['id' => $this->app->atender((int) $d['alumno_id'], $d['motivo'], $d['accion'], (bool) ($d['derivado'] ?? false), $d['retiro_documento'] ?? null,
             (bool) ($d['avisar_padre'] ?? true), (int) $request->user()->id)], 201);
     }
 }

@@ -64,6 +64,8 @@ const Auditoria = perezoso(() => import('../seg/Auditoria'), 'Auditoria');
 const MiPerfil = perezoso(() => import('../seg/MiPerfil'), 'MiPerfil');
 const Usuarios = perezoso(() => import('../seg/Usuarios'), 'Usuarios');
 const JustificacionesTutor = perezoso(() => import('../cal/Justificaciones'), 'JustificacionesTutor');
+const Movilidad = perezoso(() => import('../mov/Movilidad'), 'Movilidad');
+const SalidasDelDia = perezoso(() => import('../mov/Movilidad'), 'SalidasDelDia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
 
 type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode; oculta?: boolean };
@@ -121,6 +123,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Académico',
     visible: (c) => moduloActivo(c, 'CAL') && puede(c, 'cal.asistencia.registrar', 'cal.asistencia.ver'),
     pantalla: () => <AsistenciaDiaria />,
+  },
+  {
+    ruta: 'movilidad',
+    nombre: 'Movilidad escolar',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
+    pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'salidas',
+    nombre: 'Salidas del día',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'POR') && puede(c, 'por.salidas.ver', 'por.salidas.verificar'),
+    pantalla: () => <SalidasDelDia />,
   },
   {
     ruta: 'justificaciones',

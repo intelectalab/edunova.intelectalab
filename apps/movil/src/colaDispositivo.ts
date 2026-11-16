@@ -47,6 +47,14 @@ const envioDe = (api: Cliente): cola.Envio => ({
     await api.pedir(`/asistencia/secciones/${l.seccion_id}`, { metodo: 'PUT', cuerpo: { fecha: l.fecha, origen: 'offline', registros: l.registros } });
   },
   qr: async (lecturas) => (await api.pedir<{ resultados: cola.ResultadoQr[] }>('/asistencias/lote', { metodo: 'POST', cuerpo: { lecturas } })).resultados,
+  salidas: async (salidas) => (await api.pedir<{ resultados: cola.ResultadoQr[] }>('/porteria/salidas/lote', { metodo: 'POST', cuerpo: { salidas } })).resultados,
+  movEventos: async (eventos) => (await api.pedir<{ resultados: cola.ResultadoQr[] }>('/movilidad/eventos/lote', { metodo: 'POST', cuerpo: { eventos } })).resultados,
+  movPosiciones: async (recorrido, posiciones) => {
+    await api.pedir(`/movilidad/recorridos/${recorrido}/posiciones`, { metodo: 'POST', cuerpo: { posiciones: posiciones.map(({ recorrido_id: _r, ...p }) => p) } });
+  },
+  movFin: async (f) => {
+    await api.pedir(`/movilidad/recorridos/${f.recorrido_id}/fin`, { metodo: 'POST', cuerpo: { finalizado_at: f.finalizado_at } });
+  },
 });
 
 let envioActual: cola.Envio | null = null;
@@ -69,6 +77,25 @@ export async function guardarLista(lote: cola.Lote) {
 export async function guardarLectura(lectura: cola.Lectura) {
   reflejar(await cola.encolarLectura(AsyncStorage, await cifrado(), lectura));
 }
+/** Salidas, marcas de movilidad, posiciones y fin de recorrido: se guardan y, con señal, se envían al instante. */
+export async function guardarOperacion(tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: cola.Salida | cola.EventoMov | cola.Posicion | cola.FinMov, enviar = true) {
+  reflejar(await cola.encolar(AsyncStorage, await cifrado(), tipo, datos));
+  if (enviar && estado.enLinea) await sincronizarAhora().catch(() => undefined);
+}
+
+/** Datos sensibles que se guardan en el teléfono para trabajar sin señal (p. ej. la lista de portería). */
+export async function guardarCifrado(clave: string, valor: unknown) {
+  await AsyncStorage.setItem(clave, (await cifrado()).cifrar(JSON.stringify(valor)));
+}
+export async function leerCifrado<T>(clave: string): Promise<T | null> {
+  try {
+    const crudo = await AsyncStorage.getItem(clave);
+    return crudo ? (JSON.parse((await cifrado()).descifrar(crudo)) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function descartarOperacion(id: string) {
   reflejar(await cola.descartar(AsyncStorage, await cifrado(), id));
 }

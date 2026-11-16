@@ -9,7 +9,10 @@
     "ios": {
       "bundleIdentifier": "pe.edunova.app",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Usamos Face ID para que vuelvas a entrar a Edunova sin escribir tu contraseña."
+        "NSFaceIDUsageDescription": "Usamos Face ID para que vuelvas a entrar a Edunova sin escribir tu contraseña.",
+        "UIBackgroundModes": [
+          "location"
+        ]
       },
       "supportsTablet": false
     },
@@ -50,7 +53,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Compartimos la ubicación de la movilidad con las familias solo mientras el recorrido está en curso."
+          "locationWhenInUsePermission": "Compartimos la ubicación de la movilidad con las familias solo mientras el recorrido está en curso.",
+          "locationAlwaysAndWhenInUsePermission": "Durante el recorrido la ubicación se sigue enviando aunque la app quede en segundo plano o la pantalla se apague. Al finalizar el recorrido se deja de enviar.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       "expo-updates",

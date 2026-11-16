@@ -1,4 +1,4 @@
-// EDUN-94 / EDUN-197 / EDUN-215 / EDUN-218 · Cola sin conexión. Lógica pura (se prueba con Vitest);
+// EDUN-94 / EDUN-197 / EDUN-215 / EDUN-218 / EDUN-163 / EDUN-165 / EDUN-214 · Cola sin conexión. Lógica pura (se prueba con Vitest);
 // el almacenamiento (AsyncStorage) y el cifrado se inyectan desde colaDispositivo.ts.
 //
 // - Todo lo pendiente se guarda cifrado; sin la clave del llavero del teléfono no se lee.
@@ -13,9 +13,23 @@ import type { Cifrado } from './cifrado';
 export type Registro = { alumno_id: number; estado: 'P' | 'T' | 'F' | 'J'; registrado_at: string };
 export type Lote = { seccion_id: number; fecha: string; registros: Registro[] };
 export type Lectura = { codigo: string; leido_at: string };
+/** EDUN-214 · Salida verificada en portería (documento de quien recoge). */
+export type Salida = { alumno_id: number; numero_documento: string; salio_at: string; motivo?: string | null };
+/** EDUN-163 · Subió / bajó / no subió a la movilidad. */
+export type EventoMov = { recorrido_id: number; asignacion_id: number; tipo: 'subio' | 'bajo' | 'no_subio'; ocurrido_at: string; latitud?: number | null; longitud?: number | null };
+/** EDUN-165 · Posición GPS del recorrido. */
+export type Posicion = { recorrido_id: number; latitud: number; longitud: number; velocidad_kmh?: number | null; precision_m?: number | null; registrado_at: string };
+export type FinMov = { recorrido_id: number; finalizado_at: string };
 
 type Base = { id: string; creado_at: string; intentos: number; error?: string };
-export type Operacion = (Base & { tipo: 'asistencia'; datos: Lote }) | (Base & { tipo: 'qr'; datos: Lectura });
+export type Operacion =
+  | (Base & { tipo: 'asistencia'; datos: Lote })
+  | (Base & { tipo: 'qr'; datos: Lectura })
+  | (Base & { tipo: 'salida'; datos: Salida })
+  | (Base & { tipo: 'mov_evento'; datos: EventoMov })
+  | (Base & { tipo: 'mov_pos'; datos: Posicion })
+  | (Base & { tipo: 'mov_fin'; datos: FinMov });
+export type TipoOperacion = Operacion['tipo'];
 
 export interface Almacen {
   getItem(clave: string): Promise<string | null>;
@@ -26,10 +40,18 @@ export type ResultadoQr = { id: string; ok: boolean; mensaje?: string };
 export interface Envio {
   lista(lote: Lote): Promise<void>;
   qr(lecturas: (Lectura & { id: string })[]): Promise<ResultadoQr[]>;
+  salidas?(salidas: (Salida & { id: string })[]): Promise<ResultadoQr[]>;
+  movEventos?(eventos: (EventoMov & { id: string })[]): Promise<ResultadoQr[]>;
+  movPosiciones?(recorrido: number, posiciones: Posicion[]): Promise<void>;
+  movFin?(fin: FinMov): Promise<void>;
 }
 
 export const MAX_INTENTOS = 5;
 export const TAM_BLOQUE_QR = 50;
+/** Cuántas operaciones seguidas del mismo tipo van en un envío (las demás van de a una). */
+export const TAM_BLOQUE: Partial<Record<TipoOperacion, number>> = { qr: TAM_BLOQUE_QR, salida: 50, mov_evento: 100, mov_pos: 100 };
+/** Posiciones guardadas como máximo: una jornada larga sin señal no llena el teléfono (se quitan las más viejas). */
+export const MAX_POSICIONES = 2000;
 const CLAVE = 'edunova.cola.v2';
 const CLAVE_ANTIGUA = 'edunova.cola.asistencia';
 
@@ -104,6 +126,32 @@ export function agregarLectura(cola: Operacion[], lectura: Lectura, ahora = new 
   return [...cola, { id: nuevoId(ahora.getTime()), tipo: 'qr', creado_at: ahora.toISOString(), intentos: 0, datos: lectura }];
 }
 
+/** Agrega una operación al final (salidas, marcas y posiciones). Las posiciones tienen tope. */
+export function agregar(cola: Operacion[], tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: Salida | EventoMov | Posicion | FinMov, ahora = new Date()): Operacion[] {
+  // Una misma salida o marca registrada dos veces (doble toque): basta una.
+  if (cola.some((o) => o.tipo === tipo && JSON.stringify(o.datos) === JSON.stringify(datos))) return cola;
+  let nueva = [...cola, { id: nuevoId(ahora.getTime()), tipo, creado_at: ahora.toISOString(), intentos: 0, datos } as Operacion];
+  const posiciones = nueva.filter((o) => o.tipo === 'mov_pos');
+  if (posiciones.length > MAX_POSICIONES) {
+    const sobran = new Set(posiciones.slice(0, posiciones.length - MAX_POSICIONES).map((o) => o.id));
+    nueva = nueva.filter((o) => !sobran.has(o.id));
+  }
+  return nueva;
+}
+
+const hora = (iso: string) => iso.slice(0, 16).replace('T', ' ');
+/** Texto corto para mostrar una operación (p. ej. en la lista de las que quedaron con error). */
+export function describir(o: Operacion): string {
+  switch (o.tipo) {
+    case 'asistencia': return `Lista del ${o.datos.fecha}`;
+    case 'qr': return `Lectura de carné ${hora(o.datos.leido_at)}`;
+    case 'salida': return `Salida ${hora(o.datos.salio_at)}`;
+    case 'mov_evento': return `Movilidad: marca ${hora(o.datos.ocurrido_at)}`;
+    case 'mov_pos': return `Movilidad: ubicación ${hora(o.datos.registrado_at)}`;
+    case 'mov_fin': return `Movilidad: fin del recorrido ${hora(o.datos.finalizado_at)}`;
+  }
+}
+
 export const pendientes = (cola: Operacion[]) => cola.filter((o) => !o.error).length;
 export const conError = (cola: Operacion[]) => cola.filter((o) => o.error);
 
@@ -115,6 +163,10 @@ export function encolarLectura(almacen: Almacen, cifrado: Cifrado, lectura: Lect
   return modificar(almacen, cifrado, (c) => agregarLectura(c, lectura));
 }
 
+export function encolar(almacen: Almacen, cifrado: Cifrado, tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: Salida | EventoMov | Posicion | FinMov): Promise<Operacion[]> {
+  return modificar(almacen, cifrado, (c) => agregar(c, tipo, datos));
+}
+
 export function descartar(almacen: Almacen, cifrado: Cifrado, id: string): Promise<Operacion[]> {
   return modificar(almacen, cifrado, (c) => c.filter((o) => o.id !== id));
 }
@@ -123,12 +175,19 @@ export function reintentar(almacen: Almacen, cifrado: Cifrado, id: string): Prom
   return modificar(almacen, cifrado, (c) => c.map((o) => (o.id === id ? { ...o, intentos: 0, error: undefined } : o)));
 }
 
-/** Bloques en orden: las lecturas de QR seguidas van juntas (hasta 50); cada lista va sola. */
+const mismoRecorrido = (a: Operacion, b: Operacion) => a.tipo !== 'mov_pos' || (a.datos as Posicion).recorrido_id === (b.datos as Posicion).recorrido_id;
+
+/**
+ * Bloques en orden: las operaciones seguidas del mismo tipo van juntas (lecturas de QR y salidas
+ * de a 50, marcas y posiciones de a 100; las posiciones, del mismo recorrido); cada lista y cada
+ * fin de recorrido van solos.
+ */
 export function bloques(cola: Operacion[]): Operacion[][] {
   const salida: Operacion[][] = [];
   for (const o of [...cola].filter((x) => !x.error).sort((a, b) => a.creado_at.localeCompare(b.creado_at))) {
     const ultimo = salida[salida.length - 1];
-    if (o.tipo === 'qr' && ultimo && ultimo[0].tipo === 'qr' && ultimo.length < TAM_BLOQUE_QR) ultimo.push(o);
+    const tope = TAM_BLOQUE[o.tipo];
+    if (tope && ultimo && ultimo[0].tipo === o.tipo && ultimo.length < tope && mismoRecorrido(ultimo[0], o)) ultimo.push(o);
     else salida.push([o]);
   }
   return salida;
@@ -169,12 +228,29 @@ async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promi
   for (const bloque of bloques(cola)) {
     const ids = new Set(bloque.map((o) => o.id));
     try {
-      if (bloque[0].tipo === 'asistencia') {
-        await envio.lista(bloque[0].datos);
+      const primero = bloque[0];
+      const conId = <T,>() => bloque.map((o) => ({ id: o.id, ...(o.datos as T) }));
+      // Una versión anterior de la app sin el envío de ese tipo: queda guardado para después.
+      const falta = (primero.tipo === 'salida' && !envio.salidas) || (primero.tipo === 'mov_evento' && !envio.movEventos)
+        || (primero.tipo === 'mov_pos' && !envio.movPosiciones) || (primero.tipo === 'mov_fin' && !envio.movFin);
+      if (falta) continue;
+      if (primero.tipo === 'asistencia') {
+        await envio.lista(primero.datos);
         quitar(ids);
         enviados++;
+      } else if (primero.tipo === 'mov_fin') {
+        await envio.movFin!(primero.datos);
+        quitar(ids);
+        enviados++;
+      } else if (primero.tipo === 'mov_pos') {
+        // Las posiciones van todas o ninguna: el servidor descarta las que caen fuera del recorrido.
+        await envio.movPosiciones!(primero.datos.recorrido_id, bloque.map((o) => o.datos as Posicion));
+        quitar(ids);
+        enviados += bloque.length;
       } else {
-        const resultados = await envio.qr(bloque.map((o) => ({ id: o.id, ...(o.datos as Lectura) })));
+        const resultados = primero.tipo === 'qr' ? await envio.qr(conId<Lectura>())
+          : primero.tipo === 'salida' ? await envio.salidas!(conId<Salida>())
+          : await envio.movEventos!(conId<EventoMov>());
         const porId = new Map(resultados.map((r) => [r.id, r]));
         const bien = new Set(bloque.filter((o) => porId.get(o.id)?.ok).map((o) => o.id));
         for (const o of bloque) {

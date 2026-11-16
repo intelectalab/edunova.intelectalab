@@ -6,8 +6,11 @@ use App\Models\User;
 use App\Modulos\ADM\Services\Carnes;
 use App\Modulos\COM\Services\Notificador;
 use App\Modulos\Compartido\ContextoInstitucion;
+use App\Modulos\POR\Services\Salidas;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * EDUN-199 · MOB-H06 App del personal según rol (complementa la asistencia y el QR de S19).
@@ -59,13 +62,22 @@ class AppPersonal
         return (int) DB::table('mov_recorridos')->where('mov_ruta_id', $rutaId)->where('fecha', $hoy)->where('sentido', $sentido)->value('id');
     }
 
-    private function recorridoEnCurso(User $usuario, int $recorridoId): object
+    /**
+     * El recorrido debe estar en curso o, si llega algo registrado sin conexión (EDUN-163/165),
+     * haber ocurrido mientras estuvo en curso: entre el inicio y el fin.
+     */
+    private function recorridoEnCurso(User $usuario, int $recorridoId, ?Carbon $cuando = null): object
     {
         $r = DB::table('mov_recorridos')->find($recorridoId);
         abort_if(! $r, 404);
         $this->exigirRuta($usuario, (int) $r->mov_ruta_id);
-        if ($r->estado !== 'en_curso') {
+        $dentro = $cuando && $r->iniciado_at && $cuando->greaterThanOrEqualTo(Carbon::parse($r->iniciado_at)->subMinute())
+            && $r->estado === 'finalizado' && $r->finalizado_at && $cuando->lessThanOrEqualTo(Carbon::parse($r->finalizado_at)->addMinute());
+        if ($r->estado !== 'en_curso' && ! $dentro) {
             throw ValidationException::withMessages(['recorrido' => ['El recorrido no está en curso.']]);
+        }
+        if ($cuando && $cuando->greaterThan(now()->addMinutes(5))) {
+            throw ValidationException::withMessages(['ocurrido_at' => ['La hora no es válida (futura).']]);
         }
 
         return $r;
@@ -74,8 +86,19 @@ class AppPersonal
     /** @param list<array{latitud: float, longitud: float, velocidad_kmh?: float|null, precision_m?: int|null, registrado_at?: string|null}> $posiciones */
     public function posiciones(User $usuario, int $recorridoId, array $posiciones): int
     {
-        $this->recorridoEnCurso($usuario, $recorridoId);
+        // Las guardadas sin señal llegan después, con su hora: se aceptan si caen dentro del recorrido.
+        $primera = collect($posiciones)->pluck('registrado_at')->filter()->min();
+        $r = $this->recorridoEnCurso($usuario, $recorridoId, $primera ? Carbon::parse($primera) : null);
         $inst = ContextoInstitucion::requerido();
+        $inicio = $r->iniciado_at ? Carbon::parse($r->iniciado_at)->subMinute() : null;
+        // Privacidad: ninguna posición después del fin del recorrido.
+        $fin = $r->finalizado_at ? Carbon::parse($r->finalizado_at) : now()->addMinutes(5);
+        $posiciones = array_values(array_filter($posiciones, function ($p) use ($inicio, $fin) {
+            $t = isset($p['registrado_at']) ? Carbon::parse($p['registrado_at']) : now();
+
+            return (! $inicio || $t->greaterThanOrEqualTo($inicio)) && $t->lessThanOrEqualTo($fin);
+        }));
+        // La última posición del recorrido la actualiza la base (tg_posicion_recorrido_en_curso).
         foreach ($posiciones as $p) {
             DB::table('mov_posiciones')->insert(['institucion_id' => $inst, 'mov_recorrido_id' => $recorridoId, 'latitud' => round((float) $p['latitud'], 6), 'longitud' => round((float) $p['longitud'], 6),
                 'velocidad_kmh' => $p['velocidad_kmh'] ?? null, 'precision_m' => isset($p['precision_m']) ? (int) $p['precision_m'] : null, 'registrado_at' => $p['registrado_at'] ?? now()]);
@@ -84,23 +107,59 @@ class AppPersonal
         return count($posiciones);
     }
 
-    public function evento(User $usuario, int $recorridoId, int $asignacionId, string $tipo, ?float $lat, ?float $lng): void
+    /** Subió / bajó / no subió. Con $cuando (registrado sin conexión) se guarda la hora real y no se duplica. */
+    public function evento(User $usuario, int $recorridoId, int $asignacionId, string $tipo, ?float $lat, ?float $lng, ?Carbon $cuando = null): void
     {
-        $r = $this->recorridoEnCurso($usuario, $recorridoId);
+        $r = $this->recorridoEnCurso($usuario, $recorridoId, $cuando);
         $a = DB::table('mov_asignaciones')->where('id', $asignacionId)->where('mov_ruta_id', $r->mov_ruta_id)->first();
-        abort_if(! $a, 404);
+        abort_if(! $a, 404, 'Ese alumno no está en esta ruta.');
+        $ocurrido = $cuando ?? now();
+        if ($cuando && DB::table('mov_eventos')->where('mov_asignacion_id', $asignacionId)->where('mov_recorrido_id', $recorridoId)->where('tipo', $tipo)->where('ocurrido_at', $ocurrido)->exists()) {
+            return; // El mismo registro enviado dos veces.
+        }
         DB::table('mov_eventos')->insert(['institucion_id' => ContextoInstitucion::requerido(), 'mov_asignacion_id' => $asignacionId, 'mov_recorrido_id' => $recorridoId, 'tipo' => $tipo,
-            'ocurrido_at' => now(), 'latitud' => $lat, 'longitud' => $lng, 'registrado_por' => $usuario->id, 'notificado_at' => now()]);
+            'ocurrido_at' => $ocurrido, 'latitud' => $lat, 'longitud' => $lng, 'registrado_por' => $usuario->id, 'notificado_at' => now()]);
         $nombre = DB::table('alumnos')->where('id', $a->alumno_id)->value('nombres');
         $padres = DB::table('alumno_apoderado as aa')->join('apoderados as p', 'p.id', '=', 'aa.apoderado_id')->where('aa.alumno_id', $a->alumno_id)->whereNotNull('p.user_id')->pluck('p.user_id')->all();
-        $texto = ['subio' => "{$nombre} subió a la movilidad.", 'bajo' => "{$nombre} bajó de la movilidad.", 'no_subio' => "{$nombre} no subió a la movilidad."][$tipo];
+        $hora = $cuando ? ' a las '.$cuando->copy()->timezone(config('app.timezone'))->format('H:i').' (registrado sin señal)' : '';
+        $texto = ['subio' => "{$nombre} subió a la movilidad{$hora}.", 'bajo' => "{$nombre} bajó de la movilidad{$hora}.", 'no_subio' => "{$nombre} no subió a la movilidad{$hora}."][$tipo];
         $this->notificador->enviar($padres, ['app'], 'movilidad', 'Movilidad escolar', $texto, ['pantalla' => 'inicio', 'id' => $a->alumno_id]);
     }
 
-    public function finalizar(User $usuario, int $recorridoId): void
+    /**
+     * EDUN-163 · Marcas guardadas sin conexión, en orden; cada una responde por separado.
+     *
+     * @param  list<array{id: string, recorrido_id: int, asignacion_id: int, tipo: string, ocurrido_at: string, latitud?: float|null, longitud?: float|null}>  $eventos
+     */
+    public function eventosLote(User $usuario, array $eventos): array
     {
+        $resultados = [];
+        foreach ($eventos as $e) {
+            try {
+                DB::transaction(fn () => $this->evento($usuario, (int) $e['recorrido_id'], (int) $e['asignacion_id'], $e['tipo'], $e['latitud'] ?? null, $e['longitud'] ?? null, Carbon::parse($e['ocurrido_at'])));
+                $resultados[] = ['id' => $e['id'], 'ok' => true];
+            } catch (ValidationException $x) {
+                $resultados[] = ['id' => $e['id'], 'ok' => false, 'mensaje' => collect($x->errors())->flatten()->first()];
+            } catch (HttpException $x) {
+                $resultados[] = ['id' => $e['id'], 'ok' => false, 'mensaje' => $x->getMessage() ?: 'No encontrado.'];
+            }
+        }
+
+        return ['resultados' => $resultados];
+    }
+
+    /** Fin del recorrido; si se marcó sin señal, llega con la hora real. Repetirlo no falla. */
+    public function finalizar(User $usuario, int $recorridoId, ?Carbon $cuando = null): void
+    {
+        $r = DB::table('mov_recorridos')->find($recorridoId);
+        if ($r && $r->estado === 'finalizado') {
+            $this->exigirRuta($usuario, (int) $r->mov_ruta_id);
+
+            return;
+        }
         $this->recorridoEnCurso($usuario, $recorridoId);
-        DB::table('mov_recorridos')->where('id', $recorridoId)->update(['estado' => 'finalizado', 'finalizado_at' => now()]);
+        $fin = $cuando && $cuando->lessThan(now()) && $r->iniciado_at && $cuando->greaterThan(Carbon::parse($r->iniciado_at)) ? $cuando : now();
+        DB::table('mov_recorridos')->where('id', $recorridoId)->update(['estado' => 'finalizado', 'finalizado_at' => $fin]);
     }
 
     // ── Enfermería: atención rápida
@@ -116,9 +175,17 @@ class AppPersonal
             ->orderBy('apellido_paterno')->limit(10)->get(['id', 'apellido_paterno', 'apellido_materno', 'nombres'])->map(fn ($a) => (array) $a)->all();
     }
 
-    public function atender(int $alumnoId, string $motivo, string $accion, bool $derivado, ?string $retiradoPor, bool $avisar, int $usuarioId): int
+    /**
+     * EDUN-176 · Si se entrega al alumno (derivado), se verifica el documento de quien lo retira
+     * contra los apoderados y autorizados, y queda la salida registrada (origen «topico»).
+     */
+    public function atender(int $alumnoId, string $motivo, string $accion, bool $derivado, ?string $retiroDocumento, bool $avisar, int $usuarioId): int
     {
         abort_if(! DB::table('alumnos')->whereNull('eliminado_at')->where('id', $alumnoId)->exists(), 404);
+        $retiradoPor = null;
+        if ($retiroDocumento !== null && trim($retiroDocumento) !== '') {
+            $retiradoPor = app(Salidas::class)->registrar($alumnoId, $retiroDocumento, 'topico', 'Retiro desde tópico: '.trim($motivo), $usuarioId)['recoge'];
+        }
         // Los datos de salud tienen RLS propio: solo se abren a quien tiene permiso de salud (lo exige la ruta).
         DB::select("select set_config('app.acceso_salud', 'on', true)");
         $id = (int) DB::table('salud.atenciones')->insertGetId([

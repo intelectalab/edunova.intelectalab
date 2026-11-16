@@ -48,15 +48,23 @@ class Carnes
         return $codigo;
     }
 
-    /** Alumno por el código de su carné (asistencia, portería, comedor). */
+    /**
+     * Alumno por el código de su carné (asistencia, portería, comedor) o, si no lo encuentra y el
+     * texto tiene forma de documento (se olvidó el carné), por su DNI o carné de extranjería (EDUN-186).
+     */
     public function buscar(string $codigo): ?array
     {
-        $a = DB::table('alumnos as a')
+        $codigo = strtoupper(trim($codigo));
+        $consulta = fn (string $columna) => DB::table('alumnos as a')
             ->leftJoin('matriculas as m', fn ($j) => $j->on('m.alumno_id', '=', 'a.id')->where('m.estado', '=', 'matriculado'))
             ->leftJoin('secciones as s', 's.id', '=', 'm.seccion_id')->leftJoin('grados as g', 'g.id', '=', 's.grado_id')
-            ->where('a.codigo_carne', strtoupper(trim($codigo)))->whereNull('a.eliminado_at')
+            ->where($columna, $codigo)->whereNull('a.eliminado_at')
             ->orderByDesc('m.anio_escolar_id')
             ->first(['a.id', 'a.apellido_paterno', 'a.apellido_materno', 'a.nombres', 'a.estado', DB::raw("g.nombre || ' ' || s.nombre as seccion")]);
+        $a = $consulta('a.codigo_carne');
+        if (! $a && preg_match('/^(\d{8}|[A-Z0-9]{9,12})$/', $codigo)) {
+            $a = $consulta('a.numero_documento');
+        }
 
         return $a ? (array) $a : null;
     }

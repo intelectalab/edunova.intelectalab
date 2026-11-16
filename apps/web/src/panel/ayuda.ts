@@ -57,6 +57,22 @@ export const AYUDA: Record<string, Ayuda> = {
     noPuedes: ['Registrar días futuros.', 'Pisar un registro más reciente (gana el último registrado).'],
     consejo: 'Las faltas y tardanzas avisan a la familia al momento. Desde la app se puede tomar sin señal.',
   },
+  movilidad: {
+    para: 'Rutas de movilidad escolar por turno, con sus paraderos, alumnos, unidades y personal.',
+    puedes: [
+      'Registrar unidades con sus vencimientos (SOAT, autorización, revisión técnica): avisa 30 días antes.',
+      'Registrar conductores y auxiliares y enlazarlos a su usuario para que usen la app.',
+      'Crear rutas, ordenar sus paraderos y asignar alumnos a cada paradero.',
+    ],
+    noPuedes: ['Asignar más alumnos que los asientos de la unidad.', 'Quitar un paradero que todavía tiene alumnos.', 'Asignar alumnos sin matrícula en el año vigente.'],
+    consejo: 'En la app, el auxiliar inicia el recorrido y marca quién sube y baja, también sin señal: la familia recibe el aviso.',
+  },
+  salidas: {
+    para: 'Salidas del colegio verificadas en portería o en el tópico, con quién recogió a cada alumno.',
+    puedes: ['Ver las salidas de cualquier día.'],
+    noPuedes: ['Registrar salidas desde aquí: se registran en la app de portería o de enfermería, verificando el documento de quien recoge.'],
+    consejo: 'Las personas autorizadas para recoger se cargan en la ficha de cada alumno.',
+  },
   justificaciones: {
     para: 'Justificaciones de inasistencia que envían las familias, con su sustento.',
     puedes: ['Ver el motivo y la foto o PDF del sustento.', 'Aceptar: las faltas (F) de esos días pasan a justificadas (J).', 'Rechazar con una explicación para la familia.'],

@@ -39,6 +39,17 @@ cuántos registros esperan. Los conflictos los resuelve la hora real de cada reg
 Los apoderados envían la justificación con una foto del sustento (cámara o galería, con
 `expo-image-picker`); el tutor la acepta o rechaza en la web y la falta pasa de F a J.
 
+## Puerta, portería, tópico y movilidad (EDUN-186, 214, 176, 163, 165)
+
+- **Puerta:** además del QR del carné, se registra la asistencia con el DNI del alumno si olvidó el carné.
+- **Portería:** al inicio del turno se descarga (cifrada) la lista de quién puede recoger a cada
+  alumno; la salida se verifica con el documento de quien recoge, también sin señal, y se envía sola.
+- **Tópico:** si el alumno se va, se elige quién lo retira entre sus apoderados y autorizados.
+- **Movilidad:** las marcas de subida y bajada, la ubicación y el fin del recorrido se guardan en la
+  cola cifrada y salen al volver la señal con su hora real. La ubicación sigue en segundo plano
+  (`src/ubicacion.ts`, `expo-task-manager`) solo mientras el recorrido está en curso; en Android
+  muestra un aviso fijo. Necesita un build (no funciona en Expo Go).
+
 ## APK de pruebas (Android)
 
 Para instalar en un celular sin pasar por la tienda. Se compila en la PC con Android Studio
