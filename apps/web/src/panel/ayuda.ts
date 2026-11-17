@@ -72,6 +72,21 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  aula: {
+    para: 'Aula virtual del colegio: cursos creados desde la carga docente, con materiales, tareas, cuestionarios, foros y clases en vivo.',
+    puedes: [
+      'Docente: organizar unidades, subir materiales (PDF, video, enlaces, lecturas), publicar tareas y cuestionarios y revisar entregas.',
+      'Generar preguntas con IA para el banco: llegan marcadas y no se usan hasta que las apruebas.',
+      'Seguir a cada alumno: avance, tiempo, última actividad, notas y observaciones; avisar a la familia.',
+      'Alumno: avanzar en orden, ver videos, entregar tareas y rendir cuestionarios con corrección automática.',
+    ],
+    noPuedes: ['Adelantar un video si el curso no lo permite.', 'Usar preguntas de IA sin revisarlas.', 'Alojar la clase en vivo: se enlaza a Meet, Zoom o Teams.'],
+    consejo: 'Las notas del aula son sugerencias: pásalas al registro oficial en Notas.',
+  },
+  'tareas-hijos': {
+    para: 'Tareas que los docentes publican en el aula para tus hijos.',
+    puedes: ['Ver la fecha límite, si ya entregó y la nota.'],
+  },
   documentos: {
     para: 'Documentos institucionales (reglamento, PEI, normas), autorizaciones que firman los padres y vencimientos de los expedientes.',
     puedes: [

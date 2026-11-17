@@ -18,6 +18,8 @@ export function politicaContenido(apiUrl: string | undefined, desarrollo: boolea
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
     'font-src': ["'self'", 'https://fonts.gstatic.com'],
     'img-src': ["'self'", 'data:', 'blob:'],
+    // Aula virtual: los videos del curso llegan con URL firmada del almacenamiento (solo https).
+    'media-src': ["'self'", 'blob:', 'https:', ...(desarrollo ? ['http://localhost:9000', 'http://localhost:9002'] : [])],
     'connect-src': ["'self'", api, ...(desarrollo ? ['ws:'] : [])],
     'frame-ancestors': ["'none'"],
     'base-uri': ["'self'"],

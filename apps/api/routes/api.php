@@ -9,6 +9,7 @@ use App\Modulos\ADM\Http\Controllers\InstitucionController;
 use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
+use App\Modulos\AUL\Http\Controllers\AulaController;
 use App\Modulos\CAL\Http\Controllers\JustificacionesController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
@@ -574,6 +575,67 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::delete('/autorizaciones/{autorizacion}/firmas/{alumno}', [DocumentosController::class, 'anularFirma'])->whereNumber('autorizacion')->whereNumber('alumno')->middleware('permiso:doc.autorizaciones.crear');
         Route::get('/familia/autorizaciones', [DocumentosController::class, 'autorizacionesFamilia']);
         Route::post('/familia/autorizaciones/{autorizacion}/firma', [DocumentosController::class, 'firmar'])->whereNumber('autorizacion')->middleware('throttle:30,1');
+    });
+
+    // S27–S29 · Aula virtual a medida (EDUN-123 a 142). El acceso a cada curso lo resuelve Aula::rol().
+    Route::middleware('modulo:AUL')->prefix('aula')->group(function () {
+        Route::get('/cursos', [AulaController::class, 'cursos']);
+        Route::get('/familia/tareas', [AulaController::class, 'tareasHijos']);
+        Route::prefix('/cursos/{curso}')->whereNumber('curso')->group(function () {
+            Route::get('/', [AulaController::class, 'curso']);
+            Route::patch('/', [AulaController::class, 'configurar']);
+            Route::post('/unidades', [AulaController::class, 'guardarUnidad']);
+            Route::put('/unidades/{unidad}', [AulaController::class, 'guardarUnidad'])->whereNumber('unidad');
+            Route::delete('/unidades/{unidad}', [AulaController::class, 'quitarUnidad'])->whereNumber('unidad');
+            Route::post('/unidades/{unidad}/recursos', [AulaController::class, 'guardarRecurso'])->whereNumber('unidad')->middleware('throttle:60,1');
+            Route::post('/unidades/{unidad}/recursos/{recurso}', [AulaController::class, 'guardarRecurso'])->whereNumber('unidad')->whereNumber('recurso')->middleware('throttle:60,1');
+            Route::post('/unidades/{unidad}/encuesta', [AulaController::class, 'encuesta'])->whereNumber('unidad')->middleware('throttle:20,1');
+            Route::delete('/recursos/{recurso}', [AulaController::class, 'quitarRecurso'])->whereNumber('recurso');
+            Route::get('/recursos/{recurso}/archivo', [AulaController::class, 'archivoRecurso'])->whereNumber('recurso');
+            Route::post('/recursos/{recurso}/avance', [AulaController::class, 'avanzar'])->whereNumber('recurso')->middleware('throttle:240,1');
+            Route::post('/avisos', [AulaController::class, 'aviso'])->middleware('throttle:30,1');
+            Route::delete('/avisos/{aviso}', [AulaController::class, 'quitarAviso'])->whereNumber('aviso');
+
+            Route::post('/tareas', [AulaController::class, 'guardarTarea'])->middleware('throttle:60,1');
+            Route::post('/tareas/{tarea}', [AulaController::class, 'guardarTarea'])->whereNumber('tarea')->middleware('throttle:60,1');
+            Route::post('/tareas/{tarea}/publicacion', [AulaController::class, 'publicarTarea'])->whereNumber('tarea');
+            Route::delete('/tareas/{tarea}', [AulaController::class, 'quitarTarea'])->whereNumber('tarea');
+            Route::get('/tareas/{tarea}/archivo', [AulaController::class, 'archivoTarea'])->whereNumber('tarea');
+            Route::post('/tareas/{tarea}/entrega', [AulaController::class, 'entregar'])->whereNumber('tarea')->middleware('throttle:30,1');
+            Route::get('/tareas/{tarea}/entregas', [AulaController::class, 'entregas'])->whereNumber('tarea');
+            Route::post('/tareas/{tarea}/entregas/{alumno}/revision', [AulaController::class, 'revisar'])->whereNumber('tarea')->whereNumber('alumno');
+            Route::get('/tareas/{tarea}/entregas/{alumno}/archivo', [AulaController::class, 'archivoEntrega'])->whereNumber('tarea')->whereNumber('alumno');
+
+            Route::get('/bancos', [AulaController::class, 'bancos']);
+            Route::post('/bancos', [AulaController::class, 'crearBanco']);
+            Route::get('/bancos/{banco}/preguntas', [AulaController::class, 'preguntas'])->whereNumber('banco');
+            Route::post('/bancos/{banco}/preguntas', [AulaController::class, 'guardarPregunta'])->whereNumber('banco');
+            Route::put('/bancos/{banco}/preguntas/{pregunta}', [AulaController::class, 'guardarPregunta'])->whereNumber('banco')->whereNumber('pregunta');
+            Route::post('/bancos/{banco}/preguntas/{pregunta}/revision', [AulaController::class, 'revisarPregunta'])->whereNumber('banco')->whereNumber('pregunta');
+            Route::post('/bancos/{banco}/ia', [AulaController::class, 'generarIa'])->whereNumber('banco')->middleware('throttle:10,1');
+
+            Route::post('/cuestionarios', [AulaController::class, 'guardarCuestionario']);
+            Route::put('/cuestionarios/{cuestionario}', [AulaController::class, 'guardarCuestionario'])->whereNumber('cuestionario');
+            Route::get('/cuestionarios/{cuestionario}', [AulaController::class, 'cuestionario'])->whereNumber('cuestionario');
+            Route::post('/cuestionarios/{cuestionario}/publicacion', [AulaController::class, 'publicarCuestionario'])->whereNumber('cuestionario');
+            Route::post('/cuestionarios/{cuestionario}/intentos-extra', [AulaController::class, 'intentoExtra'])->whereNumber('cuestionario');
+            Route::post('/cuestionarios/{cuestionario}/intento', [AulaController::class, 'iniciar'])->whereNumber('cuestionario')->middleware('throttle:30,1');
+            Route::post('/cuestionarios/{cuestionario}/envio', [AulaController::class, 'enviar'])->whereNumber('cuestionario')->middleware('throttle:30,1');
+            Route::get('/encuestas', [AulaController::class, 'encuestas']);
+
+            Route::get('/foros', [AulaController::class, 'foros']);
+            Route::post('/foros', [AulaController::class, 'crearForo']);
+            Route::get('/foros/{foro}', [AulaController::class, 'mensajes'])->whereNumber('foro');
+            Route::post('/foros/{foro}', [AulaController::class, 'escribir'])->whereNumber('foro')->middleware('throttle:60,1');
+            Route::patch('/foros/{foro}/mensajes/{mensaje}', [AulaController::class, 'ocultarMensaje'])->whereNumber('foro')->whereNumber('mensaje');
+            Route::get('/clases', [AulaController::class, 'clases']);
+            Route::post('/clases', [AulaController::class, 'guardarClase']);
+            Route::put('/clases/{clase}', [AulaController::class, 'guardarClase'])->whereNumber('clase');
+            Route::get('/observaciones', [AulaController::class, 'observaciones']);
+            Route::post('/observaciones', [AulaController::class, 'observar']);
+            Route::get('/seguimiento', [AulaController::class, 'seguimiento']);
+            Route::post('/seguimiento/{alumno}/aviso', [AulaController::class, 'avisarFamilia'])->whereNumber('alumno')->middleware('throttle:20,1');
+        });
     });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.

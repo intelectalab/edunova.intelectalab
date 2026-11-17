@@ -8,6 +8,7 @@ import { useSincronizacion } from './colaDispositivo';
 import { JustificarApp } from './justificaciones';
 import { TramitesApp } from './tramites';
 import { AutorizacionesApp, RecojoApp } from './familiaColegio';
+import { AulaApp, TareasHijosApp } from './aula';
 import { AgendaApp, ComunicadosApp } from './comunicacion';
 import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
 import { EstadoCuentaApp, RatificacionApp } from './familia';
@@ -186,6 +187,8 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {colegio.roles.includes('apoderado') && <ComunicadosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <NotasApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <JustificarApp api={api} color={color} />}
+        {colegio.roles.includes('alumno') && <AulaApp api={api} color={color} />}
+        {colegio.roles.includes('apoderado') && <TareasHijosApp api={api} />}
         {colegio.roles.includes('apoderado') && <AutorizacionesApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <RecojoApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <TramitesApp api={api} color={color} />}
@@ -199,10 +202,6 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
             </Tarjeta>
           </>
         )}
-        <Tarjeta>
-          <Text style={estilos.etiqueta}>Pronto en la app</Text>
-          <Text style={estilos.subtitulo}>Tareas del aula llegarán en las próximas versiones. Mientras tanto, te avisaremos aquí.</Text>
-        </Tarjeta>
         <Tarjeta>
           <Text style={[estilos.etiqueta, enfocar !== 'inicio' && { color }]}>Notificaciones</Text>
           <Preferencias api={api} color={color} />

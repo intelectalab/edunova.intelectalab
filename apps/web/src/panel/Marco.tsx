@@ -70,6 +70,8 @@ const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'Mis
 const Tramites = perezoso(() => import('../doc/Tramites'), 'Tramites');
 const MisTramites = perezoso(() => import('../doc/Tramites'), 'MisTramites');
 const DocumentosColegio = perezoso(() => import('../doc/Documentos'), 'DocumentosColegio');
+const AulaVirtual = perezoso(() => import('../aul/Aula'), 'AulaVirtual');
+const TareasHijos = perezoso(() => import('../aul/Aula'), 'TareasHijos');
 const MisDocumentos = perezoso(() => import('../doc/Documentos'), 'MisDocumentos');
 const SalidasAnticipadas = perezoso(() => import('../por/Porteria'), 'SalidasAnticipadas');
 const Visitas = perezoso(() => import('../por/Porteria'), 'Visitas');
@@ -172,6 +174,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'POR') && puede(c, 'por.visitas.ver', 'por.visitas.registrar'),
     pantalla: () => <Visitas />,
+  },
+  {
+    ruta: 'aula',
+    nombre: 'Aula virtual',
+    grupo: 'Académico',
+    visible: (c) => moduloActivo(c, 'AUL') && (puede(c, 'aul.cursos.ver', 'aul.seguimiento.ver') || c.roles.includes('alumno')),
+    pantalla: () => <AulaVirtual />,
   },
   {
     ruta: 'justificaciones',
@@ -389,6 +398,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'DOC'),
     pantalla: () => <MisTramites />,
+  },
+  {
+    ruta: 'tareas-hijos',
+    nombre: 'Tareas del aula',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'AUL'),
+    pantalla: () => <TareasHijos />,
   },
   {
     ruta: 'mis-documentos',

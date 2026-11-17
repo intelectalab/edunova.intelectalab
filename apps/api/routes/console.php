@@ -1,5 +1,6 @@
 <?php
 
+use App\Modulos\AUL\Services\Comunidad;
 use App\Modulos\CAL\Services\Tutoria;
 use App\Modulos\COM\Services\Comunicados;
 use App\Modulos\COM\Services\LibroReclamaciones;
@@ -134,3 +135,17 @@ Artisan::command('doc:vencimientos', function () {
     $this->info("Documentos avisados: {$n}");
 })->purpose('Avisa los documentos de expedientes que vencen');
 Schedule::command('doc:vencimientos')->dailyAt('07:15')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-132 · Recordatorio de las clases en vivo que empiezan en los próximos 15 minutos.
+Artisan::command('aul:recordatorios', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('aula_clases_vivo')->whereNull('recordado_at')->whereBetween('inicio', [now(), now()->addMinutes(15)])->distinct()->pluck('institucion_id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Comunidad::class)->recordarClases();
+        });
+    }
+    $this->info("Clases recordadas: {$n}");
+})->purpose('Recuerda las clases en vivo que empiezan pronto');
+Schedule::command('aul:recordatorios')->everyFiveMinutes()->withoutOverlapping();
