@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { apiArchivo, guardarArchivo } from '../api/cliente';
-import { puede, useSesion } from '../sesion/contexto';
+import { moduloActivo, puede, useSesion } from '../sesion/contexto';
 import { Aviso, Campo, Pestanas } from '../panel/ui';
 import { fecha, mensajeError, useAccion, useCarga } from '../panel/utilidades';
 import { FormAlumno, type Ficha, type Seccion } from './Alumnos';
+import { ExpedienteDigital } from '../doc/ExpedienteDigital';
 
 type Estado = { estado: string; version: string | null; fecha: string | null; desactualizado: boolean };
 type Movimiento = { tipo: string; fecha: string; motivo: string | null; ie_destino: string | null; seccion_destino: string | null };
@@ -339,7 +340,8 @@ type Pestana = 'datos' | 'matricula' | 'deuda' | 'conducta' | 'documentos' | 'sa
 
 /** EDUN-52 · ADM-07 Expediente del alumno por pestañas, con las acciones de matrícula. */
 export function Expediente({ id, anio, secciones, alCambiar }: { id: number; anio: number; secciones: Seccion[]; alCambiar: () => void }) {
-  const { pedir } = useSesion();
+  const { pedir, estado } = useSesion();
+  const colegio = estado!.colegio_activo!;
   const { datos, error, recargar } = useCarga(() => pedir<ExpedienteDatos>(`/alumnos/${id}/expediente`), [id]);
   const [pestana, setPestana] = useState<Pestana>('datos');
   const accion = useAccion();
@@ -450,7 +452,7 @@ export function Expediente({ id, anio, secciones, alCambiar }: { id: number; ani
       {pestana === 'documentos' && datos.documentos && (
         <>
           <h3>Expediente</h3>
-          {datos.documentos.expediente.length === 0 ? <p className="ayuda">Sin documentos.</p> : datos.documentos.expediente.map((d) => <p key={d.id}>{d.categoria} · {d.nombre}</p>)}
+          {moduloActivo(colegio, 'DOC') && puede(colegio, 'doc.expedientes.ver') ? <ExpedienteDigital tipo="alumno" titular={id} /> : datos.documentos.expediente.length === 0 ? <p className="ayuda">Sin documentos.</p> : datos.documentos.expediente.map((d) => <p key={d.id}>{d.categoria} · {d.nombre}</p>)}
           <h3>Documentos emitidos</h3>
           {datos.documentos.emitidos.length === 0 ? <p className="ayuda">Sin documentos emitidos.</p> : datos.documentos.emitidos.map((d) => <p key={d.id}>{d.nombre} · {d.codigo_verificacion}{d.anulado_at ? ' (anulado)' : ''}</p>)}
         </>

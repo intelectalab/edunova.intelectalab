@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { LibroPublico } from './com/LibroPublico';
 import { slugLibro } from './com/libro';
+import { codigoVerificacion } from './doc/verificar';
+import { VerificarDocumento } from './doc/VerificarDocumento';
 import { Marco } from './panel/Marco';
 import { Consola } from './pla/Consola';
 import { PantallaDosPasos } from './seg/PantallaDosPasos';
@@ -60,6 +62,9 @@ export default function App() {
   // EDUN-66 · El libro de reclamaciones del colegio es público (sin sesión).
   const libro = slugLibro();
   if (libro) return <LibroPublico slug={libro} />;
+  // EDUN-118 · Verificación pública de un documento por su código o QR.
+  const codigo = codigoVerificacion();
+  if (codigo !== null) return <VerificarDocumento codigo={codigo} />;
   return (
     <ProveedorSesion>
       <Contenido />

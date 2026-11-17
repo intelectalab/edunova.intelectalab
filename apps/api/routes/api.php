@@ -14,6 +14,8 @@ use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
 use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
+use App\Modulos\DOC\Http\Controllers\DocumentosController;
+use App\Modulos\DOC\Http\Controllers\TramitesController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\MOV\Http\Controllers\AppPersonalController;
 use App\Modulos\MOV\Http\Controllers\ConfiguracionMovilidadController;
@@ -23,6 +25,7 @@ use App\Modulos\PAG\Http\Controllers\FinanzasController;
 use App\Modulos\PLA\Http\Controllers\InstitucionesPlataformaController;
 use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
+use App\Modulos\POR\Http\Controllers\PorteriaFamiliaController;
 use App\Modulos\POR\Http\Controllers\SalidasController;
 use App\Modulos\SEG\Http\Controllers\AccesoController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
@@ -495,11 +498,83 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/porteria/salidas', [SalidasController::class, 'registrar'])->middleware(['permiso:por.salidas.verificar', 'throttle:120,1']);
         Route::post('/porteria/salidas/lote', [SalidasController::class, 'lote'])->middleware(['permiso:por.salidas.verificar', 'throttle:60,1']);
         Route::get('/porteria/salidas', [SalidasController::class, 'delDia'])->middleware('permiso:por.salidas.ver|por.salidas.verificar');
+        // EDUN-189 · Salidas anticipadas: la familia las pide, secretaría o dirección las autoriza.
+        Route::get('/porteria/anticipadas', [PorteriaFamiliaController::class, 'anticipadas'])->middleware('permiso:por.salidas.autorizar|por.salidas.ver');
+        Route::post('/porteria/anticipadas', [PorteriaFamiliaController::class, 'registrarAnticipada'])->middleware('permiso:por.salidas.autorizar');
+        Route::post('/porteria/anticipadas/{salida}/decision', [PorteriaFamiliaController::class, 'resolver'])->whereNumber('salida')->middleware('permiso:por.salidas.autorizar');
+        Route::post('/porteria/anticipadas/{salida}/anulacion', [PorteriaFamiliaController::class, 'anular'])->whereNumber('salida')->middleware('permiso:por.salidas.autorizar');
+        // EDUN-190 · Visitas.
+        Route::get('/porteria/visitas', [PorteriaFamiliaController::class, 'visitas'])->middleware('permiso:por.visitas.ver|por.visitas.registrar');
+        Route::post('/porteria/visitas', [PorteriaFamiliaController::class, 'registrarVisita'])->middleware(['permiso:por.visitas.registrar', 'throttle:60,1']);
+        Route::post('/porteria/visitas/{visita}/salida', [PorteriaFamiliaController::class, 'salidaVisita'])->whereNumber('visita')->middleware('permiso:por.visitas.registrar');
+        // EDUN-187 / EDUN-189 · La familia: autorizados a recoger y salidas anticipadas.
+        Route::get('/familia/autorizados', [PorteriaFamiliaController::class, 'autorizados']);
+        Route::post('/familia/autorizados', [PorteriaFamiliaController::class, 'guardarAutorizado'])->middleware('throttle:30,1');
+        Route::put('/familia/autorizados/{autorizado}', [PorteriaFamiliaController::class, 'guardarAutorizado'])->whereNumber('autorizado')->middleware('throttle:30,1');
+        Route::get('/familia/salidas', [PorteriaFamiliaController::class, 'salidasFamilia']);
+        Route::post('/familia/salidas', [PorteriaFamiliaController::class, 'solicitar'])->middleware('throttle:20,1');
+        Route::post('/familia/salidas/{salida}/anulacion', [PorteriaFamiliaController::class, 'anularFamilia'])->whereNumber('salida')->middleware('throttle:20,1');
     });
     // EDUN-176 · Enfermería: quién puede retirar a un alumno derivado (sin depender del módulo de portería).
     Route::get('/salud/alumnos/{alumno}/pueden-recoger', [SalidasController::class, 'puedenRecoger'])->whereNumber('alumno')->middleware('permiso:sal.salud.registrar');
     Route::get('/salud/alumnos', [AppPersonalController::class, 'buscarAlumno'])->middleware('permiso:sal.salud.registrar');
     Route::post('/salud/atenciones', [AppPersonalController::class, 'atender'])->middleware(['permiso:sal.salud.registrar', 'throttle:60,1']);
+
+    // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.
+    Route::middleware('modulo:DOC')->group(function () {
+        Route::get('/tramites/catalogo', [TramitesController::class, 'catalogo'])->middleware('permiso:doc.tramites.ver|doc.plantillas.editar');
+        Route::post('/tramites/catalogo', [TramitesController::class, 'guardarTipo'])->middleware('permiso:doc.plantillas.editar');
+        Route::put('/tramites/catalogo/{tipo}', [TramitesController::class, 'guardarTipo'])->whereNumber('tipo')->middleware('permiso:doc.plantillas.editar');
+        Route::get('/documentos/plantillas', [TramitesController::class, 'plantillas'])->middleware('permiso:doc.plantillas.ver|doc.plantillas.editar');
+        Route::post('/documentos/plantillas', [TramitesController::class, 'guardarPlantilla'])->middleware('permiso:doc.plantillas.editar');
+        Route::put('/documentos/plantillas/{plantilla}', [TramitesController::class, 'guardarPlantilla'])->whereNumber('plantilla')->middleware('permiso:doc.plantillas.editar');
+        Route::get('/documentos/plantillas/{plantilla}', [TramitesController::class, 'versionPlantilla'])->whereNumber('plantilla')->middleware('permiso:doc.plantillas.ver|doc.plantillas.editar');
+        Route::post('/documentos/plantillas/{plantilla}/restaurar', [TramitesController::class, 'restaurarPlantilla'])->whereNumber('plantilla')->middleware('permiso:doc.plantillas.editar');
+        Route::delete('/documentos/plantillas/{plantilla}', [TramitesController::class, 'quitarPlantilla'])->whereNumber('plantilla')->middleware('permiso:doc.plantillas.editar');
+        Route::get('/documentos/plantillas/{plantilla}/vista-previa', [TramitesController::class, 'vistaPrevia'])->whereNumber('plantilla')->middleware(['permiso:doc.plantillas.ver|doc.plantillas.editar', 'throttle:30,1']);
+        Route::match(['get', 'post'], '/documentos/mi-firma', [TramitesController::class, 'miFirma'])->middleware('permiso:doc.tramites.firmar');
+        Route::post('/documentos/emitidos/{documento}/anulacion', [TramitesController::class, 'anularDocumento'])->whereNumber('documento')->middleware('permiso:doc.tramites.firmar');
+
+        Route::get('/tramites', [TramitesController::class, 'bandeja'])->middleware('permiso:doc.tramites.ver');
+        Route::post('/tramites/firmar', [TramitesController::class, 'firmar'])->middleware(['permiso:doc.tramites.firmar', 'throttle:20,1']);
+        Route::get('/tramites/{tramite}', [TramitesController::class, 'detalle'])->whereNumber('tramite')->middleware('permiso:doc.tramites.ver');
+        Route::post('/tramites/{tramite}/estado', [TramitesController::class, 'mover'])->whereNumber('tramite')->middleware('permiso:doc.tramites.atender');
+        Route::post('/tramites/{tramite}/entrega', [TramitesController::class, 'entregar'])->whereNumber('tramite')->middleware(['permiso:doc.tramites.firmar', 'throttle:20,1']);
+        Route::get('/tramites/{tramite}/adjuntos/{adjunto}', [TramitesController::class, 'adjunto'])->whereNumber('tramite')->whereNumber('adjunto')->middleware('permiso:doc.tramites.ver');
+        Route::get('/tramites/{tramite}/documento', [TramitesController::class, 'documento'])->whereNumber('tramite')->middleware('permiso:doc.tramites.ver');
+
+        Route::get('/familia/tramites/tipos', [TramitesController::class, 'tiposFamilia']);
+        Route::get('/familia/tramites', [TramitesController::class, 'misTramites']);
+        Route::post('/familia/tramites', [TramitesController::class, 'solicitar'])->middleware('throttle:20,1');
+        Route::post('/familia/tramites/{tramite}/respuesta', [TramitesController::class, 'responder'])->whereNumber('tramite')->middleware('throttle:20,1');
+        Route::get('/familia/tramites/{tramite}/documento', [TramitesController::class, 'documentoFamilia'])->whereNumber('tramite');
+
+        // S26 · Expedientes del alumno y del personal (EDUN-119, 120).
+        Route::get('/expedientes/vencimientos', [DocumentosController::class, 'porVencer'])->middleware('permiso:doc.expedientes.ver');
+        Route::get('/expedientes/{tipo}/{titular}', [DocumentosController::class, 'expediente'])->whereIn('tipo', ['alumno', 'personal'])->whereNumber('titular')->middleware('permiso:doc.expedientes.ver');
+        Route::post('/expedientes/{tipo}/{titular}', [DocumentosController::class, 'subir'])->whereIn('tipo', ['alumno', 'personal'])->whereNumber('titular')->middleware(['permiso:doc.expedientes.editar', 'throttle:60,1']);
+        Route::patch('/expedientes/documentos/{documento}', [DocumentosController::class, 'actualizarDocumento'])->whereNumber('documento')->middleware('permiso:doc.expedientes.editar');
+        Route::delete('/expedientes/documentos/{documento}', [DocumentosController::class, 'quitarDocumento'])->whereNumber('documento')->middleware('permiso:doc.expedientes.editar');
+        Route::get('/expedientes/documentos/{documento}/archivo', [DocumentosController::class, 'archivoDocumento'])->whereNumber('documento')->middleware('permiso:doc.expedientes.ver');
+        // EDUN-121 · Documentos institucionales con confirmación de lectura.
+        Route::get('/documentos/institucionales', [DocumentosController::class, 'institucionales'])->middleware('permiso:doc.institucionales.ver|doc.institucionales.publicar');
+        Route::post('/documentos/institucionales', [DocumentosController::class, 'publicar'])->middleware(['permiso:doc.institucionales.publicar', 'throttle:20,1']);
+        Route::get('/documentos/institucionales/{documento}/lecturas', [DocumentosController::class, 'lecturas'])->whereNumber('documento')->middleware('permiso:doc.institucionales.ver|doc.institucionales.publicar');
+        Route::post('/documentos/institucionales/{documento}/recordatorio', [DocumentosController::class, 'recordarLectura'])->whereNumber('documento')->middleware(['permiso:doc.institucionales.publicar', 'throttle:10,1']);
+        Route::get('/documentos/institucionales/{documento}/archivo', [DocumentosController::class, 'archivoInstitucional'])->whereNumber('documento')->middleware('permiso:doc.institucionales.ver|doc.institucionales.publicar');
+        Route::get('/familia/documentos', [DocumentosController::class, 'institucionalesFamilia']);
+        Route::post('/familia/documentos/{documento}/lectura', [DocumentosController::class, 'leer'])->whereNumber('documento');
+        Route::get('/familia/documentos/{documento}/archivo', [DocumentosController::class, 'archivoFamilia'])->whereNumber('documento');
+        // EDUN-122 · Autorizaciones firmadas por los padres.
+        Route::get('/autorizaciones', [DocumentosController::class, 'autorizaciones'])->middleware('permiso:doc.autorizaciones.ver');
+        Route::get('/autorizaciones/secciones', [DocumentosController::class, 'secciones'])->middleware('permiso:doc.autorizaciones.crear');
+        Route::post('/autorizaciones', [DocumentosController::class, 'crearAutorizacion'])->middleware(['permiso:doc.autorizaciones.crear', 'throttle:20,1']);
+        Route::get('/autorizaciones/{autorizacion}', [DocumentosController::class, 'seguimiento'])->whereNumber('autorizacion')->middleware('permiso:doc.autorizaciones.ver');
+        Route::post('/autorizaciones/{autorizacion}/recordatorio', [DocumentosController::class, 'recordarAutorizacion'])->whereNumber('autorizacion')->middleware(['permiso:doc.autorizaciones.crear', 'throttle:10,1']);
+        Route::delete('/autorizaciones/{autorizacion}/firmas/{alumno}', [DocumentosController::class, 'anularFirma'])->whereNumber('autorizacion')->whereNumber('alumno')->middleware('permiso:doc.autorizaciones.crear');
+        Route::get('/familia/autorizaciones', [DocumentosController::class, 'autorizacionesFamilia']);
+        Route::post('/familia/autorizaciones/{autorizacion}/firma', [DocumentosController::class, 'firmar'])->whereNumber('autorizacion')->middleware('throttle:30,1');
+    });
 
     // EDUN-26 · Conector de Moodle: solo si el colegio eligió Moodle o ambas.
     Route::middleware('modulo:MDL')->group(function () {
@@ -564,6 +639,9 @@ Route::middleware(['auth:sanctum', 'cms'])->prefix('cms')->group(function () {
     Route::patch('/reclamaciones/{reclamacion}', [ReclamacionesCmsController::class, 'update'])->whereNumber('reclamacion');
     Route::get('/reclamaciones/{reclamacion}/adjuntos/{indice}', [ReclamacionesCmsController::class, 'adjunto'])->whereNumber(['reclamacion', 'indice']);
 });
+
+// EDUN-118 · Verificación pública de documentos (QR): solo colegio, tipo, fecha y vigencia.
+Route::get('/verificar/{codigo}', [TramitesController::class, 'verificar'])->where('codigo', '[A-Za-z0-9-]{6,24}')->middleware('throttle:30,1');
 
 // Sitio público (sin sesión): solo contenido publicado.
 Route::get('/sitio/landing', LandingController::class)->middleware('throttle:publico');

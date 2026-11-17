@@ -67,6 +67,13 @@ const JustificacionesTutor = perezoso(() => import('../cal/Justificaciones'), 'J
 const Movilidad = perezoso(() => import('../mov/Movilidad'), 'Movilidad');
 const SalidasDelDia = perezoso(() => import('../mov/Movilidad'), 'SalidasDelDia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
+const Tramites = perezoso(() => import('../doc/Tramites'), 'Tramites');
+const MisTramites = perezoso(() => import('../doc/Tramites'), 'MisTramites');
+const DocumentosColegio = perezoso(() => import('../doc/Documentos'), 'DocumentosColegio');
+const MisDocumentos = perezoso(() => import('../doc/Documentos'), 'MisDocumentos');
+const SalidasAnticipadas = perezoso(() => import('../por/Porteria'), 'SalidasAnticipadas');
+const Visitas = perezoso(() => import('../por/Porteria'), 'Visitas');
+const RecojoFamilia = perezoso(() => import('../por/Porteria'), 'RecojoFamilia');
 
 type Pagina = { ruta: string; nombre: string; grupo: string; visible: (c: Colegio) => boolean; pantalla: () => ReactNode; oculta?: boolean };
 
@@ -125,6 +132,20 @@ const PAGINAS: Pagina[] = [
     pantalla: () => <AsistenciaDiaria />,
   },
   {
+    ruta: 'tramites',
+    nombre: 'Trámites',
+    grupo: 'Documentos',
+    visible: (c) => moduloActivo(c, 'DOC') && puede(c, 'doc.tramites.ver', 'doc.plantillas.ver', 'doc.plantillas.editar'),
+    pantalla: () => <Tramites />,
+  },
+  {
+    ruta: 'documentos',
+    nombre: 'Documentos del colegio',
+    grupo: 'Documentos',
+    visible: (c) => moduloActivo(c, 'DOC') && puede(c, 'doc.institucionales.ver', 'doc.institucionales.publicar', 'doc.autorizaciones.ver', 'doc.expedientes.ver'),
+    pantalla: () => <DocumentosColegio />,
+  },
+  {
     ruta: 'movilidad',
     nombre: 'Movilidad escolar',
     grupo: 'Servicios',
@@ -137,6 +158,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'POR') && puede(c, 'por.salidas.ver', 'por.salidas.verificar'),
     pantalla: () => <SalidasDelDia />,
+  },
+  {
+    ruta: 'salidas-anticipadas',
+    nombre: 'Salidas anticipadas',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'POR') && puede(c, 'por.salidas.autorizar'),
+    pantalla: () => <SalidasAnticipadas />,
+  },
+  {
+    ruta: 'visitas',
+    nombre: 'Visitas',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'POR') && puede(c, 'por.visitas.ver', 'por.visitas.registrar'),
+    pantalla: () => <Visitas />,
   },
   {
     ruta: 'justificaciones',
@@ -347,6 +382,27 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado'),
     pantalla: () => <MisHijos />,
+  },
+  {
+    ruta: 'mis-tramites',
+    nombre: 'Trámites',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'DOC'),
+    pantalla: () => <MisTramites />,
+  },
+  {
+    ruta: 'mis-documentos',
+    nombre: 'Documentos y autorizaciones',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'DOC'),
+    pantalla: () => <MisDocumentos />,
+  },
+  {
+    ruta: 'recojo',
+    nombre: 'Recojo y salidas',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'POR'),
+    pantalla: () => <RecojoFamilia />,
   },
   {
     ruta: 'justificar',

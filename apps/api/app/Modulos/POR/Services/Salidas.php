@@ -45,11 +45,15 @@ class Salidas
             ->where(fn ($q) => $q->whereNull('vigente_hasta')->orWhere('vigente_hasta', '>=', $hoy))
             ->get(['id', 'alumno_id', 'nombres', 'numero_documento', 'parentesco'])->groupBy('alumno_id');
 
+        $anticipadas = DB::table('por_salidas as s')->leftJoin('por_autorizados as p', 'p.id', '=', 's.por_autorizado_id')->whereIn('s.alumno_id', $ids)
+            ->where('s.fecha', $hoy)->where('s.estado', 'autorizada')->get(['s.alumno_id', 's.hora', 's.motivo', 'p.nombres'])->keyBy('alumno_id');
+
         return [
             'generado_at' => now()->toIso8601String(),
             'alumnos' => $alumnos->map(fn ($a) => [
                 'id' => (int) $a->id, 'nombre' => trim("{$a->apellido_paterno} {$a->apellido_materno}, {$a->nombres}"), 'seccion' => $a->seccion,
                 'codigo_carne' => $a->codigo_carne, 'numero_documento' => $a->numero_documento,
+                'salida_anticipada' => isset($anticipadas[$a->id]) ? ['hora' => substr((string) $anticipadas[$a->id]->hora, 0, 5), 'motivo' => $anticipadas[$a->id]->motivo, 'recoge' => $anticipadas[$a->id]->nombres] : null,
                 'pueden_recoger' => [
                     ...collect($apoderados[$a->id] ?? [])->map(fn ($p) => ['id' => null, 'nombres' => $p->nombres, 'numero_documento' => $p->numero_documento, 'parentesco' => $p->parentesco, 'apoderado' => true])->all(),
                     ...collect($autorizados[$a->id] ?? [])->map(fn ($p) => ['id' => (int) $p->id, 'nombres' => $p->nombres, 'numero_documento' => $p->numero_documento, 'parentesco' => $p->parentesco, 'apoderado' => false])->all(),
@@ -83,12 +87,21 @@ class Salidas
         if ($ahora->greaterThan(now()->addMinutes(5)) || $ahora->lessThan(now()->subHours(self::HORAS_ATRAS))) {
             throw ValidationException::withMessages(['salio_at' => ['La hora de la salida no es válida.']]);
         }
-        $id = (int) DB::table('por_salidas')->insertGetId([
-            'institucion_id' => ContextoInstitucion::requerido(), 'alumno_id' => $alumnoId, 'fecha' => $ahora->toDateString(), 'hora' => $ahora->format('H:i:s'),
-            'motivo' => mb_substr(trim($motivo ?: 'Recojo verificado en '.($origen === 'topico' ? 'tópico' : 'portería')), 0, 200),
-            'origen' => $origen, 'por_autorizado_id' => $persona['id'], 'estado' => 'salio', 'salio_at' => $ahora, 'verificado_por' => $usuarioId,
+        $salida = [
+            'por_autorizado_id' => $persona['id'], 'estado' => 'salio', 'salio_at' => $ahora, 'verificado_por' => $usuarioId,
             'recogido_por' => mb_substr("{$persona['nombres']} ({$persona['parentesco']})", 0, 200), 'recogido_documento' => $documento,
-        ]);
+        ];
+        // EDUN-189 · Si la familia pidió una salida anticipada para hoy y el colegio la autorizó, esa salida se cumple.
+        $anticipada = $origen === 'porteria' ? DB::table('por_salidas')->where('alumno_id', $alumnoId)->where('fecha', $ahora->toDateString())->where('estado', 'autorizada')->value('id') : null;
+        if ($anticipada) {
+            DB::table('por_salidas')->where('id', $anticipada)->update($salida);
+            $id = (int) $anticipada;
+        } else {
+            $id = (int) DB::table('por_salidas')->insertGetId([
+                'institucion_id' => ContextoInstitucion::requerido(), 'alumno_id' => $alumnoId, 'fecha' => $ahora->toDateString(), 'hora' => $ahora->format('H:i:s'),
+                'motivo' => mb_substr(trim($motivo ?: 'Recojo verificado en '.($origen === 'topico' ? 'tópico' : 'portería')), 0, 200), 'origen' => $origen,
+            ] + $salida);
+        }
         $alumno = DB::table('alumnos')->where('id', $alumnoId)->value('nombres');
         $padres = DB::table('alumno_apoderado as aa')->join('apoderados as p', 'p.id', '=', 'aa.apoderado_id')->where('aa.alumno_id', $alumnoId)->whereNotNull('p.user_id')->pluck('p.user_id')->all();
         $this->notificador->enviar($padres, ['app'], 'comunicados', "{$alumno} salió del colegio",
@@ -109,7 +122,7 @@ class Salidas
         $resultados = [];
         foreach ($salidas as $s) {
             $cuando = Carbon::parse($s['salio_at']);
-            $repetida = DB::table('por_salidas')->where('alumno_id', $s['alumno_id'])->where('origen', 'porteria')->where('salio_at', $cuando)
+            $repetida = DB::table('por_salidas')->where('alumno_id', $s['alumno_id'])->where('estado', 'salio')->where('salio_at', $cuando)
                 ->where('recogido_documento', strtoupper(trim((string) $s['numero_documento'])))->exists();
             if ($repetida) {
                 $resultados[] = ['id' => $s['id'], 'ok' => true];

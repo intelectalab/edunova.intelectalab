@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { puede, useSesion } from '../sesion/contexto';
+import { moduloActivo, puede, useSesion } from '../sesion/contexto';
 import { Aviso, Campo, Dialogo, Titulo } from '../panel/ui';
+import { ExpedienteDigital } from '../doc/ExpedienteDigital';
 import { fecha, NOMBRE_ROL, useAccion, useCarga } from '../panel/utilidades';
 
 type Persona = {
@@ -203,7 +204,7 @@ export function Personal() {
     () => pedir<{ data: Persona[] }>(`/personal?${new URLSearchParams({ ...(buscar ? { buscar } : {}), ...(estadoFiltro ? { estado: estadoFiltro } : {}) })}`),
     [buscar, estadoFiltro],
   );
-  const [dialogo, setDialogo] = useState<{ tipo: 'nuevo' | 'editar' | 'invitar'; p?: Persona } | null>(null);
+  const [dialogo, setDialogo] = useState<{ tipo: 'nuevo' | 'editar' | 'invitar' | 'expediente'; p?: Persona } | null>(null);
   const [aviso, setAviso] = useState<{ mensaje: string; wa: string | null } | null>(null);
   const terminar = (mensaje?: string, wa?: string | null) => {
     setDialogo(null);
@@ -288,6 +289,11 @@ export function Personal() {
                         Editar
                       </button>
                     )}{' '}
+                    {moduloActivo(colegio, 'DOC') && puede(colegio, 'doc.expedientes.ver') && (
+                      <button type="button" className="boton boton-chico boton-borde" onClick={() => setDialogo({ tipo: 'expediente', p })}>
+                        Expediente
+                      </button>
+                    )}{' '}
                     {p.usuario !== 'activo' && puede(colegio, 'seg.usuarios.crear') && (
                       <button type="button" className="boton boton-chico boton-claro" onClick={() => setDialogo({ tipo: 'invitar', p })}>
                         {p.usuario === 'sin_usuario' ? 'Invitar' : 'Reenviar'}
@@ -303,10 +309,10 @@ export function Personal() {
       </div>
       {dialogo && (
         <Dialogo
-          titulo={dialogo.tipo === 'nuevo' ? 'Registrar personal' : dialogo.tipo === 'editar' ? 'Editar personal' : 'Usuario e invitación'}
+          titulo={dialogo.tipo === 'nuevo' ? 'Registrar personal' : dialogo.tipo === 'editar' ? 'Editar personal' : dialogo.tipo === 'expediente' ? `Expediente de ${dialogo.p!.nombres} ${dialogo.p!.apellidos}` : 'Usuario e invitación'}
           alCerrar={() => setDialogo(null)}
         >
-          {dialogo.tipo === 'invitar' ? <Invitar p={dialogo.p!} alTerminar={terminar} /> : <FormPersona p={dialogo.p ?? null} alTerminar={terminar} />}
+          {dialogo.tipo === 'expediente' ? <ExpedienteDigital tipo="personal" titular={dialogo.p!.id} /> : dialogo.tipo === 'invitar' ? <Invitar p={dialogo.p!} alTerminar={terminar} /> : <FormPersona p={dialogo.p ?? null} alTerminar={terminar} />}
         </Dialogo>
       )}
     </>

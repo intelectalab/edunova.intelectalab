@@ -57,6 +57,57 @@ export const AYUDA: Record<string, Ayuda> = {
     noPuedes: ['Registrar días futuros.', 'Pisar un registro más reciente (gana el último registrado).'],
     consejo: 'Las faltas y tardanzas avisan a la familia al momento. Desde la app se puede tomar sin señal.',
   },
+  tramites: {
+    para: 'Trámites que piden las familias (constancias, certificados): bandeja por etapa, catálogo con requisitos y costo, y plantillas de los documentos.',
+    puedes: [
+      'Observar un trámite con un comentario: la familia lo corrige desde la app y vuelve a revisión.',
+      'Pasar a firma y firmar varios a la vez: se genera el PDF con QR y la familia lo descarga en la app.',
+      'Crear plantillas con variables ({alumno.nombre}, {seccion}, {fecha_larga}…) y verlas con los datos reales de un alumno.',
+      'Anular un documento emitido: no se borra y la verificación pública dice que ya no es válido.',
+    ],
+    noPuedes: [
+      'Firmar un trámite con costo mientras el pago esté pendiente.',
+      'Firmar una constancia de no adeudo si el alumno tiene cargos vencidos.',
+      'Cambiar un documento ya emitido: editar la plantilla crea una versión nueva para los siguientes.',
+    ],
+    consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
+  },
+  documentos: {
+    para: 'Documentos institucionales (reglamento, PEI, normas), autorizaciones que firman los padres y vencimientos de los expedientes.',
+    puedes: [
+      'Publicar una versión nueva: la anterior queda como histórica y las familias ven solo la vigente.',
+      'Pedir confirmación de lectura y recordar a quienes faltan.',
+      'Pedir una autorización a una o varias secciones y seguir quién aceptó, quién no y quién falta.',
+      'Ver los documentos de alumnos y personal que vencen en los próximos 30 días.',
+    ],
+    noPuedes: ['Cambiar una firma de autorización: se anula y la familia vuelve a firmar.', 'Pedir autorizaciones a secciones que no tienes a tu cargo (docentes).'],
+  },
+  'salidas-anticipadas': {
+    para: 'Salidas antes de la hora que pide la familia desde la app (o que registra secretaría).',
+    puedes: ['Autorizar o no autorizar (con la explicación para la familia).', 'Anular una salida que ya no va.'],
+    noPuedes: ['Entregar al alumno a alguien que no esté autorizado: portería lo verifica con el DNI.'],
+    consejo: 'Al autorizarla, portería la ve en su lista del turno; cuando verifica a quien recoge, la salida queda como «Salió».',
+  },
+  visitas: {
+    para: 'Registro de quién entra al colegio sin ser alumno ni personal.',
+    puedes: ['Registrar el ingreso con nombre, documento, a quién visita y el motivo.', 'Marcar la salida.'],
+    consejo: 'El documento se muestra con los primeros dígitos ocultos para cuidar los datos personales.',
+  },
+  'mis-documentos': {
+    para: 'Reglamento y normas del colegio, y autorizaciones de tus hijos.',
+    puedes: ['Leer y confirmar la lectura.', 'Autorizar o no una salida, paseo o campaña.'],
+    noPuedes: ['Cambiar una respuesta ya firmada: pídelo al colegio.'],
+  },
+  recojo: {
+    para: 'Quién puede recoger a tus hijos y salidas antes de hora.',
+    puedes: ['Agregar personas con su DNI, parentesco y vigencia, y desactivarlas.', 'Pedir una salida anticipada y elegir quién recoge.'],
+    noPuedes: ['Que portería entregue a tu hijo a alguien que no esté en la lista o cuyo permiso venció.'],
+  },
+  'mis-tramites': {
+    para: 'Pedir constancias y certificados del colegio y descargarlos firmados.',
+    puedes: ['Adjuntar los requisitos como foto o PDF.', 'Responder si el colegio observa tu trámite.', 'Descargar el documento: lleva un código y un QR para verificarlo.'],
+    noPuedes: ['Recibir un trámite con costo sin pagarlo: el cargo aparece en Mis pagos.'],
+  },
   movilidad: {
     para: 'Rutas de movilidad escolar por turno, con sus paraderos, alumnos, unidades y personal.',
     puedes: [

@@ -1,7 +1,11 @@
 // EDUN-214 · Lógica de la portería sin conexión (pura: se prueba con Vitest).
 
 export type PuedeRecoger = { id: number | null; nombres: string; numero_documento: string; parentesco: string; apoderado: boolean };
-export type AlumnoPorteria = { id: number; nombre: string; seccion: string; codigo_carne: string | null; numero_documento: string | null; pueden_recoger: PuedeRecoger[] };
+export type AlumnoPorteria = {
+  id: number; nombre: string; seccion: string; codigo_carne: string | null; numero_documento: string | null; pueden_recoger: PuedeRecoger[];
+  /** EDUN-189 · Salida anticipada autorizada para hoy (hora, motivo y quién recoge). */
+  salida_anticipada?: { hora: string; motivo: string; recoge: string | null } | null;
+};
 export type ListaTurno = { generado_at: string; alumnos: AlumnoPorteria[] };
 
 const normal = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();

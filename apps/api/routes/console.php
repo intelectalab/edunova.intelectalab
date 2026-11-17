@@ -7,6 +7,7 @@ use App\Modulos\Compartido\ContextoInstitucion;
 use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
+use App\Modulos\DOC\Services\Expedientes;
 use App\Modulos\PAG\Services\Convenios;
 use App\Modulos\PLA\Services\MesaDeAyuda;
 use App\Modulos\PLA\Services\Suspensiones;
@@ -119,3 +120,17 @@ Artisan::command('pag:convenios', function () {
     }
 })->purpose('Revisa las cuotas de los convenios de fraccionamiento');
 Schedule::command('pag:convenios')->dailyAt('07:30')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-119 / EDUN-120 · Documentos de expedientes y contratos por vencer (30 y 7 días, y el día).
+Artisan::command('doc:vencimientos', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('instituciones')->whereIn('estado', ['activo', 'implementacion'])->pluck('id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Expedientes::class)->avisarVencimientos();
+        });
+    }
+    $this->info("Documentos avisados: {$n}");
+})->purpose('Avisa los documentos de expedientes que vencen');
+Schedule::command('doc:vencimientos')->dailyAt('07:15')->timezone('America/Lima')->withoutOverlapping();

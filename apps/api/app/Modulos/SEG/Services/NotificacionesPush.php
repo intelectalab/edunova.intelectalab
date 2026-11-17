@@ -20,7 +20,7 @@ class NotificacionesPush
 {
     public const TIPOS = [
         'pagos' => 'Pagos y vencimientos', 'notas' => 'Notas y libretas', 'asistencia' => 'Asistencia',
-        'comunicados' => 'Comunicados', 'tareas' => 'Tareas', 'movilidad' => 'Movilidad', 'soporte' => 'Soporte',
+        'comunicados' => 'Comunicados', 'tareas' => 'Tareas', 'tramites' => 'Trámites y documentos', 'movilidad' => 'Movilidad', 'soporte' => 'Soporte',
     ];
 
     public function registrar(int $usuarioId, string $token, string $plataforma, ?string $version): void

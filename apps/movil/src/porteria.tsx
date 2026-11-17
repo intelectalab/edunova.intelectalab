@@ -68,6 +68,7 @@ export function PorteriaApp({ api, color }: { api: Cliente; color: string }) {
         <View style={{ gap: 6 }}>
           <Text style={{ color: colores.texto, fontWeight: '700' }}>{alumno.nombre} · {alumno.seccion}</Text>
           <Text style={estilos.subtitulo}>Pueden recogerlo (pide su documento):</Text>
+          {alumno.salida_anticipada && <Text style={{ color: '#1d4ed8', fontWeight: '600' }}>Salida anticipada autorizada hoy a las {alumno.salida_anticipada.hora}{alumno.salida_anticipada.recoge ? ` con ${alumno.salida_anticipada.recoge}` : ''}: {alumno.salida_anticipada.motivo}</Text>}
           {alumno.pueden_recoger.length === 0 && <Text style={{ color: colores.error }}>Nadie registrado para recogerlo. No lo dejes salir sin autorización de la coordinación.</Text>}
           {alumno.pueden_recoger.map((p) => (
             <Pressable key={p.numero_documento} accessibilityRole="button" onPress={() => registrar(alumno, p.numero_documento)} style={[estilos.fila, { borderWidth: 1, borderColor: colores.borde, borderRadius: 8, padding: 8 }]}>

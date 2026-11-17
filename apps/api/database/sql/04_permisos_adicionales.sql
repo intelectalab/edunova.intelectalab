@@ -35,3 +35,10 @@ INSERT INTO rol_permiso (rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r, permisos p
 WHERE r.codigo = 'director' AND p.codigo = 'pag.conceptos.ver'
 ON CONFLICT DO NOTHING;
+
+-- S26 · Salidas anticipadas (POR-03): secretaría y dirección las autorizan; dirección ve las visitas.
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id FROM roles r, permisos p
+WHERE (r.codigo = 'secretaria' AND p.codigo IN ('por.salidas.ver', 'por.salidas.autorizar'))
+   OR (r.codigo = 'director' AND p.codigo IN ('por.salidas.autorizar', 'por.visitas.ver'))
+ON CONFLICT DO NOTHING;
