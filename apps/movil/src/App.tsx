@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
+import { borrarDatosLocales } from './colaDispositivo';
+import { CLAVE_LISTA, CLAVE_RUTAS } from './clavesLocales';
 import { crearCliente, ErrorApi, siguientePaso, type EstadoSesion } from './api';
 import { destinoDeAviso, type Destino } from './destinos';
 import * as dispositivo from './dispositivo';
@@ -36,6 +38,8 @@ export default function App() {
   }, [api]);
 
   const salir = useCallback(async () => {
+    // EDUN-216 · Se envía lo pendiente y se borra la base local cifrada (cola y listas descargadas).
+    await borrarDatosLocales([CLAVE_RUTAS, CLAVE_LISTA]).catch(() => 0);
     await dispositivo.quitarPush(api);
     await api.pedir('/auth/salir', { metodo: 'POST' }).catch(() => undefined);
     await dispositivo.borrarSesion();

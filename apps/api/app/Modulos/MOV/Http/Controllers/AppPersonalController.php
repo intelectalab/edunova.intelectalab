@@ -79,4 +79,13 @@ class AppPersonalController
         return response()->json(['id' => $this->app->atender((int) $d['alumno_id'], $d['motivo'], $d['accion'], (bool) ($d['derivado'] ?? false), $d['retiro_documento'] ?? null,
             (bool) ($d['avisar_padre'] ?? true), (int) $request->user()->id)], 201);
     }
+
+    /** EDUN-216 · Atenciones guardadas sin señal (alumno por carné o DNI, con su hora real). */
+    public function atencionesLote(Request $request): JsonResponse
+    {
+        $d = $request->validate(['atenciones' => ['required', 'array', 'min:1', 'max:50'], 'atenciones.*.id' => ['required', 'string', 'max:60'], 'atenciones.*.codigo' => ['required', 'string', 'max:30'],
+            'atenciones.*.motivo' => ['required', 'string', 'max:200'], 'atenciones.*.accion' => ['required', 'string', 'max:2000'], 'atenciones.*.atendido_at' => ['required', 'date']]);
+
+        return response()->json($this->app->atencionesLote($d['atenciones'], (int) $request->user()->id));
+    }
 }

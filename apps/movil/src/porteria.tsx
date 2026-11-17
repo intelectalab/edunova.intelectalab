@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { CLAVE_LISTA } from './clavesLocales';
 import type { Cliente } from './api';
 import { guardarCifrado, guardarOperacion, leerCifrado, useEstadoCola } from './colaDispositivo';
 import { buscarEnLista, verificar, type AlumnoPorteria, type ListaTurno } from './porteriaLogica';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
 
-const CLAVE_LISTA = 'edunova.porteria.lista';
 
 /**
  * EDUN-214 · Portería: al inicio del turno se descarga (cifrada) la lista de quién puede recoger a

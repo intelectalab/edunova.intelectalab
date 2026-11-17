@@ -103,3 +103,27 @@ describe('portería sin conexión (EDUN-214)', () => {
     expect(describir(quedan[0])).toBe('Salida 2027-04-05 13:01');
   });
 });
+
+describe('marca por QR en el recorrido y atención sin señal (EDUN-213 / EDUN-216)', () => {
+  it('reconoce al alumno de la ruta por carné o DNI y rechaza a los demás', async () => {
+    const { buscarEnRuta } = await import('./recorridoLogica');
+    const alumnos = [{ asignacion_id: 1, nombres: 'Ana', apellido_paterno: 'Ruiz', codigo_carne: 'ENABC123', numero_documento: '71234567' }];
+    expect(buscarEnRuta(alumnos, 'enabc123')?.asignacion_id).toBe(1);
+    expect(buscarEnRuta(alumnos, '71234567')?.asignacion_id).toBe(1);
+    expect(buscarEnRuta(alumnos, 'ENOTRO999')).toBeNull();
+  });
+
+  it('las atenciones sin señal entran a la cola y salen en bloque', async () => {
+    const almacen = memoria();
+    await encolar(almacen, cifrado, 'atencion', { codigo: '71234567', motivo: 'Dolor de cabeza', accion: 'Reposo', atendido_at: '2027-04-05T10:00:00Z' });
+    await encolar(almacen, cifrado, 'atencion', { codigo: '71234567', motivo: 'Dolor de cabeza', accion: 'Reposo', atendido_at: '2027-04-05T10:00:00Z' });
+    const c = await leerCola(almacen, cifrado);
+    expect(c).toHaveLength(1);
+    expect(describir(c[0])).toContain('Tópico');
+    const enviadas: string[] = [];
+    const envio: Envio = { lista: async () => undefined, qr: async () => [], atenciones: async (a) => { enviadas.push(...a.map((x) => x.codigo)); return a.map((x) => ({ id: x.id, ok: true })); } };
+    await sincronizar(almacen, cifrado, envio);
+    expect(enviadas).toEqual(['71234567']);
+    expect(await leerCola(almacen, cifrado)).toHaveLength(0);
+  });
+});

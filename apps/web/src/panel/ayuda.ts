@@ -72,6 +72,11 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  laboratorio: {
+    para: 'Reserva de laboratorios y talleres, préstamo de equipos, materiales y reactivos, e incidencias.',
+    puedes: ['Reservar un espacio (sin cruces de horario) e indicar los materiales.', 'Prestar equipos por código y revisarlos al devolver.', 'Controlar stock y vencimientos; consultar la hoja de seguridad.', 'Reportar una incidencia y seguirla hasta cerrarla.'],
+    noPuedes: ['Entregar un reactivo vencido.', 'Registrar un reactivo peligroso sin hoja de seguridad ni ubicación con llave.'],
+  },
   tienda: {
     para: 'Productos, packs y listas de útiles; pedidos de la app; venta en caja con boleta e inventario.',
     puedes: ['Registrar ingresos y ajustes de stock (nunca queda negativo).', 'Publicar la lista de útiles con un pack opcional.', 'Preparar y entregar pedidos; vender en caja con boleta.'],

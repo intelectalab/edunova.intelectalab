@@ -37,7 +37,7 @@ class AppPersonal
                 'recorridos' => DB::table('mov_recorridos')->where('mov_ruta_id', $r->id)->where('fecha', $hoy)->get(['id', 'sentido', 'estado', 'iniciado_at', 'finalizado_at'])->map(fn ($x) => (array) $x)->all(),
                 'alumnos' => DB::table('mov_asignaciones as a')->join('alumnos as al', 'al.id', '=', 'a.alumno_id')->join('mov_paraderos as p', 'p.id', '=', 'a.mov_paradero_id')
                     ->where('a.mov_ruta_id', $r->id)->where('a.activa', true)->orderBy('p.orden')
-                    ->get(['a.id as asignacion_id', 'al.nombres', 'al.apellido_paterno', 'p.nombre as paradero', 'p.orden'])->map(fn ($x) => (array) $x)->all(),
+                    ->get(['a.id as asignacion_id', 'al.nombres', 'al.apellido_paterno', 'al.codigo_carne', 'al.numero_documento', 'p.nombre as paradero', 'p.orden'])->map(fn ($x) => (array) $x)->all(),
             ])->all();
     }
 
@@ -186,6 +186,41 @@ class AppPersonal
      * EDUN-176 · Si se entrega al alumno (derivado), se verifica el documento de quien lo retira
      * contra los apoderados y autorizados, y queda la salida registrada (origen «topico»).
      */
+    /**
+     * EDUN-216 · Atenciones guardadas sin señal: el alumno se reconoce por su carné o DNI, se guarda la
+     * hora real y se avisa a la familia. La misma atención enviada dos veces no se duplica.
+     *
+     * @param  list<array{id: string, codigo: string, motivo: string, accion: string, atendido_at: string}>  $atenciones
+     * @return array{resultados: list<array{id: string, ok: bool, mensaje?: string}>}
+     */
+    public function atencionesLote(array $atenciones, int $usuarioId): array
+    {
+        $r = [];
+        foreach ($atenciones as $a) {
+            $alumno = app(Carnes::class)->buscar((string) $a['codigo']);
+            if (! $alumno) {
+                $r[] = ['id' => $a['id'], 'ok' => false, 'mensaje' => 'Carné o DNI no reconocido.'];
+
+                continue;
+            }
+            $cuando = Carbon::parse($a['atendido_at']);
+            if ($cuando->greaterThan(now()->addMinutes(5)) || $cuando->lessThan(now()->subDays(7))) {
+                $r[] = ['id' => $a['id'], 'ok' => false, 'mensaje' => 'La hora de la atención no es válida.'];
+
+                continue;
+            }
+            DB::select("select set_config('app.acceso_salud', 'on', true)");
+            $repetida = DB::table('salud.atenciones')->where('alumno_id', $alumno['id'])->where('atendido_at', $cuando)->where('motivo', trim($a['motivo']))->exists();
+            if (! $repetida) {
+                $id = $this->atender((int) $alumno['id'], $a['motivo'], $a['accion'], false, null, true, $usuarioId);
+                DB::table('salud.atenciones')->where('id', $id)->update(['atendido_at' => $cuando]);
+            }
+            $r[] = ['id' => $a['id'], 'ok' => true];
+        }
+
+        return ['resultados' => $r];
+    }
+
     public function atender(int $alumnoId, string $motivo, string $accion, bool $derivado, ?string $retiroDocumento, bool $avisar, int $usuarioId): int
     {
         abort_if(! DB::table('alumnos')->whereNull('eliminado_at')->where('id', $alumnoId)->exists(), 404);

@@ -10,6 +10,7 @@ use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
 use App\Modulos\DOC\Services\Expedientes;
+use App\Modulos\LAB\Services\Laboratorios;
 use App\Modulos\MDL\Services\ConectorMoodle;
 use App\Modulos\MOV\Services\SeguimientoMovilidad;
 use App\Modulos\PAG\Services\Convenios;
@@ -222,3 +223,17 @@ Artisan::command('tie:vencidos', function () {
     $this->info("Pedidos anulados: {$n}");
 })->purpose('Anula los pedidos de la tienda sin pagar');
 Schedule::command('tie:vencidos')->hourly()->withoutOverlapping();
+
+// EDUN-193 · Materiales del laboratorio con stock bajo o por vencer (30 días): aviso diario.
+Artisan::command('lab:alertas', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('lab_materiales')->distinct()->pluck('institucion_id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Laboratorios::class)->alertas();
+        });
+    }
+    $this->info("Materiales avisados: {$n}");
+})->purpose('Avisa materiales de laboratorio con stock bajo o por vencer');
+Schedule::command('lab:alertas')->dailyAt('07:45')->timezone('America/Lima')->withoutOverlapping();

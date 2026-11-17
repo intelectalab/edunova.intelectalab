@@ -55,6 +55,7 @@ const envioDe = (api: Cliente): cola.Envio => ({
   movFin: async (f) => {
     await api.pedir(`/movilidad/recorridos/${f.recorrido_id}/fin`, { metodo: 'POST', cuerpo: { finalizado_at: f.finalizado_at } });
   },
+  atenciones: async (atenciones) => (await api.pedir<{ resultados: cola.ResultadoQr[] }>('/salud/atenciones/lote', { metodo: 'POST', cuerpo: { atenciones } })).resultados,
 });
 
 let envioActual: cola.Envio | null = null;
@@ -78,7 +79,7 @@ export async function guardarLectura(lectura: cola.Lectura) {
   reflejar(await cola.encolarLectura(AsyncStorage, await cifrado(), lectura));
 }
 /** Salidas, marcas de movilidad, posiciones y fin de recorrido: se guardan y, con señal, se envían al instante. */
-export async function guardarOperacion(tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: cola.Salida | cola.EventoMov | cola.Posicion | cola.FinMov, enviar = true) {
+export async function guardarOperacion(tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin' | 'atencion', datos: cola.Salida | cola.EventoMov | cola.Posicion | cola.FinMov | cola.Atencion, enviar = true) {
   reflejar(await cola.encolar(AsyncStorage, await cifrado(), tipo, datos));
   if (enviar && estado.enLinea) await sincronizarAhora().catch(() => undefined);
 }
@@ -87,6 +88,19 @@ export async function guardarOperacion(tipo: 'salida' | 'mov_evento' | 'mov_pos'
 export async function guardarCifrado(clave: string, valor: unknown) {
   await AsyncStorage.setItem(clave, (await cifrado()).cifrar(JSON.stringify(valor)));
 }
+/**
+ * EDUN-216 · Al cerrar sesión se borra la base local cifrada (cola y listas descargadas). Antes se
+ * intenta enviar lo pendiente; devuelve cuántos registros sin enviar se descartaron.
+ */
+export async function borrarDatosLocales(claves: string[]): Promise<number> {
+  await sincronizarAhora().catch(() => undefined);
+  const restantes = cola.pendientes(await cola.leerCola(AsyncStorage, await cifrado()));
+  await Promise.all(['edunova.cola.v2', ...claves].map((k) => AsyncStorage.removeItem(k).catch(() => undefined)));
+  reflejar([]);
+
+  return restantes;
+}
+
 export async function leerCifrado<T>(clave: string): Promise<T | null> {
   try {
     const crudo = await AsyncStorage.getItem(clave);

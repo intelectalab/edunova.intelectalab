@@ -20,6 +20,8 @@ export type EventoMov = { recorrido_id: number; asignacion_id: number; tipo: 'su
 /** EDUN-165 · Posición GPS del recorrido. */
 export type Posicion = { recorrido_id: number; latitud: number; longitud: number; velocidad_kmh?: number | null; precision_m?: number | null; registrado_at: string };
 export type FinMov = { recorrido_id: number; finalizado_at: string };
+/** EDUN-216 · Atención básica del tópico sin señal: solo alumno (carné o DNI), síntoma y acción. */
+export type Atencion = { codigo: string; motivo: string; accion: string; atendido_at: string };
 
 type Base = { id: string; creado_at: string; intentos: number; error?: string };
 export type Operacion =
@@ -28,7 +30,8 @@ export type Operacion =
   | (Base & { tipo: 'salida'; datos: Salida })
   | (Base & { tipo: 'mov_evento'; datos: EventoMov })
   | (Base & { tipo: 'mov_pos'; datos: Posicion })
-  | (Base & { tipo: 'mov_fin'; datos: FinMov });
+  | (Base & { tipo: 'mov_fin'; datos: FinMov })
+  | (Base & { tipo: 'atencion'; datos: Atencion });
 export type TipoOperacion = Operacion['tipo'];
 
 export interface Almacen {
@@ -44,12 +47,13 @@ export interface Envio {
   movEventos?(eventos: (EventoMov & { id: string })[]): Promise<ResultadoQr[]>;
   movPosiciones?(recorrido: number, posiciones: Posicion[]): Promise<void>;
   movFin?(fin: FinMov): Promise<void>;
+  atenciones?(atenciones: (Atencion & { id: string })[]): Promise<ResultadoQr[]>;
 }
 
 export const MAX_INTENTOS = 5;
 export const TAM_BLOQUE_QR = 50;
 /** Cuántas operaciones seguidas del mismo tipo van en un envío (las demás van de a una). */
-export const TAM_BLOQUE: Partial<Record<TipoOperacion, number>> = { qr: TAM_BLOQUE_QR, salida: 50, mov_evento: 100, mov_pos: 100 };
+export const TAM_BLOQUE: Partial<Record<TipoOperacion, number>> = { qr: TAM_BLOQUE_QR, salida: 50, mov_evento: 100, mov_pos: 100, atencion: 20 };
 /** Posiciones guardadas como máximo: una jornada larga sin señal no llena el teléfono (se quitan las más viejas). */
 export const MAX_POSICIONES = 2000;
 const CLAVE = 'edunova.cola.v2';
@@ -127,7 +131,7 @@ export function agregarLectura(cola: Operacion[], lectura: Lectura, ahora = new 
 }
 
 /** Agrega una operación al final (salidas, marcas y posiciones). Las posiciones tienen tope. */
-export function agregar(cola: Operacion[], tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: Salida | EventoMov | Posicion | FinMov, ahora = new Date()): Operacion[] {
+export function agregar(cola: Operacion[], tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin' | 'atencion', datos: Salida | EventoMov | Posicion | FinMov | Atencion, ahora = new Date()): Operacion[] {
   // Una misma salida o marca registrada dos veces (doble toque): basta una.
   if (cola.some((o) => o.tipo === tipo && JSON.stringify(o.datos) === JSON.stringify(datos))) return cola;
   let nueva = [...cola, { id: nuevoId(ahora.getTime()), tipo, creado_at: ahora.toISOString(), intentos: 0, datos } as Operacion];
@@ -149,6 +153,7 @@ export function describir(o: Operacion): string {
     case 'mov_evento': return `Movilidad: marca ${hora(o.datos.ocurrido_at)}`;
     case 'mov_pos': return `Movilidad: ubicación ${hora(o.datos.registrado_at)}`;
     case 'mov_fin': return `Movilidad: fin del recorrido ${hora(o.datos.finalizado_at)}`;
+    case 'atencion': return `Tópico: atención ${hora(o.datos.atendido_at)}`;
   }
 }
 
@@ -163,7 +168,7 @@ export function encolarLectura(almacen: Almacen, cifrado: Cifrado, lectura: Lect
   return modificar(almacen, cifrado, (c) => agregarLectura(c, lectura));
 }
 
-export function encolar(almacen: Almacen, cifrado: Cifrado, tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin', datos: Salida | EventoMov | Posicion | FinMov): Promise<Operacion[]> {
+export function encolar(almacen: Almacen, cifrado: Cifrado, tipo: 'salida' | 'mov_evento' | 'mov_pos' | 'mov_fin' | 'atencion', datos: Salida | EventoMov | Posicion | FinMov | Atencion): Promise<Operacion[]> {
   return modificar(almacen, cifrado, (c) => agregar(c, tipo, datos));
 }
 
@@ -232,7 +237,7 @@ async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promi
       const conId = <T,>() => bloque.map((o) => ({ id: o.id, ...(o.datos as T) }));
       // Una versión anterior de la app sin el envío de ese tipo: queda guardado para después.
       const falta = (primero.tipo === 'salida' && !envio.salidas) || (primero.tipo === 'mov_evento' && !envio.movEventos)
-        || (primero.tipo === 'mov_pos' && !envio.movPosiciones) || (primero.tipo === 'mov_fin' && !envio.movFin);
+        || (primero.tipo === 'mov_pos' && !envio.movPosiciones) || (primero.tipo === 'mov_fin' && !envio.movFin) || (primero.tipo === 'atencion' && !envio.atenciones);
       if (falta) continue;
       if (primero.tipo === 'asistencia') {
         await envio.lista(primero.datos);
@@ -250,6 +255,7 @@ async function ejecutar(almacen: Almacen, cifrado: Cifrado, envio: Envio): Promi
       } else {
         const resultados = primero.tipo === 'qr' ? await envio.qr(conId<Lectura>())
           : primero.tipo === 'salida' ? await envio.salidas!(conId<Salida>())
+          : primero.tipo === 'atencion' ? await envio.atenciones!(conId<Atencion>())
           : await envio.movEventos!(conId<EventoMov>());
         const porId = new Map(resultados.map((r) => [r.id, r]));
         const bien = new Set(bloque.filter((o) => porId.get(o.id)?.ok).map((o) => o.id));

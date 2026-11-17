@@ -2,11 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import type { Cliente } from './api';
-import { guardarOperacion, useEstadoCola } from './colaDispositivo';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { guardarCifrado, guardarOperacion, leerCifrado, useEstadoCola } from './colaDispositivo';
+import { buscarEnRuta } from './recorridoLogica';
+import { CLAVE_RUTAS } from './clavesLocales';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
 import { detenerSeguimiento, guardarPosiciones, iniciarSeguimiento, recorridoEnCurso, SEGUNDOS_POSICION } from './ubicacion';
 
-type Ruta = { id: number; nombre: string; placa: string | null; recorridos: { id: number; sentido: string; estado: string }[]; alumnos: { asignacion_id: number; nombres: string; apellido_paterno: string; paradero: string }[] };
+type Ruta = { id: number; nombre: string; placa: string | null; recorridos: { id: number; sentido: string; estado: string }[]; alumnos: { asignacion_id: number; nombres: string; apellido_paterno: string; paradero: string; codigo_carne?: string | null; numero_documento?: string | null }[] };
 type Cuota = { numero: number; vencimiento: string; monto: number; pagado: number; estado: string };
 type Convenio = { id: number; numero: string; estado: string; monto_total: number; pagado: number; saldo: number; firmado_at: string | null; cuotas: Cuota[] };
 
@@ -23,6 +26,10 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
   const [marcados, setMarcados] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [iniciando, setIniciando] = useState(false);
+  const [escaner, setEscaner] = useState(false);
+  const [permisoCamara, pedirCamara] = useCameraPermissions();
+  const [ultimoQr, setUltimoQr] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const reloj = useRef<ReturnType<typeof setInterval> | null>(null);
   const red = useEstadoCola();
   const parar = () => {
@@ -38,7 +45,16 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
   };
   const cargar = useCallback(async () => {
     try {
-      const lista = (await api.pedir<{ data: Ruta[] }>('/movilidad/mis-rutas')).data;
+      // EDUN-213 · La ruta se guarda cifrada al iniciar el turno: sin señal, se usa la guardada.
+      let lista: Ruta[];
+      try {
+        lista = (await api.pedir<{ data: Ruta[] }>('/movilidad/mis-rutas')).data;
+        await guardarCifrado(CLAVE_RUTAS, lista);
+      } catch (e) {
+        const guardada = await leerCifrado<Ruta[]>(CLAVE_RUTAS);
+        if (!guardada) throw e;
+        lista = guardada;
+      }
       setRutas(lista);
       // La app se cerró con un recorrido en curso: se retoma donde quedó.
       const guardado = await recorridoEnCurso();
@@ -122,6 +138,23 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
               )}
             </View>
           ))}
+          {/* EDUN-213 · Marca con el QR del carné, también sin señal: solo alumnos de esta ruta. */}
+          {!escaner ? <Boton titulo="Marcar con el QR del carné" borde color={color} alPulsar={async () => { if (!permisoCamara?.granted) await pedirCamara(); setEscaner(true); }} /> : permisoCamara?.granted ? (
+            <>
+              <CameraView style={{ height: 220, borderRadius: 12 }} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={({ data }) => {
+                if (data === ultimoQr) return;
+                setUltimoQr(data);
+                setTimeout(() => setUltimoQr(null), 2500);
+                const a = buscarEnRuta(activo.ruta.alumnos, data);
+                if (!a) { setAviso('Ese carné no es de un alumno de esta ruta.'); return; }
+                if (marcados[a.asignacion_id]) { setAviso(`${a.nombres} ya está marcado.`); return; }
+                setAviso(`${a.nombres} ${a.apellido_paterno}: ${activo.sentido === 'vuelta' ? 'bajó' : 'subió'}.`);
+                void marcar(a.asignacion_id, activo.sentido === 'vuelta' ? 'bajo' : 'subio');
+              }} />
+              <Boton titulo="Cerrar escáner" borde color={color} alPulsar={() => setEscaner(false)} />
+            </>
+          ) : <Text style={estilos.subtitulo}>Da permiso de cámara para escanear los carnés.</Text>}
+          {aviso && <Text style={{ color: colores.texto, fontWeight: '600' }}>{aviso}</Text>}
           <Boton titulo="Finalizar recorrido" borde color={colores.error} alPulsar={finalizar} />
         </>
       )}
@@ -147,6 +180,8 @@ export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
   const [retira, setRetira] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const red = useEstadoCola();
+  const [codigo, setCodigo] = useState('');
   const buscar = async () => {
     try {
       setResultados((await api.pedir<{ data: { id: number; nombres: string; apellido_paterno: string }[] }>(`/salud/alumnos?q=${encodeURIComponent(q.trim())}`)).data);
@@ -171,7 +206,20 @@ export function EnfermeriaApp({ api, color }: { api: Cliente; color: string }) {
   return (
     <View style={estilos.tarjeta}>
       <Text style={estilos.etiqueta}>Tópico: atención rápida</Text>
-      {!alumno ? (
+      {!red.enLinea && !alumno ? (
+        // EDUN-216 · Sin señal: solo alumno (carné o DNI), síntoma y acción; se envía al volver la conexión.
+        <>
+          <Text style={estilos.subtitulo}>Sin conexión: registra lo básico. La ficha de salud solo se ve con señal; la familia recibe el aviso al sincronizar.</Text>
+          <Campo etiqueta="Carné o DNI del alumno" value={codigo} onChangeText={(t) => setCodigo(t.replace(/\s/g, '').toUpperCase())} autoCapitalize="characters" />
+          <Campo etiqueta="Síntoma o motivo" value={motivo} onChangeText={setMotivo} />
+          <Campo etiqueta="Qué se hizo" value={accion} onChangeText={setAccion} multiline />
+          <Boton titulo="Guardar sin conexión" color={color} deshabilitado={codigo.length < 8 || !motivo.trim() || !accion.trim()} alPulsar={async () => {
+            await guardarOperacion('atencion', { codigo, motivo: motivo.trim(), accion: accion.trim(), atendido_at: new Date().toISOString() });
+            setMensaje('Atención guardada: se enviará y se avisará a la familia al volver la señal.');
+            setCodigo(''); setMotivo(''); setAccion('');
+          }} />
+        </>
+      ) : !alumno ? (
         <>
           <Campo etiqueta="Alumno (nombre, DNI o código del carné)" value={q} onChangeText={setQ} onSubmitEditing={buscar} />
           <Boton titulo="Buscar" borde color={color} deshabilitado={q.trim().length < 3} alPulsar={buscar} />

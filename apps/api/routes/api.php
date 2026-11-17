@@ -19,6 +19,7 @@ use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\DOC\Http\Controllers\DocumentosController;
 use App\Modulos\DOC\Http\Controllers\TramitesController;
+use App\Modulos\LAB\Http\Controllers\LaboratoriosController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\MDL\Http\Controllers\MoodleController;
 use App\Modulos\MOV\Http\Controllers\AppPersonalController;
@@ -525,6 +526,7 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     Route::get('/salud/alumnos/{alumno}/pueden-recoger', [SalidasController::class, 'puedenRecoger'])->whereNumber('alumno')->middleware('permiso:sal.salud.registrar');
     Route::get('/salud/alumnos', [AppPersonalController::class, 'buscarAlumno'])->middleware('permiso:sal.salud.registrar');
     Route::post('/salud/atenciones', [AppPersonalController::class, 'atender'])->middleware(['permiso:sal.salud.registrar', 'throttle:60,1']);
+    Route::post('/salud/atenciones/lote', [AppPersonalController::class, 'atencionesLote'])->middleware(['permiso:sal.salud.registrar', 'throttle:30,1']);
 
     // EDUN-122 / EDUN-178 · La familia firma autorizaciones (del colegio o de campañas de salud).
     Route::get('/familia/autorizaciones', [DocumentosController::class, 'autorizacionesFamilia']);
@@ -617,6 +619,29 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/familia', [TiendaController::class, 'catalogoFamilia']);
         Route::post('/familia/pedidos', [TiendaController::class, 'pedir'])->middleware('throttle:20,1');
         Route::post('/familia/pedidos/{pedido}/pago', [TiendaController::class, 'pagar'])->whereNumber('pedido')->middleware('throttle:20,1');
+    });
+
+    // S35 · Laboratorios y talleres (EDUN-191 a 194).
+    Route::middleware('modulo:LAB')->prefix('laboratorio')->group(function () {
+        Route::get('/espacios', [LaboratoriosController::class, 'espacios'])->middleware('permiso:lab.reservas.ver');
+        Route::post('/espacios', [LaboratoriosController::class, 'guardarEspacio'])->middleware('permiso:lab.reservas.gestionar');
+        Route::put('/espacios/{espacio}', [LaboratoriosController::class, 'guardarEspacio'])->whereNumber('espacio')->middleware('permiso:lab.reservas.gestionar');
+        Route::get('/reservas', [LaboratoriosController::class, 'reservas'])->middleware('permiso:lab.reservas.ver');
+        Route::post('/reservas', [LaboratoriosController::class, 'reservar'])->middleware(['permiso:lab.reservas.reservar', 'throttle:30,1']);
+        Route::post('/reservas/{reserva}/estado', [LaboratoriosController::class, 'moverReserva'])->whereNumber('reserva')->middleware('permiso:lab.reservas.reservar|lab.reservas.gestionar');
+        Route::get('/equipos', [LaboratoriosController::class, 'equipos'])->middleware('permiso:lab.equipos.ver');
+        Route::post('/equipos', [LaboratoriosController::class, 'guardarEquipo'])->middleware('permiso:lab.equipos.gestionar');
+        Route::put('/equipos/{equipo}', [LaboratoriosController::class, 'guardarEquipo'])->whereNumber('equipo')->middleware('permiso:lab.equipos.gestionar');
+        Route::post('/prestamos', [LaboratoriosController::class, 'prestar'])->middleware('permiso:lab.equipos.prestar');
+        Route::post('/devoluciones', [LaboratoriosController::class, 'devolver'])->middleware('permiso:lab.equipos.prestar');
+        Route::get('/materiales', [LaboratoriosController::class, 'materiales'])->middleware('permiso:lab.equipos.ver');
+        Route::post('/materiales', [LaboratoriosController::class, 'guardarMaterial'])->middleware('permiso:lab.equipos.gestionar');
+        Route::post('/materiales/{material}', [LaboratoriosController::class, 'guardarMaterial'])->whereNumber('material')->middleware('permiso:lab.equipos.gestionar');
+        Route::post('/materiales/{material}/entrega', [LaboratoriosController::class, 'entregarMaterial'])->whereNumber('material')->middleware('permiso:lab.equipos.prestar');
+        Route::get('/materiales/{material}/hoja', [LaboratoriosController::class, 'hoja'])->whereNumber('material')->middleware('permiso:lab.equipos.ver|lab.reservas.reservar');
+        Route::get('/incidencias', [LaboratoriosController::class, 'incidencias'])->middleware('permiso:lab.reservas.ver');
+        Route::post('/incidencias', [LaboratoriosController::class, 'reportar'])->middleware(['permiso:lab.reservas.reservar', 'throttle:20,1']);
+        Route::post('/incidencias/{incidencia}/estado', [LaboratoriosController::class, 'atender'])->whereNumber('incidencia')->middleware('permiso:lab.equipos.gestionar');
     });
 
     // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.

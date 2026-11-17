@@ -74,6 +74,7 @@ const SaludFamilia = perezoso(() => import('../sal/Salud'), 'SaludFamilia');
 const Comedor = perezoso(() => import('../cod/Comedor'), 'Comedor');
 const Biblioteca = perezoso(() => import('../bib/Biblioteca'), 'Biblioteca');
 const Tienda = perezoso(() => import('../tie/Tienda'), 'Tienda');
+const Laboratorio = perezoso(() => import('../lab/Laboratorio'), 'Laboratorio');
 const TiendaFamilia = perezoso(() => import('../tie/Tienda'), 'TiendaFamilia');
 const MiBiblioteca = perezoso(() => import('../bib/Biblioteca'), 'MiBiblioteca');
 const ComedorFamilia = perezoso(() => import('../cod/Comedor'), 'ComedorFamilia');
@@ -164,6 +165,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
     pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'laboratorio',
+    nombre: 'Laboratorios',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'LAB') && puede(c, 'lab.reservas.ver', 'lab.equipos.ver'),
+    pantalla: () => <Laboratorio />,
   },
   {
     ruta: 'tienda',
