@@ -66,10 +66,10 @@ git reset -q --hard "$NUEVO"
 # API (Laravel)
 cd "$DIR/apps/api"
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --quiet
-php artisan migrate --database=propietario --force
-sudo -u www-data php artisan config:cache
-sudo -u www-data php artisan route:cache
-sudo -u www-data php artisan view:cache
+php8.3 artisan migrate --database=propietario --force
+sudo -u www-data php8.3 artisan config:cache
+sudo -u www-data php8.3 artisan route:cache
+sudo -u www-data php8.3 artisan view:cache
 
 # Sitio (Next.js) y web de gestión (Vite), con las variables del sitio.
 cd "$DIR"

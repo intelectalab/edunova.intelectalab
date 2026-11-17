@@ -8,5 +8,5 @@ After=network-online.target
 Type=oneshot
 User=www-data
 WorkingDirectory=/var/www/edunova/apps/api
-ExecStart=/usr/bin/php artisan schedule:run --no-interaction
+ExecStart=/usr/bin/php8.3 artisan schedule:run --no-interaction
 TimeoutStartSec=300

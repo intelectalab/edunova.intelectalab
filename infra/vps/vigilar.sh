@@ -15,7 +15,7 @@ alertar() {
   fi
 }
 
-sudo -u www-data php "$DIR/apps/api/artisan" monitoreo:revisar --no-interaction || echo "[vigilancia] la API reportó problemas (ver arriba)"
+sudo -u www-data php8.3 "$DIR/apps/api/artisan" monitoreo:revisar --no-interaction || echo "[vigilancia] la API reportó problemas (ver arriba)"
 
 for url in "${EDUNOVA_SITIO_URL:-}/" "${EDUNOVA_API_URL:-}/salud"; do
   [ "$url" = "/" ] || [ "$url" = "/salud" ] && continue
