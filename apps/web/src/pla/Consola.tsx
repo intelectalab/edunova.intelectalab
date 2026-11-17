@@ -352,6 +352,12 @@ function Ficha({ id }: { id: number }) {
                 ))}
               </select>
             </Campo>
+            {['moodle', 'ambas'].includes(datos.suscripcion?.aula_opcion ?? '') && esSuperadmin && (
+              <button type="button" className="boton boton-borde boton-chico" disabled={accion.enviando} onClick={() => {
+                const alojado = window.confirm('¿Edunova aloja el Moodle de este colegio (plantilla infra/moodle)? Cancela si el colegio usa su propio Moodle.');
+                void accion.ejecutar(async () => setDatos(await pedir<Detalle>(`/plataforma/instituciones/${id}/aula`, { metodo: 'PUT', cuerpo: { aula_opcion: datos.suscripcion!.aula_opcion, moodle_alojado: alojado } })));
+              }}>Moodle alojado por Edunova…</button>
+            )}
           </div>
           <div className="tarjeta">
             <h2>Datos</h2>

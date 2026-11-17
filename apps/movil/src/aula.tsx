@@ -250,3 +250,26 @@ export function TareasHijosApp({ api }: { api: Cliente }) {
     </View>
   );
 }
+
+/** EDUN-144 · «Entrar a Moodle» desde la app con la misma cuenta (enlace firmado de un minuto). */
+export function EntrarMoodleApp({ api, color }: { api: Cliente; color: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+  return (
+    <View style={estilos.tarjeta}>
+      <Text style={estilos.etiqueta}>Moodle del colegio</Text>
+      <Boton titulo="Entrar a Moodle" color={color} cargando={cargando} alPulsar={async () => {
+        setCargando(true);
+        setError(null);
+        try {
+          await Linking.openURL((await api.pedir<{ url: string }>('/moodle/sso')).url);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'No se pudo abrir Moodle.');
+        } finally {
+          setCargando(false);
+        }
+      }} />
+      <MensajeError>{error}</MensajeError>
+    </View>
+  );
+}

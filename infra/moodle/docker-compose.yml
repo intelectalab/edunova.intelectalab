@@ -1,0 +1,46 @@
+# EDUN-150 · Plantilla para alojar el Moodle de un colegio (una instancia por colegio).
+# Uso: copiar esta carpeta, crear .env a partir de .env.example y levantar con
+#   docker compose --env-file .env up -d
+# El plugin auth_edunova se monta ya instalado; el respaldo diario lo hace respaldo.sh (timer).
+name: moodle-${COLEGIO}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: moodle
+      POSTGRES_USER: moodle
+      POSTGRES_PASSWORD: ${DB_CLAVE:?Falta DB_CLAVE}
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  moodle:
+    image: bitnami/moodle:4.5
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      MOODLE_DATABASE_TYPE: pgsql
+      MOODLE_DATABASE_HOST: db
+      MOODLE_DATABASE_PORT_NUMBER: 5432
+      MOODLE_DATABASE_NAME: moodle
+      MOODLE_DATABASE_USER: moodle
+      MOODLE_DATABASE_PASSWORD: ${DB_CLAVE}
+      MOODLE_USERNAME: ${ADMIN_USUARIO:-admin}
+      MOODLE_PASSWORD: ${ADMIN_CLAVE:?Falta ADMIN_CLAVE}
+      MOODLE_EMAIL: ${ADMIN_CORREO:?Falta ADMIN_CORREO}
+      MOODLE_SITE_NAME: ${NOMBRE_SITIO:-Aula del colegio}
+      MOODLE_HOST: ${DOMINIO:?Falta DOMINIO}
+      MOODLE_REVERSEPROXY: "yes"
+      MOODLE_SSLPROXY: "yes"
+    volumes:
+      - moodledata:/bitnami/moodledata
+      - moodle:/bitnami/moodle
+      - ./auth_edunova:/bitnami/moodle/auth/edunova:ro
+    ports:
+      - "127.0.0.1:${PUERTO:-8080}:8080"
+
+volumes:
+  db:
+  moodledata:
+  moodle:

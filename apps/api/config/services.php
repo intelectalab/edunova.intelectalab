@@ -88,6 +88,12 @@ return [
         'adaptadores' => [],
     ],
 
+    // S30 · Moodle conectado: sin un Moodle real (o en pruebas) el conector responde simulado.
+    'moodle' => [
+        'simular' => (bool) env('MOODLE_SIMULADO', env('APP_ENV', 'production') !== 'production'),
+        'timeout' => (int) env('MOODLE_TIMEOUT', 20),
+    ],
+
     // EDUN-60 / EDUN-68 · WhatsApp: costo por mensaje (lo define el contrato con el proveedor; 0 si no se configura).
     'whatsapp' => [
         'simular' => (bool) env('WHATSAPP_SIMULADO', env('APP_ENV', 'production') !== 'production'),

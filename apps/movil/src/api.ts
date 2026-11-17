@@ -7,6 +7,8 @@ export type Colegio = {
   slug: string;
   roles: string[];
   permisos?: string[];
+  /** Módulos encendidos del colegio (los manda /auth/yo). */
+  modulos?: string[];
   estado?: string | null;
   marca?: { color_primario: string | null; tiene_logo: boolean };
 };

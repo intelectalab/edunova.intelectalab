@@ -18,6 +18,7 @@ use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\DOC\Http\Controllers\DocumentosController;
 use App\Modulos\DOC\Http\Controllers\TramitesController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
+use App\Modulos\MDL\Http\Controllers\MoodleController;
 use App\Modulos\MOV\Http\Controllers\AppPersonalController;
 use App\Modulos\MOV\Http\Controllers\ConfiguracionMovilidadController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
@@ -642,6 +643,19 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     Route::middleware('modulo:MDL')->group(function () {
         Route::get('/moodle/conexion', [ConectorMoodleController::class, 'show'])->middleware('permiso:mdl.conector.ver');
         Route::put('/moodle/conexion', [ConectorMoodleController::class, 'update'])->middleware('permiso:mdl.conector.configurar');
+        // S30 · Moodle conectado (EDUN-143 a 149).
+        Route::post('/moodle/conexion/prueba', [MoodleController::class, 'probar'])->middleware(['permiso:mdl.conector.configurar', 'throttle:20,1']);
+        Route::post('/moodle/conexion/pausa', [MoodleController::class, 'pausar'])->middleware('permiso:mdl.conector.configurar');
+        Route::post('/moodle/sso/secreto', [MoodleController::class, 'secreto'])->middleware(['permiso:mdl.conector.configurar', 'throttle:10,1']);
+        Route::get('/moodle/sso', [MoodleController::class, 'sso'])->middleware('throttle:30,1');
+        Route::get('/moodle/resumen', [MoodleController::class, 'resumen'])->middleware('permiso:mdl.conector.ver');
+        Route::post('/moodle/sincronizacion', [MoodleController::class, 'sincronizar'])->middleware(['permiso:mdl.conector.sincronizar', 'throttle:10,1']);
+        Route::get('/moodle/bitacora', [MoodleController::class, 'bitacora'])->middleware('permiso:mdl.conector.ver');
+        Route::get('/moodle/notas', [MoodleController::class, 'notas'])->middleware('permiso:mdl.notas.ver|mdl.notas.aprobar');
+        Route::post('/moodle/notas/resolucion', [MoodleController::class, 'resolverNotas'])->middleware('permiso:mdl.notas.aprobar');
+        Route::get('/moodle/competencias', [MoodleController::class, 'competencias'])->middleware('permiso:mdl.notas.ver|mdl.notas.aprobar');
+        Route::match(['get', 'put'], '/moodle/conversion', [MoodleController::class, 'conversion'])->middleware('permiso:mdl.conector.configurar');
+        Route::get('/moodle/imagen', [MoodleController::class, 'imagen'])->middleware('permiso:mdl.conector.ver');
     });
 });
 

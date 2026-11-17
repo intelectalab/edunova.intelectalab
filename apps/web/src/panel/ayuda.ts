@@ -72,6 +72,16 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  'notas-moodle': {
+    para: 'Notas que llegan de Moodle, ya convertidas a AD/A/B/C (o 0–20) con la tabla del colegio.',
+    puedes: ['Elegir la competencia y el periodo y aprobarlas: pasan al registro oficial.', 'Descartar las que no correspondan.'],
+    noPuedes: ['Aprobar en un periodo cerrado.', 'Ver notas de cursos que no dictas (salvo coordinación y dirección).'],
+  },
+  'entrar-moodle': {
+    para: 'Abrir el Moodle del colegio con tu cuenta de Edunova.',
+    puedes: ['Entrar sin escribir otra contraseña (el enlace vence en un minuto).'],
+    noPuedes: ['Entrar si tu cuenta todavía no se creó en Moodle: se crea en la siguiente sincronización.'],
+  },
   aula: {
     para: 'Aula virtual del colegio: cursos creados desde la carga docente, con materiales, tareas, cuestionarios, foros y clases en vivo.',
     puedes: [

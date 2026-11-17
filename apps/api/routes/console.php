@@ -9,6 +9,7 @@ use App\Modulos\Compartido\Correo\CorreoDePrueba;
 use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
 use App\Modulos\DOC\Services\Expedientes;
+use App\Modulos\MDL\Services\ConectorMoodle;
 use App\Modulos\PAG\Services\Convenios;
 use App\Modulos\PLA\Services\MesaDeAyuda;
 use App\Modulos\PLA\Services\Suspensiones;
@@ -149,3 +150,17 @@ Artisan::command('aul:recordatorios', function () {
     $this->info("Clases recordadas: {$n}");
 })->purpose('Recuerda las clases en vivo que empiezan pronto');
 Schedule::command('aul:recordatorios')->everyFiveMinutes()->withoutOverlapping();
+
+// S30 · Sincronización con Moodle según la frecuencia de cada colegio (cursos, usuarios y notas).
+Artisan::command('mdl:sincronizar', function () {
+    $conexiones = DB::connection('plataforma')->table('moodle_conexiones')->where('estado', 'activo')
+        ->where(fn ($q) => $q->whereNull('ultima_sincronizacion_at')->orWhereRaw('ultima_sincronizacion_at <= now() - make_interval(mins => frecuencia_minutos)'))->pluck('institucion_id');
+    foreach ($conexiones as $inst) {
+        DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+            app(ConectorMoodle::class)->sincronizarTodo();
+        });
+    }
+    $this->info('Colegios sincronizados: '.count($conexiones));
+})->purpose('Sincroniza los colegios con Moodle según su frecuencia');
+Schedule::command('mdl:sincronizar')->everyFifteenMinutes()->withoutOverlapping();

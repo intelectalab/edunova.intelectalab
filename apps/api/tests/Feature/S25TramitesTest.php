@@ -21,6 +21,7 @@ beforeEach(function () {
     if (! $db->table('suscripcion_modulos')->where('suscripcion_id', $sus)->where('modulo_id', $doc)->exists()) {
         $db->table('suscripcion_modulos')->insert(['institucion_id' => demoId(), 'suscripcion_id' => $sus, 'modulo_id' => $doc]);
     }
+    $db->table('suscripcion_modulos')->where('suscripcion_id', $sus)->where('modulo_id', $doc)->update(['activo' => true]);
 });
 
 /** Petición con archivos (multipart) como $usuario en el colegio demo. */

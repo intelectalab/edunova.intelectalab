@@ -5,6 +5,7 @@ namespace App\Modulos\PLA\Http\Controllers;
 use App\Modulos\PLA\Services\ConsolaInstituciones;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /** EDUN-24 / EDUN-25 / EDUN-26 · PLA-01 a PLA-03: instituciones, alta, módulos y aula. */
@@ -94,9 +95,14 @@ class InstitucionesPlataformaController
 
     public function aula(Request $request, int $institucion): JsonResponse
     {
-        $datos = $request->validate(['aula_opcion' => ['required', Rule::in(['medida', 'moodle', 'ambas', 'ninguna'])]]);
+        $datos = $request->validate(['aula_opcion' => ['required', Rule::in(['medida', 'moodle', 'ambas', 'ninguna'])], 'moodle_alojado' => ['nullable', 'boolean']]);
+        $r = $this->consola->cambiarAula($institucion, $datos['aula_opcion']);
+        // EDUN-150 · Moodle alojado por Edunova (plantilla infra/moodle): se marca en la conexión del colegio.
+        if (array_key_exists('moodle_alojado', $datos) && $datos['moodle_alojado'] !== null) {
+            DB::connection('plataforma')->table('moodle_conexiones')->where('institucion_id', $institucion)->update(['alojado_por_edunova' => (bool) $datos['moodle_alojado']]);
+        }
 
-        return response()->json($this->consola->cambiarAula($institucion, $datos['aula_opcion']));
+        return response()->json($r);
     }
 
     public function reinvitar(Request $request, int $institucion, int $usuario): JsonResponse

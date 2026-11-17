@@ -60,6 +60,8 @@ const SoporteColegio = perezoso(() => import('../pla/SoporteColegio'), 'SoporteC
 const Personal = perezoso(() => import('../adm/Personal'), 'Personal');
 const PlanEstudios = perezoso(() => import('../adm/PlanEstudios'), 'PlanEstudios');
 const ConectorMoodle = perezoso(() => import('../mdl/ConectorMoodle'), 'ConectorMoodle');
+const NotasMoodle = perezoso(() => import('../mdl/ConectorMoodle'), 'NotasMoodle');
+const EntrarMoodle = perezoso(() => import('../mdl/ConectorMoodle'), 'EntrarMoodle');
 const Auditoria = perezoso(() => import('../seg/Auditoria'), 'Auditoria');
 const MiPerfil = perezoso(() => import('../seg/MiPerfil'), 'MiPerfil');
 const Usuarios = perezoso(() => import('../seg/Usuarios'), 'Usuarios');
@@ -462,6 +464,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Aula virtual',
     visible: (c) => moduloActivo(c, 'MDL') && puede(c, 'mdl.conector.ver'),
     pantalla: () => <ConectorMoodle />,
+  },
+  {
+    ruta: 'notas-moodle',
+    nombre: 'Notas de Moodle',
+    grupo: 'Aula virtual',
+    visible: (c) => moduloActivo(c, 'MDL') && puede(c, 'mdl.notas.aprobar'),
+    pantalla: () => <NotasMoodle />,
+  },
+  {
+    ruta: 'entrar-moodle',
+    nombre: 'Entrar a Moodle',
+    grupo: 'Aula virtual',
+    visible: (c) => moduloActivo(c, 'MDL') && (puede(c, 'mdl.notas.ver') || c.roles.includes('alumno')),
+    pantalla: () => <EntrarMoodle />,
   },
   { ruta: 'soporte', nombre: 'Soporte', grupo: 'Cuenta', visible: (c) => puede(c, 'pla.tickets.ver'), pantalla: () => <SoporteColegio /> },
   { ruta: 'perfil', nombre: 'Mi perfil y seguridad', grupo: 'Cuenta', visible: () => true, pantalla: () => <MiPerfil /> },

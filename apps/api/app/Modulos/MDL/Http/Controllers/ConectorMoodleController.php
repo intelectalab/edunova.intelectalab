@@ -68,6 +68,9 @@ class ConectorMoodleController
             'frecuencia_minutos' => (int) ($c->frecuencia_minutos ?? 60),
             'estado' => $c->estado ?? null,
             'ultima_sincronizacion_at' => $c->ultima_sincronizacion_at ?? null,
+            'version' => $c->version ?? null,
+            'alojado_por_edunova' => (bool) ($c->alojado_por_edunova ?? false),
+            'tiene_secreto_sso' => ! empty($c?->sso_secreto_cifrado),
         ];
     }
 }
