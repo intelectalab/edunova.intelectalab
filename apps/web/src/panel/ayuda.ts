@@ -72,6 +72,15 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  comedor: {
+    para: 'Menú semanal con nutrientes y alérgenos, planes e inscripciones, servicio del día con el QR del carné y nutrición.',
+    puedes: ['Publicar el menú a las familias (con aprobación de nutrición si el colegio la tiene).', 'Inscribir alumnos en plan mensual (un cargo por mes) o por día (un cargo por día servido).', 'Servir con el lector de QR o la lista rápida.'],
+    noPuedes: ['Servir dos veces al mismo alumno el mismo día.', 'Ver el detalle de una dieta especial desde el pase (solo nutrición y enfermería).'],
+  },
+  'comedor-familia': {
+    para: 'Menú de la semana del comedor y los días que tu hijo comió.',
+    puedes: ['Ver calorías, nutrientes y alérgenos de cada día.'],
+  },
   enfermeria: {
     para: 'Fichas de salud, atenciones del tópico y campañas con autorización de las familias.',
     puedes: ['Mantener alergias, condiciones, medicación y el contacto de emergencia.', 'Ver las atenciones del día (se registran desde la app).', 'Crear una campaña: las familias la autorizan en la app y tienes la lista del día.'],

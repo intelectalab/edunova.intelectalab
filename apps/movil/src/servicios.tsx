@@ -97,3 +97,22 @@ export function FichaSaludApp({ api, color }: { api: Cliente; color: string }) {
     </View>
   );
 }
+
+type Menu = { id: number; fecha: string; entrada: string | null; fondo: string; bebida: string | null; postre: string | null; kcal: number | null; alergenos: string | null };
+
+/** EDUN-172 · La familia ve en la app el menú publicado de la semana. */
+export function MenuComedorApp({ api }: { api: Cliente }) {
+  const [menu, setMenu] = useState<Menu[]>([]);
+  useEffect(() => {
+    api.pedir<{ menu: Menu[] }>('/familia/comedor').then((r) => setMenu(r.menu)).catch(() => setMenu([]));
+  }, [api]);
+  if (!menu.length) return null;
+  return (
+    <View style={estilos.tarjeta}>
+      <Text style={estilos.etiqueta}>Menú del comedor</Text>
+      {menu.map((m) => (
+        <Text key={m.id} style={estilos.subtitulo}>{m.fecha.split('-').reverse().slice(0, 2).join('/')} · {[m.entrada, m.fondo, m.postre].filter(Boolean).join(', ')}{m.kcal ? ` · ${m.kcal} kcal` : ''}{m.alergenos ? ` · alérgenos: ${m.alergenos}` : ''}</Text>
+      ))}
+    </View>
+  );
+}

@@ -71,6 +71,8 @@ const SalidasDelDia = perezoso(() => import('../mov/Movilidad'), 'SalidasDelDia'
 const MovilidadFamilia = perezoso(() => import('../mov/Seguimiento'), 'MovilidadFamilia');
 const SaludEnfermeria = perezoso(() => import('../sal/Salud'), 'SaludEnfermeria');
 const SaludFamilia = perezoso(() => import('../sal/Salud'), 'SaludFamilia');
+const Comedor = perezoso(() => import('../cod/Comedor'), 'Comedor');
+const ComedorFamilia = perezoso(() => import('../cod/Comedor'), 'ComedorFamilia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
 const Tramites = perezoso(() => import('../doc/Tramites'), 'Tramites');
 const MisTramites = perezoso(() => import('../doc/Tramites'), 'MisTramites');
@@ -158,6 +160,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
     pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'comedor',
+    nombre: 'Comedor',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'COD') && puede(c, 'cod.comedor.ver', 'cod.nutricion.ver'),
+    pantalla: () => <Comedor />,
   },
   {
     ruta: 'enfermeria',
@@ -417,6 +426,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'MOV'),
     pantalla: () => <MovilidadFamilia />,
+  },
+  {
+    ruta: 'comedor-familia',
+    nombre: 'Comedor',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'COD'),
+    pantalla: () => <ComedorFamilia />,
   },
   {
     ruta: 'salud-familia',

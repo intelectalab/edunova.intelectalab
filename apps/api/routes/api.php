@@ -13,6 +13,7 @@ use App\Modulos\AUL\Http\Controllers\AulaController;
 use App\Modulos\CAL\Http\Controllers\JustificacionesController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
+use App\Modulos\COD\Http\Controllers\ComedorController;
 use App\Modulos\COM\Http\Controllers\ComunicacionController;
 use App\Modulos\Compartido\Correo\EventosCorreoController;
 use App\Modulos\DOC\Http\Controllers\DocumentosController;
@@ -544,6 +545,28 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/familia/movilidad', [FichaSaludController::class, 'movilidadFamilia'])->middleware('throttle:120,1');
         Route::get('/movilidad/monitor', [FichaSaludController::class, 'monitor'])->middleware('permiso:mov.seguimiento.ver|mov.movilidad.ver');
     });
+
+    // S32 · Comedor (EDUN-168 a 175).
+    Route::middleware('modulo:COD')->prefix('comedor')->group(function () {
+        Route::get('/menus', [ComedorController::class, 'semana'])->middleware('permiso:cod.comedor.ver|cod.nutricion.ver');
+        Route::put('/menus', [ComedorController::class, 'guardarMenu'])->middleware('permiso:cod.comedor.gestionar');
+        Route::post('/menus/{menu}/estado', [ComedorController::class, 'moverMenu'])->whereNumber('menu')->middleware('permiso:cod.comedor.gestionar|cod.nutricion.aprobar');
+        Route::get('/planes', [ComedorController::class, 'planes'])->middleware('permiso:cod.comedor.ver');
+        Route::post('/planes', [ComedorController::class, 'guardarPlan'])->middleware('permiso:cod.comedor.gestionar');
+        Route::put('/planes/{plan}', [ComedorController::class, 'guardarPlan'])->whereNumber('plan')->middleware('permiso:cod.comedor.gestionar');
+        Route::get('/inscripciones', [ComedorController::class, 'inscripciones'])->middleware('permiso:cod.comedor.ver');
+        Route::post('/inscripciones', [ComedorController::class, 'inscribir'])->middleware('permiso:cod.comedor.gestionar');
+        Route::post('/inscripciones/{inscripcion}/fin', [ComedorController::class, 'terminar'])->whereNumber('inscripcion')->middleware('permiso:cod.comedor.gestionar');
+        Route::get('/lista', [ComedorController::class, 'lista'])->middleware('permiso:cod.comedor.gestionar');
+        Route::post('/servidos', [ComedorController::class, 'servir'])->middleware(['permiso:cod.comedor.gestionar', 'throttle:240,1']);
+        Route::get('/restricciones', [ComedorController::class, 'restricciones'])->middleware('permiso:sal.restricciones.ver');
+        Route::post('/restricciones', [ComedorController::class, 'registrarRestriccion'])->middleware('permiso:sal.restricciones.registrar');
+        Route::delete('/restricciones/{restriccion}', [ComedorController::class, 'retirarRestriccion'])->whereNumber('restriccion')->middleware('permiso:sal.restricciones.registrar');
+        Route::post('/mediciones', [ComedorController::class, 'medir'])->middleware('permiso:cod.nutricion.aprobar');
+        Route::get('/indicadores', [ComedorController::class, 'indicadores'])->middleware('permiso:cod.nutricion.ver');
+        Route::post('/orientacion/{alumno}', [ComedorController::class, 'orientar'])->whereNumber('alumno')->middleware(['permiso:cod.nutricion.aprobar', 'throttle:30,1']);
+    });
+    Route::get('/familia/comedor', [ComedorController::class, 'familia'])->middleware('modulo:COD');
 
     // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.
     Route::middleware('modulo:DOC')->group(function () {

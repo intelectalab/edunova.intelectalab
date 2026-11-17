@@ -9,7 +9,8 @@ import { JustificarApp } from './justificaciones';
 import { TramitesApp } from './tramites';
 import { AutorizacionesApp, RecojoApp } from './familiaColegio';
 import { AulaApp, EntrarMoodleApp, TareasHijosApp } from './aula';
-import { FichaSaludApp, MovilidadFamiliaApp } from './servicios';
+import { FichaSaludApp, MenuComedorApp, MovilidadFamiliaApp } from './servicios';
+import { PaseComedorApp } from './comedor';
 import { AgendaApp, ComunicadosApp } from './comunicacion';
 import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
 import { EstadoCuentaApp, RatificacionApp } from './familia';
@@ -184,6 +185,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {colegio.roles.includes('porteria') && <PorteriaApp api={api} color={color} />}
         {colegio.roles.some((r) => ['conductor', 'movilidad'].includes(r)) && <RecorridoApp api={api} color={color} />}
         {colegio.roles.includes('enfermeria') && <EnfermeriaApp api={api} color={color} />}
+        {colegio.roles.some((r) => ['comedor', 'nutricionista'].includes(r)) && <PaseComedorApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <ConveniosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <ComunicadosApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <NotasApp api={api} color={color} />}
@@ -192,6 +194,7 @@ export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarCo
         {colegio.modulos?.includes('MDL') && colegio.roles.some((r) => ['alumno', 'docente', 'tutor'].includes(r)) && <EntrarMoodleApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && colegio.modulos?.includes('MOV') !== false && <MovilidadFamiliaApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <TareasHijosApp api={api} />}
+        {colegio.roles.includes('apoderado') && colegio.modulos?.includes('COD') !== false && <MenuComedorApp api={api} />}
         {colegio.roles.includes('apoderado') && <AutorizacionesApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && <RecojoApp api={api} color={color} />}
         {colegio.roles.includes('apoderado') && colegio.modulos?.includes('SAL') !== false && <FichaSaludApp api={api} color={color} />}
