@@ -16,8 +16,16 @@ Cada módulo vive en `app/Modulos/<Codigo>/` (ver `app/Modulos/README.md`):
 | `PAG` | Cargos, caja, pagos en línea, convenios, recaudación bancaria, facturación electrónica |
 | `COM` | Comunicados, mensajería, agenda, citas, notificaciones (push, correo, WhatsApp), reclamos |
 | `SIA` | Exportación a SIAGIE |
-| `MDL` | Conector con Moodle |
-| `MOV` | Movilidad escolar |
+| `DOC` | Trámites en línea con firma y QR verificable, plantillas, expedientes, documentos institucionales y autorizaciones a padres |
+| `AUL` | Aula virtual a medida: cursos, materiales, tareas, cuestionarios (con IA revisada), foros, clases en vivo y seguimiento |
+| `MDL` | Moodle conectado: ingreso único, cursos, usuarios y notas (con conector simulado) |
+| `MOV` | Movilidad escolar: rutas, recorridos sin conexión, seguimiento para la familia y monitor |
+| `POR` | Portería: lista del turno, salidas verificadas y anticipadas, autorizados y visitas |
+| `SAL` | Enfermería: ficha de salud (esquema `salud`), atenciones y campañas |
+| `COD` | Comedor: menú con nutrición, planes con cobro, pase con QR y restricciones |
+| `BIB` | Biblioteca: catálogo, préstamos, reservas, plan lector, digitales e inventario |
+| `TIE` | Tienda escolar: productos y packs, listas de útiles, pedidos y venta en caja |
+| `LAB` | Laboratorios: reservas, equipos, materiales y reactivos, incidencias |
 | `SIT` | Sitio público y Panel CMS: contenido, leads, chatbot, blog de WordPress, SEO, integraciones |
 | `Compartido` | Contexto del colegio, archivos en S3, correo transaccional, monitoreo |
 

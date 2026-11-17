@@ -118,12 +118,38 @@ nunca las devuelve.
 | Webhook de rebotes y quejas del correo | Sí | `CORREO_WEBHOOK_SECRETO` | — |
 | Acceso de demostración | Sí | `EDUNOVA_DEMO_ACCESO`, `EDUNOVA_DEMO_COLEGIO` | — |
 | Pasarela, facturación y WhatsApp **simulados** | Solo se ven | `PASARELA_SIMULADA`, `FACTURACION_SIMULADA`, `WHATSAPP_SIMULADO` | — |
+| Moodle **simulado** (sin un Moodle real) | Web de gestión → Moodle | `MOODLE_SIMULADO` | Sí (en la web de gestión) |
 
 Los conectores simulados se cambian solo en el servidor a propósito: en producción permitirían
 marcar pagos o comprobantes sin cobrar ni emitir. Fuera de producción van encendidos por defecto.
 Las cuentas de pasarela y facturación de **cada colegio** se configuran en la web de gestión (Pagos).
 
 El número de WhatsApp del sitio y los datos legales se editan en Panel CMS → Configuración general.
+
+## Tareas programadas
+
+Corren con `php artisan schedule:run` cada minuto (`infra/vps/edunova-programador.timer`, que hay que
+instalar en el servidor; sin él no corre ninguna):
+
+| Comando | Cuándo | Qué hace |
+|---|---|---|
+| `com:programados` | cada minuto | Envía los comunicados programados |
+| `mov:vigilar` | cada minuto | Alerta los recorridos sin señal hace más de 3 minutos |
+| `soporte:vigilar-sla` | cada 5 minutos | Plazos de los tickets de soporte |
+| `aul:recordatorios` | cada 5 minutos | Recuerda las clases en vivo que empiezan en 15 minutos |
+| `mdl:sincronizar` | cada 15 minutos | Sincroniza con Moodle según la frecuencia de cada colegio |
+| `tie:vencidos` | cada hora | Anula los pedidos de la tienda sin pagar a las 48 horas |
+| `cal:alertas` | 06:30 | Alertas de riesgo académico |
+| `mov:vencimientos` | 06:45 | Documentos de movilidad por vencer y purga de posiciones de más de 30 días |
+| `plataforma:suspensiones` | 07:00 | Suspensiones programadas de colegios |
+| `doc:vencimientos` | 07:15 | Documentos de expedientes por vencer |
+| `pag:convenios` | 07:30 | Cuotas de convenios |
+| `lab:alertas` | 07:45 | Materiales del laboratorio con stock bajo o por vencer |
+| `com:recordatorios` | 08:00 | Eventos de mañana y reclamos por vencer |
+| `bib:vencidos` | 08:15 | Préstamos de biblioteca vencidos y devolución de libros digitales |
+
+El Moodle de un colegio alojado por Edunova se levanta con la plantilla de `infra/moodle/` (con el
+plugin de ingreso único `auth_edunova` y su respaldo diario).
 
 ## Comprobaciones
 

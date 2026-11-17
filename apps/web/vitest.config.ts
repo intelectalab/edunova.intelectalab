@@ -7,6 +7,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/pruebas/configuracion.ts'],
     css: true,
+    testTimeout: 20000,
     // Las pruebas de pantalla (e2e/, Playwright contra la API real) corren aparte con «pnpm e2e».
     exclude: [...configDefaults.exclude, 'e2e/**'],
   },

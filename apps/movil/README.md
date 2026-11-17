@@ -50,6 +50,19 @@ Los apoderados envían la justificación con una foto del sustento (cámara o ga
   (`src/ubicacion.ts`, `expo-task-manager`) solo mientras el recorrido está en curso; en Android
   muestra un aviso fijo. Necesita un build (no funciona en Expo Go).
 
+## Fases 3 y 4 en la app
+
+- **Familia:** trámites con fotos de los requisitos y descarga del documento firmado; autorizaciones y
+  documentos del colegio; autorizados a recoger y salidas anticipadas; tareas del aula de los hijos;
+  movilidad en vivo (llegada estimada y mapa del teléfono); ficha de salud; menú del comedor;
+  biblioteca (reservas y libros digitales); tienda del colegio (opcional).
+- **Alumno:** aula virtual (avance en orden, entregas con foto, cuestionarios, encuesta) con letra
+  grande y alto contraste; «Entrar a Moodle» si el colegio lo usa; biblioteca.
+- **Personal:** pase de comedor con QR; marca de subida y bajada con el QR del carné (también sin
+  señal, con la ruta guardada); atención básica del tópico sin señal. Al cerrar sesión se envía lo
+  pendiente y se borra la base local cifrada.
+- Los videos subidos al aula registran el porcentaje visto en la web; en la app se abren aparte.
+
 ## APK de pruebas (Android)
 
 Para instalar en un celular sin pasar por la tienda. Se compila en la PC con Android Studio
