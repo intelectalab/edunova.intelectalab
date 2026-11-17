@@ -104,6 +104,13 @@ class AppPersonal
                 'velocidad_kmh' => $p['velocidad_kmh'] ?? null, 'precision_m' => isset($p['precision_m']) ? (int) $p['precision_m'] : null, 'registrado_at' => $p['registrado_at'] ?? now()]);
         }
 
+        if ($posiciones) {
+            // Volvió la señal: la próxima pérdida vuelve a alertar; y aviso a las familias que están cerca (EDUN-166).
+            DB::table('mov_recorridos')->where('id', $recorridoId)->whereNotNull('alerta_senal_at')->update(['alerta_senal_at' => null]);
+            $ultima = collect($posiciones)->sortBy(fn ($p) => $p['registrado_at'] ?? now()->toIso8601String())->last();
+            app(SeguimientoMovilidad::class)->avisarCercania($recorridoId, (float) $ultima['latitud'], (float) $ultima['longitud']);
+        }
+
         return count($posiciones);
     }
 

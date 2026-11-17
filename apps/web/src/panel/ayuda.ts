@@ -72,6 +72,21 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  enfermeria: {
+    para: 'Fichas de salud, atenciones del tópico y campañas con autorización de las familias.',
+    puedes: ['Mantener alergias, condiciones, medicación y el contacto de emergencia.', 'Ver las atenciones del día (se registran desde la app).', 'Crear una campaña: las familias la autorizan en la app y tienes la lista del día.'],
+    noPuedes: ['Ver una ficha sin que quede registrado: cada consulta va a la auditoría (Ley 29733).'],
+  },
+  'movilidad-familia': {
+    para: 'Dónde está la movilidad de tu hijo y cuánto falta para su paradero.',
+    puedes: ['Ver la llegada estimada y abrir la ubicación en el mapa durante el recorrido.', 'Ver a qué hora subió o bajó.'],
+    noPuedes: ['Ver la ubicación fuera del recorrido ni de otras rutas (privacidad).'],
+    consejo: 'Te llega un aviso cuando la unidad está a menos de 500 m de tu paradero.',
+  },
+  'salud-familia': {
+    para: 'Ficha de salud de tus hijos para enfermería.',
+    puedes: ['Actualizar alergias, medicación y el contacto de emergencia.'],
+  },
   'notas-moodle': {
     para: 'Notas que llegan de Moodle, ya convertidas a AD/A/B/C (o 0–20) con la tabla del colegio.',
     puedes: ['Elegir la competencia y el periodo y aprobarlas: pasan al registro oficial.', 'Descartar las que no correspondan.'],

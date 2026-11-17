@@ -10,6 +10,7 @@ use App\Modulos\Compartido\Correo\CorreoTransaccional;
 use App\Modulos\Compartido\Monitoreo\Monitoreo;
 use App\Modulos\DOC\Services\Expedientes;
 use App\Modulos\MDL\Services\ConectorMoodle;
+use App\Modulos\MOV\Services\SeguimientoMovilidad;
 use App\Modulos\PAG\Services\Convenios;
 use App\Modulos\PLA\Services\MesaDeAyuda;
 use App\Modulos\PLA\Services\Suspensiones;
@@ -164,3 +165,30 @@ Artisan::command('mdl:sincronizar', function () {
     $this->info('Colegios sincronizados: '.count($conexiones));
 })->purpose('Sincroniza los colegios con Moodle según su frecuencia');
 Schedule::command('mdl:sincronizar')->everyFifteenMinutes()->withoutOverlapping();
+
+// EDUN-167 · Recorridos en curso sin señal hace más de 3 minutos: alerta a movilidad.
+Artisan::command('mov:vigilar', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('mov_recorridos')->where('estado', 'en_curso')->distinct()->pluck('institucion_id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(SeguimientoMovilidad::class)->vigilarSenal();
+        });
+    }
+    $this->info("Alertas de señal: {$n}");
+})->purpose('Alerta los recorridos sin señal');
+Schedule::command('mov:vigilar')->everyMinute()->withoutOverlapping();
+
+// EDUN-164 · Documentos de unidades y licencias por vencer; y purga de posiciones de más de 30 días.
+Artisan::command('mov:vencimientos', function () {
+    foreach (DB::connection('plataforma')->table('instituciones')->whereIn('estado', ['activo', 'implementacion'])->pluck('id') as $inst) {
+        DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+            app(SeguimientoMovilidad::class)->avisarVencimientos();
+        });
+    }
+    $purgadas = DB::connection('plataforma')->selectOne('select fn_purgar_posiciones(30) as n')->n ?? 0;
+    $this->info("Posiciones purgadas: {$purgadas}");
+})->purpose('Avisa documentos de movilidad por vencer y purga posiciones antiguas');
+Schedule::command('mov:vencimientos')->dailyAt('06:45')->timezone('America/Lima')->withoutOverlapping();

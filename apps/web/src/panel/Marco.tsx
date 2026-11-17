@@ -68,6 +68,9 @@ const Usuarios = perezoso(() => import('../seg/Usuarios'), 'Usuarios');
 const JustificacionesTutor = perezoso(() => import('../cal/Justificaciones'), 'JustificacionesTutor');
 const Movilidad = perezoso(() => import('../mov/Movilidad'), 'Movilidad');
 const SalidasDelDia = perezoso(() => import('../mov/Movilidad'), 'SalidasDelDia');
+const MovilidadFamilia = perezoso(() => import('../mov/Seguimiento'), 'MovilidadFamilia');
+const SaludEnfermeria = perezoso(() => import('../sal/Salud'), 'SaludEnfermeria');
+const SaludFamilia = perezoso(() => import('../sal/Salud'), 'SaludFamilia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
 const Tramites = perezoso(() => import('../doc/Tramites'), 'Tramites');
 const MisTramites = perezoso(() => import('../doc/Tramites'), 'MisTramites');
@@ -155,6 +158,13 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
     pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'enfermeria',
+    nombre: 'Enfermería',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'SAL') && puede(c, 'sal.salud.ver'),
+    pantalla: () => <SaludEnfermeria />,
   },
   {
     ruta: 'salidas',
@@ -400,6 +410,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Familia',
     visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'DOC'),
     pantalla: () => <MisTramites />,
+  },
+  {
+    ruta: 'movilidad-familia',
+    nombre: 'Movilidad',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'MOV'),
+    pantalla: () => <MovilidadFamilia />,
+  },
+  {
+    ruta: 'salud-familia',
+    nombre: 'Ficha de salud',
+    grupo: 'Familia',
+    visible: (c) => c.roles.includes('apoderado') && moduloActivo(c, 'SAL'),
+    pantalla: () => <SaludFamilia />,
   },
   {
     ruta: 'tareas-hijos',

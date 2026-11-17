@@ -29,6 +29,7 @@ use App\Modulos\PLA\Http\Controllers\OperacionController;
 use App\Modulos\PLA\Http\Controllers\SoporteController;
 use App\Modulos\POR\Http\Controllers\PorteriaFamiliaController;
 use App\Modulos\POR\Http\Controllers\SalidasController;
+use App\Modulos\SAL\Http\Controllers\FichaSaludController;
 use App\Modulos\SEG\Http\Controllers\AccesoController;
 use App\Modulos\SEG\Http\Controllers\ArchivosController;
 use App\Modulos\SEG\Http\Controllers\AuditoriaController;
@@ -522,6 +523,28 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
     Route::get('/salud/alumnos', [AppPersonalController::class, 'buscarAlumno'])->middleware('permiso:sal.salud.registrar');
     Route::post('/salud/atenciones', [AppPersonalController::class, 'atender'])->middleware(['permiso:sal.salud.registrar', 'throttle:60,1']);
 
+    // EDUN-122 / EDUN-178 · La familia firma autorizaciones (del colegio o de campañas de salud).
+    Route::get('/familia/autorizaciones', [DocumentosController::class, 'autorizacionesFamilia']);
+    Route::post('/familia/autorizaciones/{autorizacion}/firma', [DocumentosController::class, 'firmar'])->whereNumber('autorizacion')->middleware('throttle:30,1');
+
+    // S31 · Ficha de salud y campañas (EDUN-177, 178).
+    Route::middleware('modulo:SAL')->group(function () {
+        Route::get('/salud/fichas', [FichaSaludController::class, 'fichas'])->middleware('permiso:sal.salud.ver');
+        Route::get('/salud/fichas/{alumno}', [FichaSaludController::class, 'ficha'])->whereNumber('alumno')->middleware('permiso:sal.salud.ver');
+        Route::put('/salud/fichas/{alumno}', [FichaSaludController::class, 'guardarFicha'])->whereNumber('alumno')->middleware('permiso:sal.salud.registrar');
+        Route::get('/salud/atenciones', [FichaSaludController::class, 'atenciones'])->middleware('permiso:sal.salud.ver');
+        Route::get('/salud/campanas', [FichaSaludController::class, 'campanas'])->middleware('permiso:sal.salud.ver');
+        Route::post('/salud/campanas', [FichaSaludController::class, 'crearCampana'])->middleware(['permiso:sal.salud.registrar', 'throttle:20,1']);
+        Route::get('/salud/campanas/{campana}/autorizados', [FichaSaludController::class, 'autorizados'])->whereNumber('campana')->middleware('permiso:sal.salud.ver');
+        Route::get('/familia/salud/{alumno}', [FichaSaludController::class, 'fichaFamilia'])->whereNumber('alumno');
+        Route::put('/familia/salud/{alumno}', [FichaSaludController::class, 'guardarFichaFamilia'])->whereNumber('alumno')->middleware('throttle:20,1');
+    });
+    // S31 · Seguimiento de la movilidad: la familia (EDUN-166) y el monitor (EDUN-167).
+    Route::middleware('modulo:MOV')->group(function () {
+        Route::get('/familia/movilidad', [FichaSaludController::class, 'movilidadFamilia'])->middleware('throttle:120,1');
+        Route::get('/movilidad/monitor', [FichaSaludController::class, 'monitor'])->middleware('permiso:mov.seguimiento.ver|mov.movilidad.ver');
+    });
+
     // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.
     Route::middleware('modulo:DOC')->group(function () {
         Route::get('/tramites/catalogo', [TramitesController::class, 'catalogo'])->middleware('permiso:doc.tramites.ver|doc.plantillas.editar');
@@ -574,8 +597,6 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::get('/autorizaciones/{autorizacion}', [DocumentosController::class, 'seguimiento'])->whereNumber('autorizacion')->middleware('permiso:doc.autorizaciones.ver');
         Route::post('/autorizaciones/{autorizacion}/recordatorio', [DocumentosController::class, 'recordarAutorizacion'])->whereNumber('autorizacion')->middleware(['permiso:doc.autorizaciones.crear', 'throttle:10,1']);
         Route::delete('/autorizaciones/{autorizacion}/firmas/{alumno}', [DocumentosController::class, 'anularFirma'])->whereNumber('autorizacion')->whereNumber('alumno')->middleware('permiso:doc.autorizaciones.crear');
-        Route::get('/familia/autorizaciones', [DocumentosController::class, 'autorizacionesFamilia']);
-        Route::post('/familia/autorizaciones/{autorizacion}/firma', [DocumentosController::class, 'firmar'])->whereNumber('autorizacion')->middleware('throttle:30,1');
     });
 
     // S27–S29 · Aula virtual a medida (EDUN-123 a 142). El acceso a cada curso lo resuelve Aula::rol().

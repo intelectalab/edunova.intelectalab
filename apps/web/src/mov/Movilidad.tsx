@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { puede, useSesion } from '../sesion/contexto';
 import { Aviso, Campo, Dialogo, Pestanas, Titulo } from '../panel/ui';
+import { MonitorRecorridos } from './Seguimiento';
 import { fecha, useAccion, useCarga } from '../panel/utilidades';
 
 type Unidad = { id: number; placa: string; capacidad: number; soat_vence: string | null; autorizacion_vence: string | null; revision_tecnica_vence: string | null; propia: boolean; empresa: string | null; por_vencer: string[] };
@@ -19,7 +20,7 @@ export function Movilidad() {
   const { pedir, estado } = useSesion();
   const colegio = estado!.colegio_activo!;
   const gestiona = puede(colegio, 'mov.movilidad.gestionar');
-  const [pestana, setPestana] = useState<'rutas' | 'unidades' | 'personal'>('rutas');
+  const [pestana, setPestana] = useState<'rutas' | 'unidades' | 'personal' | 'monitor'>('rutas');
   const { datos, error, recargar } = useCarga(() => pedir<Resumen>('/movilidad/configuracion'));
   const accion = useAccion();
   return (
@@ -27,8 +28,8 @@ export function Movilidad() {
       <Titulo migas={`${colegio.nombre} · Servicios`} titulo="Movilidad escolar" descripcion="Rutas por turno con sus paraderos y alumnos, unidades y personal. El conductor y el auxiliar usan la app para iniciar el recorrido y marcar quién sube y baja." />
       <Aviso tipo="error">{error ?? accion.error}</Aviso>
       <Aviso tipo="ok">{accion.ok}</Aviso>
-      <Pestanas opciones={[['rutas', 'Rutas'], ['unidades', 'Unidades'], ['personal', 'Personal']]} actual={pestana} alCambiar={setPestana} />
-      {!datos ? <p className="aviso-carga" role="status">Cargando…</p> : pestana === 'rutas' ? (
+      <Pestanas opciones={[['rutas', 'Rutas'], ['unidades', 'Unidades'], ['personal', 'Personal'], ['monitor', 'Monitor de hoy']]} actual={pestana} alCambiar={setPestana} />
+      {pestana === 'monitor' ? <MonitorRecorridos /> : !datos ? <p className="aviso-carga" role="status">Cargando…</p> : pestana === 'rutas' ? (
         <Rutas datos={datos} gestiona={gestiona} recargar={recargar} accion={accion} />
       ) : pestana === 'unidades' ? (
         <Unidades datos={datos} gestiona={gestiona} recargar={recargar} accion={accion} />
