@@ -115,7 +115,7 @@ class TiendaController
     {
         $d = $request->validate(['alumno_id' => ['required', 'integer'], 'forma_pago' => ['required', Rule::in(['inmediato', 'con_pension'])], 'items' => ['required', 'array', 'min:1', 'max:30'],
             'items.*.producto_id' => ['required', 'integer'], 'items.*.cantidad' => ['required', 'integer', 'between:1,20']]);
-        abort_unless(in_array((int) $d['alumno_id'], FamiliaController::alumnosDe((int) $request->user()->id), true), 403, 'Solo compras para tus hijos.');
+        abort_unless(in_array((int) $d['alumno_id'], FamiliaController::hijosDeApoderado((int) $request->user()->id), true), 403, 'Solo el apoderado compra para sus hijos.');
 
         return response()->json($this->tienda->pedirDesdeApp((int) $d['alumno_id'], $d['items'], $d['forma_pago'], $request->user()), 201);
     }

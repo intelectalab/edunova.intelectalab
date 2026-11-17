@@ -3,13 +3,14 @@ import { Linking, Pressable, Switch, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import type { Cliente } from './api';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Crypto from 'expo-crypto';
 import { guardarCifrado, guardarOperacion, leerCifrado, useEstadoCola } from './colaDispositivo';
 import { buscarEnRuta } from './recorridoLogica';
 import { CLAVE_RUTAS } from './clavesLocales';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
 import { detenerSeguimiento, guardarPosiciones, iniciarSeguimiento, recorridoEnCurso, SEGUNDOS_POSICION } from './ubicacion';
 
-type Ruta = { id: number; nombre: string; placa: string | null; recorridos: { id: number; sentido: string; estado: string }[]; alumnos: { asignacion_id: number; nombres: string; apellido_paterno: string; paradero: string; codigo_carne?: string | null; numero_documento?: string | null }[] };
+type Ruta = { id: number; nombre: string; placa: string | null; recorridos: { id: number; sentido: string; estado: string }[]; alumnos: { asignacion_id: number; nombres: string; apellido_paterno: string; paradero: string; codigo_carne?: string | null; documento_hash?: string | null }[] };
 type Cuota = { numero: number; vencimiento: string; monto: number; pagado: number; estado: string };
 type Convenio = { id: number; numero: string; estado: string; monto_total: number; pagado: number; saldo: number; firmado_at: string | null; cuotas: Cuota[] };
 
@@ -141,11 +142,12 @@ export function RecorridoApp({ api, color }: { api: Cliente; color: string }) {
           {/* EDUN-213 · Marca con el QR del carné, también sin señal: solo alumnos de esta ruta. */}
           {!escaner ? <Boton titulo="Marcar con el QR del carné" borde color={color} alPulsar={async () => { if (!permisoCamara?.granted) await pedirCamara(); setEscaner(true); }} /> : permisoCamara?.granted ? (
             <>
-              <CameraView style={{ height: 220, borderRadius: 12 }} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={({ data }) => {
+              <CameraView style={{ height: 220, borderRadius: 12 }} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={async ({ data }) => {
                 if (data === ultimoQr) return;
                 setUltimoQr(data);
                 setTimeout(() => setUltimoQr(null), 2500);
-                const a = buscarEnRuta(activo.ruta.alumnos, data);
+                const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, data.trim().toUpperCase());
+                const a = buscarEnRuta(activo.ruta.alumnos, data, hash);
                 if (!a) { setAviso('Ese carné no es de un alumno de esta ruta.'); return; }
                 if (marcados[a.asignacion_id]) { setAviso(`${a.nombres} ya está marcado.`); return; }
                 setAviso(`${a.nombres} ${a.apellido_paterno}: ${activo.sentido === 'vuelta' ? 'bajó' : 'subió'}.`);

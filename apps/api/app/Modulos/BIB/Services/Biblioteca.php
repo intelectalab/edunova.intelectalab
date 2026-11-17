@@ -92,7 +92,10 @@ class Biblioteca
 
         return array_merge($l, [
             'descripcion' => DB::table('bib_libros')->where('id', $id)->value('descripcion'),
-            'ejemplares_detalle' => $ejemplares->map(fn ($e) => array_merge((array) $e, ['lector' => $conLectores && $e->prestamo_id ? $this->nombreLector($e->lector_tipo, (int) $e->lector_id) : null]))->all(),
+            // Quien no gestiona la biblioteca no ve qué lector tiene cada ejemplar.
+            'ejemplares_detalle' => $ejemplares->map(fn ($e) => $conLectores
+                ? array_merge((array) $e, ['lector' => $e->prestamo_id ? $this->nombreLector($e->lector_tipo, (int) $e->lector_id) : null])
+                : array_merge(array_diff_key((array) $e, array_flip(['lector_tipo', 'lector_id', 'prestamo_id'])), ['lector' => null]))->all(),
             'reservas' => DB::table('bib_reservas')->where('bib_libro_id', $id)->whereIn('estado', ['en_espera', 'disponible'])->count(),
         ]);
     }

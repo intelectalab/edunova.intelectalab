@@ -23,6 +23,13 @@ class FamiliaController
     public function __construct(private Consentimientos $consentimientos) {}
 
     /** @return list<int> alumnos del usuario: sus hijos (apoderado) o él mismo (alumno) */
+    /** Solo los hijos de los que el usuario es apoderado (no su propio registro de alumno): para acciones de la familia. */
+    public static function hijosDeApoderado(int $usuarioId): array
+    {
+        return DB::table('alumno_apoderado as aa')->join('apoderados as ap', 'ap.id', '=', 'aa.apoderado_id')->where('ap.user_id', $usuarioId)
+            ->pluck('aa.alumno_id')->map(fn ($i) => (int) $i)->unique()->values()->all();
+    }
+
     public static function alumnosDe(int $usuarioId): array
     {
         return DB::table('alumno_apoderado as aa')->join('apoderados as ap', 'ap.id', '=', 'aa.apoderado_id')->where('ap.user_id', $usuarioId)

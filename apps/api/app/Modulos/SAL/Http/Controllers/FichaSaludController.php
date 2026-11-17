@@ -78,7 +78,8 @@ class FichaSaludController
 
     public function guardarFichaFamilia(Request $request, int $alumno): JsonResponse
     {
-        abort_unless(in_array($alumno, FamiliaController::alumnosDe((int) $request->user()->id), true), 403, 'Solo la ficha de tus hijos.');
+        // Solo el apoderado actualiza la ficha (el alumno no puede borrar sus alergias o su medicación).
+        abort_unless(in_array($alumno, FamiliaController::hijosDeApoderado((int) $request->user()->id), true), 403, 'Solo el apoderado actualiza la ficha de salud.');
 
         return response()->json($this->salud->guardarFicha($alumno, $this->datosFicha($request), $request->user(), 'familia'));
     }

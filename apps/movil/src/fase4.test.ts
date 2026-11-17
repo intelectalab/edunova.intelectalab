@@ -107,9 +107,10 @@ describe('portería sin conexión (EDUN-214)', () => {
 describe('marca por QR en el recorrido y atención sin señal (EDUN-213 / EDUN-216)', () => {
   it('reconoce al alumno de la ruta por carné o DNI y rechaza a los demás', async () => {
     const { buscarEnRuta } = await import('./recorridoLogica');
-    const alumnos = [{ asignacion_id: 1, nombres: 'Ana', apellido_paterno: 'Ruiz', codigo_carne: 'ENABC123', numero_documento: '71234567' }];
+    const alumnos = [{ asignacion_id: 1, nombres: 'Ana', apellido_paterno: 'Ruiz', codigo_carne: 'ENABC123', documento_hash: 'h-71234567' }];
     expect(buscarEnRuta(alumnos, 'enabc123')?.asignacion_id).toBe(1);
-    expect(buscarEnRuta(alumnos, '71234567')?.asignacion_id).toBe(1);
+    expect(buscarEnRuta(alumnos, '71234567', 'h-71234567')?.asignacion_id).toBe(1);
+    expect(buscarEnRuta(alumnos, '71234567', 'otro')).toBeNull();
     expect(buscarEnRuta(alumnos, 'ENOTRO999')).toBeNull();
   });
 

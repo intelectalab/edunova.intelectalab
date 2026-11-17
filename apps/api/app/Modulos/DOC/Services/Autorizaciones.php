@@ -5,8 +5,10 @@ namespace App\Modulos\DOC\Services;
 use App\Models\User;
 use App\Modulos\COM\Services\Notificador;
 use App\Modulos\Compartido\ContextoInstitucion;
+use App\Modulos\SAL\Services\Salud;
 use App\Modulos\SEG\Services\AlcanceAcademico;
 use App\Modulos\SEG\Services\Auditoria;
+use App\Modulos\SEG\Services\Autorizacion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -53,6 +55,21 @@ class Autorizaciones
 
         return DB::table('autorizaciones')->when(! $todas, fn ($q) => $q->where('creado_por', $usuario->id))->orderByDesc('id')->limit(100)->pluck('id')
             ->map(fn ($id) => $this->resumen((int) $id))->all();
+    }
+
+    /**
+     * Solo quien creó la autorización (o quien ve todo el colegio) la sigue, la recuerda o anula firmas.
+     * Las firmas de una campaña de salud solo las anula enfermería.
+     */
+    public function exigirAutor(int $id, User $usuario, bool $anular = false): void
+    {
+        $a = DB::table('autorizaciones')->find($id, ['creado_por']);
+        abort_if(! $a, 404);
+        abort_unless((int) $a->creado_por === (int) $usuario->id || $this->alcance->veTodoElColegio($usuario), 403, 'Solo quien pidió la autorización la gestiona.');
+        if ($anular) {
+            $campana = Salud::conAcceso(fn () => DB::table('salud.campanas')->where('autorizacion_id', $id)->exists());
+            abort_if($campana && ! app(Autorizacion::class)->tiene($usuario, 'sal.salud.registrar'), 403, 'La firma de una campaña de salud la anula enfermería.');
+        }
     }
 
     public function seguimiento(int $id): array

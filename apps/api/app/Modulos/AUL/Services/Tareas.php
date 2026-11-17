@@ -164,9 +164,10 @@ class Tareas
 
     public function urlArchivoTarea(int $cursoId, int $id, User $usuario): string
     {
-        $this->aula->rol($cursoId, $usuario);
+        $rol = $this->aula->rol($cursoId, $usuario);
         $t = $this->tareaDelCurso($cursoId, $id);
-        abort_if(! $t->archivo_id, 404);
+        // El archivo de una tarea en borrador solo lo ve el docente.
+        abort_if(! $t->archivo_id || ($rol !== Aula::ROL_DOCENTE && ! $t->publicada_at), 404);
 
         return $this->almacen->urlTemporal(Archivo::query()->findOrFail($t->archivo_id));
     }

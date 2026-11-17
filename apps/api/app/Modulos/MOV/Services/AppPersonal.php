@@ -37,7 +37,9 @@ class AppPersonal
                 'recorridos' => DB::table('mov_recorridos')->where('mov_ruta_id', $r->id)->where('fecha', $hoy)->get(['id', 'sentido', 'estado', 'iniciado_at', 'finalizado_at'])->map(fn ($x) => (array) $x)->all(),
                 'alumnos' => DB::table('mov_asignaciones as a')->join('alumnos as al', 'al.id', '=', 'a.alumno_id')->join('mov_paraderos as p', 'p.id', '=', 'a.mov_paradero_id')
                     ->where('a.mov_ruta_id', $r->id)->where('a.activa', true)->orderBy('p.orden')
-                    ->get(['a.id as asignacion_id', 'al.nombres', 'al.apellido_paterno', 'al.codigo_carne', 'al.numero_documento', 'p.nombre as paradero', 'p.orden'])->map(fn ($x) => (array) $x)->all(),
+                    ->get(['a.id as asignacion_id', 'al.nombres', 'al.apellido_paterno', 'al.codigo_carne', 'al.numero_documento', 'p.nombre as paradero', 'p.orden'])
+                    // EDUN-213 · Al teléfono va un hash del DNI (para reconocerlo sin señal), no el DNI.
+                    ->map(fn ($x) => array_merge((array) $x, ['numero_documento' => null, 'documento_hash' => $x->numero_documento ? hash('sha256', strtoupper((string) $x->numero_documento)) : null]))->all(),
             ])->all();
     }
 

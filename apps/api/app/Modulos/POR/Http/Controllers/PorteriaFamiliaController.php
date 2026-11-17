@@ -15,9 +15,10 @@ class PorteriaFamiliaController
 {
     public function __construct(private PorteriaFamilia $porteria) {}
 
+    /** Solo el apoderado: un alumno no registra quién lo recoge ni pide su propia salida. */
     private function hijos(Request $request): array
     {
-        return FamiliaController::alumnosDe((int) $request->user()->id);
+        return FamiliaController::hijosDeApoderado((int) $request->user()->id);
     }
 
     public function autorizados(Request $request): JsonResponse

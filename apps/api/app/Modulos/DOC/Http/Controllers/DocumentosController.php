@@ -43,22 +43,34 @@ class DocumentosController
         return response()->json($this->expedientes->subir($tipo, $titular, $d['categoria'], $d['nombre'] ?? null, $request->file('archivo'), $d['vence'] ?? null, (int) $request->user()->id), 201);
     }
 
-    public function actualizarDocumento(Request $request, int $documento): JsonResponse
+    /** El documento del expediente del personal solo lo maneja quien ve al personal (dirección). */
+    private function exigirTitular(Request $request, int $documento, Autorizacion $permisos): void
     {
+        $tipo = DB::table('expediente_documentos')->where('id', $documento)->value('titular_tipo');
+        abort_if(! $tipo, 404);
+        $this->puedeVerPersonal($request, (string) $tipo, $permisos);
+    }
+
+    public function actualizarDocumento(Request $request, int $documento, Autorizacion $permisos): JsonResponse
+    {
+        $this->exigirTitular($request, $documento, $permisos);
         $d = $request->validate(['vence' => ['nullable', 'date_format:Y-m-d'], 'verificar' => ['boolean']]);
 
         return response()->json($this->expedientes->actualizar($documento, $d['vence'] ?? null, (bool) ($d['verificar'] ?? false), (int) $request->user()->id));
     }
 
-    public function quitarDocumento(int $documento): JsonResponse
+    public function quitarDocumento(Request $request, int $documento, Autorizacion $permisos): JsonResponse
     {
+        $this->exigirTitular($request, $documento, $permisos);
         $this->expedientes->quitar($documento);
 
         return response()->json(['ok' => true]);
     }
 
-    public function archivoDocumento(int $documento): JsonResponse
+    public function archivoDocumento(Request $request, int $documento, Autorizacion $permisos): JsonResponse
     {
+        $this->exigirTitular($request, $documento, $permisos);
+
         return response()->json(['url' => $this->expedientes->url($documento)]);
     }
 
@@ -145,18 +157,24 @@ class DocumentosController
         return response()->json($this->autorizaciones->crear($d['titulo'], $d['contenido'], $d['secciones'], $d['vence'], $request->user()), 201);
     }
 
-    public function seguimiento(int $autorizacion): JsonResponse
+    public function seguimiento(Request $request, int $autorizacion): JsonResponse
     {
+        $this->autorizaciones->exigirAutor($autorizacion, $request->user());
+
         return response()->json($this->autorizaciones->seguimiento($autorizacion));
     }
 
-    public function recordarAutorizacion(int $autorizacion): JsonResponse
+    public function recordarAutorizacion(Request $request, int $autorizacion): JsonResponse
     {
+        $this->autorizaciones->exigirAutor($autorizacion, $request->user());
+
         return response()->json(['enviados' => $this->autorizaciones->recordar($autorizacion)]);
     }
 
-    public function anularFirma(int $autorizacion, int $alumno): JsonResponse
+    public function anularFirma(Request $request, int $autorizacion, int $alumno): JsonResponse
     {
+        $this->autorizaciones->exigirAutor($autorizacion, $request->user(), true);
+
         $this->autorizaciones->anularFirma($autorizacion, $alumno);
 
         return response()->json(['ok' => true]);

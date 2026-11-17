@@ -127,11 +127,16 @@ class Evaluaciones
         $this->aula->exigirDocente($cursoId, $usuario);
         abort_unless(DB::table('aula_unidades')->where('id', $d['aula_unidad_id'])->where('aula_curso_id', $cursoId)->exists(), 404, 'La unidad no es de este curso.');
         $area = $this->areaDelCurso($cursoId);
-        if (! empty($d['aula_banco_id']) && ! DB::table('aula_bancos')->where('id', $d['aula_banco_id'])->where('area_curricular_id', $area)->exists()) {
+        // Bancos del curso: los generales del área y los propios (no los de otro curso).
+        $visibles = DB::table('aula_bancos')->where('area_curricular_id', $area)->where(fn ($w) => $w->where('alcance', 'area')->orWhere('aula_curso_id', $cursoId))->pluck('id')->map(fn ($i) => (int) $i);
+        if (! empty($d['competencia_id']) && ! DB::table('competencias')->where('id', $d['competencia_id'])->where('area_curricular_id', $area)->exists()) {
+            throw ValidationException::withMessages(['competencia_id' => ['La competencia no es del área del curso.']]);
+        }
+        if (! empty($d['aula_banco_id']) && ! $visibles->contains((int) $d['aula_banco_id'])) {
             throw ValidationException::withMessages(['aula_banco_id' => ['Ese banco no es del área del curso.']]);
         }
         $preguntas = collect($d['preguntas'] ?? []);
-        if ($preguntas->isNotEmpty() && DB::table('aula_preguntas')->whereIn('id', $preguntas->pluck('id'))->where('area_curricular_id', $area)->where('activa', true)->count() !== $preguntas->pluck('id')->unique()->count()) {
+        if ($preguntas->isNotEmpty() && DB::table('aula_preguntas')->whereIn('id', $preguntas->pluck('id'))->whereIn('aula_banco_id', $visibles)->where('activa', true)->count() !== $preguntas->pluck('id')->unique()->count()) {
             throw ValidationException::withMessages(['preguntas' => ['Usa preguntas activas del área del curso (las de IA, revisadas).']]);
         }
         if ($preguntas->isEmpty() && (empty($d['aula_banco_id']) || empty($d['preguntas_azar']))) {
@@ -258,6 +263,13 @@ class Evaluaciones
         if (! $intento) {
             throw ValidationException::withMessages(['cuestionario' => ['No tienes un intento abierto.']]);
         }
+        // Tiempo límite (con 1 minuto de gracia) y cierre: un envío tardío vale cero.
+        $limite = $q->minutos ? Carbon::parse($intento->iniciado_at)->addMinutes((int) $q->minutos + 1) : null;
+        $cierre = $q->cierra_at ? Carbon::parse($q->cierra_at)->addMinute() : null;
+        $fueraDeTiempo = ($limite && now()->greaterThan($limite)) || ($cierre && now()->greaterThan($cierre));
+        if ($fueraDeTiempo) {
+            $respuestas = [];
+        }
         $ids = json_decode($intento->respuestas, true)['_preguntas'] ?? [];
         $puntajes = DB::table('aula_cuestionario_preguntas')->where('aula_cuestionario_id', $id)->pluck('puntaje', 'aula_pregunta_id');
         $preguntas = DB::table('aula_preguntas')->whereIn('id', $ids)->get()->keyBy('id');
@@ -281,9 +293,12 @@ class Evaluaciones
             'enviado_at' => now(), 'puntaje' => $pct, 'nota' => $nota,
             'respuestas' => json_encode(['_preguntas' => $ids, 'valores' => $respuestas, 'correctas' => $detalle], JSON_UNESCAPED_UNICODE),
         ]);
-        $mostrar = $q->mostrar_respuestas === 'al_terminar' || ($q->mostrar_respuestas === 'al_cerrar' && $q->cierra_at && now()->greaterThan(Carbon::parse($q->cierra_at)));
+        // Las respuestas correctas solo se muestran cuando ya no quedan intentos.
+        $mostrar = ($q->mostrar_respuestas === 'al_terminar' || ($q->mostrar_respuestas === 'al_cerrar' && $q->cierra_at && now()->greaterThan(Carbon::parse($q->cierra_at))))
+            && $this->disponibles($q, $alumno) === 0;
 
         return [
+            'fuera_de_tiempo' => $fueraDeTiempo,
             'porcentaje' => $pct, 'nota' => $nota, 'aprobado' => $q->nota_minima ? $this->alcanza($nota, $q->nota_minima) : null,
             'intentos_disponibles' => $this->disponibles($q, $alumno), 'nota_final' => $this->notaFinal($q, $alumno),
             'revision' => $mostrar ? collect($ids)->map(fn ($pid) => isset($preguntas[$pid]) ? [
