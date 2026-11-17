@@ -17,6 +17,7 @@ use App\Modulos\PLA\Services\MesaDeAyuda;
 use App\Modulos\PLA\Services\Suspensiones;
 use App\Modulos\SEG\Services\AlmacenArchivos;
 use App\Modulos\SIT\Services\BibliotecaMedios;
+use App\Modulos\TIE\Services\Tienda;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -207,3 +208,17 @@ Artisan::command('bib:vencidos', function () {
     $this->info("Préstamos vencidos avisados: {$n}");
 })->purpose('Avisa los préstamos de biblioteca vencidos');
 Schedule::command('bib:vencidos')->dailyAt('08:15')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-181 · Pedidos de la tienda sin pagar a las 48 horas: se anulan y el stock vuelve.
+Artisan::command('tie:vencidos', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('tienda_pedidos')->where('estado', 'pendiente')->where('reservado_hasta', '<', now())->distinct()->pluck('institucion_id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Tienda::class)->anularVencidos();
+        });
+    }
+    $this->info("Pedidos anulados: {$n}");
+})->purpose('Anula los pedidos de la tienda sin pagar');
+Schedule::command('tie:vencidos')->hourly()->withoutOverlapping();

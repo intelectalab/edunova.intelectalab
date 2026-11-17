@@ -73,6 +73,8 @@ const SaludEnfermeria = perezoso(() => import('../sal/Salud'), 'SaludEnfermeria'
 const SaludFamilia = perezoso(() => import('../sal/Salud'), 'SaludFamilia');
 const Comedor = perezoso(() => import('../cod/Comedor'), 'Comedor');
 const Biblioteca = perezoso(() => import('../bib/Biblioteca'), 'Biblioteca');
+const Tienda = perezoso(() => import('../tie/Tienda'), 'Tienda');
+const TiendaFamilia = perezoso(() => import('../tie/Tienda'), 'TiendaFamilia');
 const MiBiblioteca = perezoso(() => import('../bib/Biblioteca'), 'MiBiblioteca');
 const ComedorFamilia = perezoso(() => import('../cod/Comedor'), 'ComedorFamilia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
@@ -162,6 +164,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
     pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'tienda',
+    nombre: 'Tienda escolar',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'TIE') && puede(c, 'tie.productos.ver', 'tie.ventas.ver', 'tie.ventas.vender'),
+    pantalla: () => <Tienda />,
+  },
+  {
+    ruta: 'tienda-familia',
+    nombre: 'Tienda del colegio',
+    grupo: 'Familia',
+    visible: (c) => moduloActivo(c, 'TIE') && c.roles.includes('apoderado'),
+    pantalla: () => <TiendaFamilia />,
   },
   {
     ruta: 'biblioteca',

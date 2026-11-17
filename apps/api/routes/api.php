@@ -55,6 +55,7 @@ use App\Modulos\SIT\Http\Controllers\SesionCmsController;
 use App\Modulos\SIT\Http\Controllers\SitioCanalesController;
 use App\Modulos\SIT\Http\Controllers\SitioLegalController;
 use App\Modulos\SIT\Services\Integraciones;
+use App\Modulos\TIE\Http\Controllers\TiendaController;
 use Illuminate\Support\Facades\Route;
 
 // Todas las rutas quedan bajo /api/v1 (bootstrap/app.php, apiPrefix).
@@ -597,6 +598,25 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/reservas/{reserva}/cancelacion', [BibliotecaController::class, 'cancelarReserva'])->whereNumber('reserva');
         Route::post('/digitales/{libro}/lectura', [BibliotecaController::class, 'leer'])->whereNumber('libro')->middleware('throttle:30,1');
         Route::post('/digitales/{libro}/devolucion', [BibliotecaController::class, 'devolverDigital'])->whereNumber('libro');
+    });
+
+    // S34 · Tienda escolar (EDUN-179 a 185). Comprar es siempre voluntario.
+    Route::middleware('modulo:TIE')->prefix('tienda')->group(function () {
+        Route::get('/productos', [TiendaController::class, 'productos'])->middleware('permiso:tie.productos.ver|tie.ventas.vender');
+        Route::post('/productos', [TiendaController::class, 'guardarProducto'])->middleware('permiso:tie.productos.editar');
+        Route::put('/productos/{producto}', [TiendaController::class, 'guardarProducto'])->whereNumber('producto')->middleware('permiso:tie.productos.editar');
+        Route::post('/productos/{producto}/movimientos', [TiendaController::class, 'movimiento'])->whereNumber('producto')->middleware('permiso:tie.inventario.ajustar');
+        Route::get('/productos/{producto}/kardex', [TiendaController::class, 'kardex'])->whereNumber('producto')->middleware('permiso:tie.inventario.ver');
+        Route::get('/listas', [TiendaController::class, 'listas'])->middleware('permiso:tie.productos.ver');
+        Route::put('/listas', [TiendaController::class, 'guardarLista'])->middleware('permiso:tie.productos.editar');
+        Route::post('/listas/{lista}/publicacion', [TiendaController::class, 'publicarLista'])->whereNumber('lista')->middleware('permiso:tie.productos.editar');
+        Route::get('/pedidos', [TiendaController::class, 'pedidos'])->middleware('permiso:tie.ventas.ver');
+        Route::post('/pedidos/{pedido}/estado', [TiendaController::class, 'mover'])->whereNumber('pedido')->middleware('permiso:tie.ventas.entregar|tie.ventas.anular');
+        Route::post('/ventas', [TiendaController::class, 'vender'])->middleware(['permiso:tie.ventas.vender', 'throttle:120,1']);
+        Route::get('/reportes', [TiendaController::class, 'reportes'])->middleware('permiso:tie.ventas.ver');
+        Route::get('/familia', [TiendaController::class, 'catalogoFamilia']);
+        Route::post('/familia/pedidos', [TiendaController::class, 'pedir'])->middleware('throttle:20,1');
+        Route::post('/familia/pedidos/{pedido}/pago', [TiendaController::class, 'pagar'])->whereNumber('pedido')->middleware('throttle:20,1');
     });
 
     // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.

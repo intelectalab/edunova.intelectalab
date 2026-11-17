@@ -72,6 +72,17 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  tienda: {
+    para: 'Productos, packs y listas de útiles; pedidos de la app; venta en caja con boleta e inventario.',
+    puedes: ['Registrar ingresos y ajustes de stock (nunca queda negativo).', 'Publicar la lista de útiles con un pack opcional.', 'Preparar y entregar pedidos; vender en caja con boleta.'],
+    noPuedes: ['Obligar a comprar: nunca se genera un cargo obligatorio por útiles o uniformes.', 'Anular un pedido ya pagado sin anular primero el pago en Caja.'],
+    consejo: 'La afectación de IGV de cada producto va en la boleta: valídala con el contador.',
+  },
+  'tienda-familia': {
+    para: 'Comprar (si quieres) útiles, uniformes o el pack de tu hijo.',
+    puedes: ['Pagar ahora en línea o «con la pensión» (un cargo aparte que no afecta tu deuda de pensiones).', 'Recoger el pedido en secretaría.'],
+    noPuedes: ['Reservar más de 48 horas sin pagar: el pedido se anula solo.'],
+  },
   biblioteca: {
     para: 'Catálogo, préstamos y devoluciones con el código del ejemplar, plan lector, inventario y estadísticas.',
     puedes: ['Registrar libros por ISBN o importar el catálogo desde Excel.', 'Prestar con límite por lector y renovar si nadie lo reservó.', 'Armar el plan lector por grado y periodo y recordar a quienes faltan.', 'Tomar inventario por estante y descargar etiquetas con QR.'],
