@@ -72,6 +72,15 @@ export const AYUDA: Record<string, Ayuda> = {
     ],
     consejo: 'El semáforo marca el plazo en días hábiles: verde en plazo, ámbar vence hoy o mañana, rojo vencido.',
   },
+  biblioteca: {
+    para: 'Catálogo, préstamos y devoluciones con el código del ejemplar, plan lector, inventario y estadísticas.',
+    puedes: ['Registrar libros por ISBN o importar el catálogo desde Excel.', 'Prestar con límite por lector y renovar si nadie lo reservó.', 'Armar el plan lector por grado y periodo y recordar a quienes faltan.', 'Tomar inventario por estante y descargar etiquetas con QR.'],
+    noPuedes: ['Prestar un ejemplar que no está disponible.', 'Cobrar multas: el atraso suspende un día por cada día (si la regla está activa).'],
+  },
+  'mi-biblioteca': {
+    para: 'Tus libros prestados, reservas, plan lector y libros digitales.',
+    puedes: ['Reservar un libro: te avisamos cuando está listo para recoger.', 'Leer libros digitales mientras haya licencias libres (vencen solos).'],
+  },
   comedor: {
     para: 'Menú semanal con nutrientes y alérgenos, planes e inscripciones, servicio del día con el QR del carné y nutrición.',
     puedes: ['Publicar el menú a las familias (con aprobación de nutrición si el colegio la tiene).', 'Inscribir alumnos en plan mensual (un cargo por mes) o por día (un cargo por día servido).', 'Servir con el lector de QR o la lista rápida.'],

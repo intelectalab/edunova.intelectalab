@@ -10,6 +10,7 @@ use App\Modulos\ADM\Http\Controllers\MatriculasController;
 use App\Modulos\ADM\Http\Controllers\PersonalController;
 use App\Modulos\ADM\Http\Controllers\PlanEstudiosController;
 use App\Modulos\AUL\Http\Controllers\AulaController;
+use App\Modulos\BIB\Http\Controllers\BibliotecaController;
 use App\Modulos\CAL\Http\Controllers\JustificacionesController;
 use App\Modulos\CAL\Http\Controllers\NotasController;
 use App\Modulos\CAL\Http\Controllers\SeguimientoController;
@@ -567,6 +568,36 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/orientacion/{alumno}', [ComedorController::class, 'orientar'])->whereNumber('alumno')->middleware(['permiso:cod.nutricion.aprobar', 'throttle:30,1']);
     });
     Route::get('/familia/comedor', [ComedorController::class, 'familia'])->middleware('modulo:COD');
+
+    // S33 · Biblioteca (EDUN-151 a 160). El catálogo lo ven también alumnos y familias.
+    Route::middleware('modulo:BIB')->prefix('biblioteca')->group(function () {
+        Route::get('/catalogo', [BibliotecaController::class, 'catalogo']);
+        Route::get('/libros/{libro}', [BibliotecaController::class, 'ficha'])->whereNumber('libro');
+        Route::post('/libros', [BibliotecaController::class, 'guardarLibro'])->middleware('permiso:bib.biblioteca.gestionar');
+        Route::post('/libros/{libro}', [BibliotecaController::class, 'guardarLibro'])->whereNumber('libro')->middleware('permiso:bib.biblioteca.gestionar');
+        Route::post('/libros/{libro}/ejemplares', [BibliotecaController::class, 'ejemplares'])->whereNumber('libro')->middleware('permiso:bib.biblioteca.gestionar');
+        Route::get('/isbn/{isbn}', [BibliotecaController::class, 'isbn'])->where('isbn', '[0-9Xx-]{10,17}')->middleware(['permiso:bib.biblioteca.gestionar', 'throttle:30,1']);
+        Route::post('/importacion', [BibliotecaController::class, 'importar'])->middleware(['permiso:bib.biblioteca.gestionar', 'throttle:10,1']);
+        Route::match(['get', 'put'], '/reglas', [BibliotecaController::class, 'reglas'])->middleware('permiso:bib.biblioteca.gestionar');
+        Route::post('/prestamos', [BibliotecaController::class, 'prestar'])->middleware(['permiso:bib.biblioteca.gestionar', 'throttle:240,1']);
+        Route::post('/devoluciones', [BibliotecaController::class, 'devolver'])->middleware(['permiso:bib.biblioteca.gestionar', 'throttle:240,1']);
+        Route::post('/prestamos/{prestamo}/renovacion', [BibliotecaController::class, 'renovar'])->whereNumber('prestamo')->middleware('permiso:bib.biblioteca.gestionar');
+        Route::get('/prestamos', [BibliotecaController::class, 'prestamos'])->middleware('permiso:bib.biblioteca.ver');
+        Route::get('/plan-lector', [BibliotecaController::class, 'plan'])->middleware('permiso:bib.plan_lector.ver');
+        Route::post('/plan-lector', [BibliotecaController::class, 'agregarPlan'])->middleware('permiso:bib.plan_lector.editar');
+        Route::get('/plan-lector/{plan}/avance', [BibliotecaController::class, 'avance'])->whereNumber('plan')->middleware('permiso:bib.plan_lector.ver');
+        Route::put('/plan-lector/{plan}/avance/{alumno}', [BibliotecaController::class, 'marcarAvance'])->whereNumber('plan')->whereNumber('alumno')->middleware('permiso:bib.plan_lector.registrar');
+        Route::post('/plan-lector/{plan}/recordatorio', [BibliotecaController::class, 'recordarPlan'])->whereNumber('plan')->middleware(['permiso:bib.plan_lector.editar', 'throttle:10,1']);
+        Route::post('/inventario', [BibliotecaController::class, 'inventario'])->middleware('permiso:bib.biblioteca.gestionar');
+        Route::patch('/ejemplares/{ejemplar}', [BibliotecaController::class, 'actualizarEjemplar'])->whereNumber('ejemplar')->middleware('permiso:bib.biblioteca.gestionar');
+        Route::post('/etiquetas', [BibliotecaController::class, 'etiquetas'])->middleware(['permiso:bib.biblioteca.gestionar', 'throttle:20,1']);
+        Route::get('/estadisticas', [BibliotecaController::class, 'estadisticas'])->middleware('permiso:bib.biblioteca.ver');
+        Route::get('/mia', [BibliotecaController::class, 'familia']);
+        Route::post('/reservas', [BibliotecaController::class, 'reservar'])->middleware('throttle:20,1');
+        Route::post('/reservas/{reserva}/cancelacion', [BibliotecaController::class, 'cancelarReserva'])->whereNumber('reserva');
+        Route::post('/digitales/{libro}/lectura', [BibliotecaController::class, 'leer'])->whereNumber('libro')->middleware('throttle:30,1');
+        Route::post('/digitales/{libro}/devolucion', [BibliotecaController::class, 'devolverDigital'])->whereNumber('libro');
+    });
 
     // S25 · Trámites en línea (EDUN-113 a 118): catálogo, plantillas, bandeja, firma y la familia.
     Route::middleware('modulo:DOC')->group(function () {

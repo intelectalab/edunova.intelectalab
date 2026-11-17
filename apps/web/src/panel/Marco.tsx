@@ -72,6 +72,8 @@ const MovilidadFamilia = perezoso(() => import('../mov/Seguimiento'), 'Movilidad
 const SaludEnfermeria = perezoso(() => import('../sal/Salud'), 'SaludEnfermeria');
 const SaludFamilia = perezoso(() => import('../sal/Salud'), 'SaludFamilia');
 const Comedor = perezoso(() => import('../cod/Comedor'), 'Comedor');
+const Biblioteca = perezoso(() => import('../bib/Biblioteca'), 'Biblioteca');
+const MiBiblioteca = perezoso(() => import('../bib/Biblioteca'), 'MiBiblioteca');
 const ComedorFamilia = perezoso(() => import('../cod/Comedor'), 'ComedorFamilia');
 const MisJustificaciones = perezoso(() => import('../cal/Justificaciones'), 'MisJustificaciones');
 const Tramites = perezoso(() => import('../doc/Tramites'), 'Tramites');
@@ -160,6 +162,20 @@ const PAGINAS: Pagina[] = [
     grupo: 'Servicios',
     visible: (c) => moduloActivo(c, 'MOV') && puede(c, 'mov.movilidad.ver', 'mov.movilidad.gestionar'),
     pantalla: () => <Movilidad />,
+  },
+  {
+    ruta: 'biblioteca',
+    nombre: 'Biblioteca',
+    grupo: 'Servicios',
+    visible: (c) => moduloActivo(c, 'BIB') && puede(c, 'bib.biblioteca.ver', 'bib.plan_lector.ver'),
+    pantalla: () => <Biblioteca />,
+  },
+  {
+    ruta: 'mi-biblioteca',
+    nombre: 'Mi biblioteca',
+    grupo: 'Familia',
+    visible: (c) => moduloActivo(c, 'BIB') && (c.roles.includes('apoderado') || c.roles.includes('alumno')),
+    pantalla: () => <MiBiblioteca />,
   },
   {
     ruta: 'comedor',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Modulos\AUL\Services\Comunidad;
+use App\Modulos\BIB\Services\Biblioteca;
 use App\Modulos\CAL\Services\Tutoria;
 use App\Modulos\COM\Services\Comunicados;
 use App\Modulos\COM\Services\LibroReclamaciones;
@@ -192,3 +193,17 @@ Artisan::command('mov:vencimientos', function () {
     $this->info("Posiciones purgadas: {$purgadas}");
 })->purpose('Avisa documentos de movilidad por vencer y purga posiciones antiguas');
 Schedule::command('mov:vencimientos')->dailyAt('06:45')->timezone('America/Lima')->withoutOverlapping();
+
+// EDUN-153 / EDUN-157 · Aviso diario de libros vencidos y devolución automática de los digitales.
+Artisan::command('bib:vencidos', function () {
+    $n = 0;
+    foreach (DB::connection('plataforma')->table('instituciones')->whereIn('estado', ['activo', 'implementacion'])->pluck('id') as $inst) {
+        $n += DB::transaction(function () use ($inst) {
+            ContextoInstitucion::fijar((int) $inst);
+
+            return app(Biblioteca::class)->avisarVencidos();
+        });
+    }
+    $this->info("Préstamos vencidos avisados: {$n}");
+})->purpose('Avisa los préstamos de biblioteca vencidos');
+Schedule::command('bib:vencidos')->dailyAt('08:15')->timezone('America/Lima')->withoutOverlapping();
