@@ -44,7 +44,7 @@ function rutaS31(): array
     $db->table('dispositivos_moviles')->insert(['user_id' => $auxiliar->id, 'plataforma' => 'android', 'token_push' => 'ExponentPushToken['.bin2hex(random_bytes(6)).']']);
     $aux = $db->table('mov_conductores')->insertGetId(['institucion_id' => $inst, 'nombres' => 'Aux Ruta', 'numero_documento' => (string) random_int(30000000, 39999999), 'rol' => 'auxiliar', 'user_id' => $auxiliar->id]);
     $ruta = $db->table('mov_rutas')->insertGetId(['institucion_id' => $inst, 'nombre' => 'Ruta '.uniqid(), 'turno' => 'manana', 'mov_unidad_id' => $unidad, 'auxiliar_id' => $aux]);
-    $paradero = $db->table('mov_paraderos')->insertGetId(['institucion_id' => $inst, 'mov_ruta_id' => $ruta, 'nombre' => 'Parque Kennedy', 'orden' => 1, 'latitud' => -12.121, 'longitud' => -77.030, 'hora_estimada' => now()->subMinutes(10)->format('H:i:s')]);
+    $paradero = $db->table('mov_paraderos')->insertGetId(['institucion_id' => $inst, 'mov_ruta_id' => $ruta, 'nombre' => 'Parque Kennedy', 'orden' => 1, 'latitud' => -12.121, 'longitud' => -77.030, 'hora_estimada' => (now()->subMinutes(10)->isSameDay(now()) ? now()->subMinutes(10) : now()->startOfDay())->format('H:i:s')]);
     $asig = $db->table('mov_asignaciones')->insertGetId(['institucion_id' => $inst, 'alumno_id' => $alumno, 'mov_ruta_id' => $ruta, 'mov_paradero_id' => $paradero, 'anio_escolar_id' => $anio]);
 
     return ['alumno' => $alumno, 'familia' => User::query()->findOrFail($u), 'auxiliar' => $auxiliar, 'ruta' => $ruta, 'asignacion' => $asig, 'placa' => $placa, 'seccion' => $seccion];
@@ -82,7 +82,7 @@ it('EDUN-167 / 164 · el monitor marca el retraso y la pérdida de señal; los d
     $coordinador = personaDemo('movilidad');
     dueno()->table('dispositivos_moviles')->insert(['user_id' => $coordinador->id, 'plataforma' => 'android', 'token_push' => 'ExponentPushToken['.bin2hex(random_bytes(6)).']']);
     $fila = collect(enDemo($coordinador, 'GET', '/movilidad/monitor')->assertOk()->json('data'))->firstWhere('id', $rec);
-    expect($fila['sin_senal'])->toBeFalse()->and($fila['siguiente_paradero'])->toBe('Parque Kennedy')->and($fila['retraso_min'])->toBeGreaterThanOrEqual(9);
+    expect($fila['sin_senal'])->toBeFalse()->and($fila['siguiente_paradero'])->toBe('Parque Kennedy')->and($fila['retraso_min'])->toBe(max(0, (int) floor(now()->startOfDay()->setTimeFromTimeString(dueno()->table('mov_paraderos')->where('mov_ruta_id', $r['ruta'])->value('hora_estimada'))->diffInSeconds(now(), false) / 60)));
 
     // Sin señal hace 4 minutos: una alerta, no dos.
     dueno()->table('mov_recorridos')->where('id', $rec)->update(['ultima_posicion_at' => now()->subMinutes(4)]);
