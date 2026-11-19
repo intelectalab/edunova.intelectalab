@@ -22,6 +22,7 @@ use App\Modulos\DOC\Http\Controllers\TramitesController;
 use App\Modulos\LAB\Http\Controllers\LaboratoriosController;
 use App\Modulos\MDL\Http\Controllers\ConectorMoodleController;
 use App\Modulos\MDL\Http\Controllers\MoodleController;
+use App\Modulos\MOB\Http\Controllers\AppFamiliaController;
 use App\Modulos\MOV\Http\Controllers\AppPersonalController;
 use App\Modulos\MOV\Http\Controllers\ConfiguracionMovilidadController;
 use App\Modulos\PAG\Http\Controllers\CobranzaController;
@@ -244,6 +245,13 @@ Route::middleware(['auth:sanctum', 'colegio'])->group(function () {
         Route::post('/consentimientos', [FamiliaController::class, 'consentir'])->middleware('throttle:30,1');
         Route::get('/carne/{alumno}', [FamiliaController::class, 'carne'])->whereNumber('alumno');
     });
+
+    // S36 · App de la familia: inicio con resumen, foto del hijo, asistencia del mes y horario (propiedad).
+    Route::get('/app/familia', [AppFamiliaController::class, 'inicio'])->middleware('throttle:120,1');
+    Route::get('/familia/alumnos/{alumno}/foto', [AppFamiliaController::class, 'foto'])->whereNumber('alumno')->middleware('throttle:120,1');
+    Route::get('/familia/asistencia', [AppFamiliaController::class, 'asistencia'])->middleware(['modulo:CAL', 'throttle:120,1']);
+    Route::get('/familia/notas-periodo', [AppFamiliaController::class, 'notas'])->middleware(['modulo:CAL', 'throttle:120,1']);
+    Route::get('/familia/horario', [AppFamiliaController::class, 'horario'])->middleware(['modulo:ADM', 'throttle:60,1']);
 
     // EDUN-36 · Usuarios del colegio (SEG-02).
     Route::get('/usuarios', [UsuariosController::class, 'index'])->middleware('permiso:seg.usuarios.ver');

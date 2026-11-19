@@ -8,7 +8,8 @@ import { crearCliente, ErrorApi, siguientePaso, type EstadoSesion } from './api'
 import { destinoDeAviso, type Destino } from './destinos';
 import * as dispositivo from './dispositivo';
 import { colorDeMarca } from './marca';
-import { Aviso, DosPasos, ElegirColegio, Ingreso, Inicio } from './pantallas';
+import { Navegacion } from './navegacion';
+import { Aviso, DosPasos, ElegirColegio, Ingreso } from './pantallas';
 import { estilos } from './ui';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8100/api/v1';
@@ -81,7 +82,7 @@ export default function App() {
 
   return (
     <View style={estilos.pantalla}>
-      <StatusBar style={fase === 'inicio' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
       {fase === 'cargando' && <ActivityIndicator style={{ marginTop: 120 }} color={color} size="large" />}
       {fase === 'ingreso' && (
         <Ingreso
@@ -109,11 +110,10 @@ export default function App() {
         <ElegirColegio estado={estado} alElegir={async (id) => aplicar(await api.pedir<EstadoSesion>('/auth/colegio', { metodo: 'POST', cuerpo: { institucion_id: id } }))} alSalir={salir} />
       )}
       {fase === 'inicio' && estado && (
-        <Inicio
+        <Navegacion
           estado={estado}
           api={api}
-          aviso={destino.aviso ?? null}
-          enfocar={destino.pantalla}
+          destino={destino}
           biometria={biometria}
           alBiometria={async (activa) => {
             if (activa && !(await dispositivo.confirmarConBiometria())) return;

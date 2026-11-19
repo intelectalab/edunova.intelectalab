@@ -1,21 +1,7 @@
 import { useEffect, useState } from 'react';
-import { PorteriaApp } from './porteria';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { Cliente, Colegio, EstadoSesion } from './api';
-import { AsistenciaApp, EstadoConexion, NotasApp, PuertaQrApp } from './academico';
-import { useSincronizacion } from './colaDispositivo';
-import { JustificarApp } from './justificaciones';
-import { TramitesApp } from './tramites';
-import { AutorizacionesApp, RecojoApp } from './familiaColegio';
-import { AulaApp, EntrarMoodleApp, TareasHijosApp } from './aula';
-import { FichaSaludApp, MenuComedorApp, MovilidadFamiliaApp } from './servicios';
-import { PaseComedorApp } from './comedor';
-import { BibliotecaApp } from './biblioteca';
-import { TiendaApp } from './tienda';
-import { AgendaApp, ComunicadosApp } from './comunicacion';
-import { ConveniosApp, EnfermeriaApp, RecorridoApp } from './personal';
-import { EstadoCuentaApp, RatificacionApp } from './familia';
 import { colorDeMarca, iniciales, textoSobre } from './marca';
 import { Boton, Campo, colores, estilos, MensajeError, Tarjeta } from './ui';
 
@@ -87,7 +73,7 @@ export function Aviso({ titulo, texto, alSalir }: { titulo: string; texto: strin
   );
 }
 
-function Escudo({ colegio, api, tamano = 44 }: { colegio: Colegio; api: Cliente; tamano?: number }) {
+export function Escudo({ colegio, api, tamano = 44 }: { colegio: Colegio; api: Cliente; tamano?: number }) {
   const color = colorDeMarca(colegio.marca?.color_primario);
   const [falla, setFalla] = useState(false);
   if (colegio.marca?.tiene_logo && !falla) {
@@ -128,7 +114,7 @@ export function ElegirColegio({ estado, alElegir, alSalir }: { estado: EstadoSes
 
 type Preferencia = { tipo: string; nombre: string; push: boolean };
 
-function Preferencias({ api, color }: { api: Cliente; color: string }) {
+export function Preferencias({ api, color }: { api: Cliente; color: string }) {
   const [lista, setLista] = useState<Preferencia[] | null>(null);
   const envio = useEnvio();
   useEffect(() => {
@@ -154,90 +140,5 @@ function Preferencias({ api, color }: { api: Cliente; color: string }) {
       ))}
       <MensajeError>{envio.error}</MensajeError>
     </>
-  );
-}
-
-export function Inicio({ estado, api, aviso, biometria, alBiometria, alCambiarColegio, alSalir, enfocar }: {
-  estado: EstadoSesion; api: Cliente; aviso: string | null; biometria: { disponible: boolean; activa: boolean };
-  alBiometria: (v: boolean) => void; alCambiarColegio: () => void; alSalir: () => void; enfocar: 'inicio' | 'notificaciones' | 'preferencias';
-}) {
-  const colegio = estado.colegio_activo!;
-  const color = colorDeMarca(colegio.marca?.color_primario);
-  const texto = textoSobre(color);
-  const envio = useEnvio();
-  const [ok, setOk] = useState<string | null>(null);
-  const [version, setVersion] = useState(0);
-  useSincronizacion(api);
-
-  return (
-    <View style={estilos.pantalla}>
-      <View style={{ backgroundColor: color, paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <Escudo colegio={colegio} api={api} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: texto, fontSize: 18, fontWeight: '700' }} numberOfLines={2}>{colegio.nombre}</Text>
-          <Text style={{ color: texto, opacity: 0.85 }}>{estado.usuario.nombres} {estado.usuario.apellidos}</Text>
-        </View>
-      </View>
-      <ScrollView contentContainerStyle={estilos.contenido}>
-        {aviso && <Tarjeta><Text style={{ color: colores.texto }}>{aviso}</Text></Tarjeta>}
-        {colegio.estado === 'suspendido' && <MensajeError>El acceso del colegio está pausado. Comunícate con el colegio.</MensajeError>}
-        <EstadoConexion color={color} />
-        {colegio.roles.some((r) => ['docente', 'tutor', 'auxiliar', 'coordinador'].includes(r)) && <AsistenciaApp api={api} color={color} />}
-        {colegio.roles.some((r) => ['auxiliar', 'porteria'].includes(r)) && <PuertaQrApp api={api} color={color} />}
-        {colegio.roles.includes('porteria') && <PorteriaApp api={api} color={color} />}
-        {colegio.roles.some((r) => ['conductor', 'movilidad'].includes(r)) && <RecorridoApp api={api} color={color} />}
-        {colegio.roles.includes('enfermeria') && <EnfermeriaApp api={api} color={color} />}
-        {colegio.roles.some((r) => ['comedor', 'nutricionista'].includes(r)) && <PaseComedorApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <ConveniosApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <ComunicadosApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <NotasApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <JustificarApp api={api} color={color} />}
-        {colegio.roles.includes('alumno') && <AulaApp api={api} color={color} />}
-        {colegio.modulos?.includes('MDL') && colegio.roles.some((r) => ['alumno', 'docente', 'tutor'].includes(r)) && <EntrarMoodleApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && colegio.modulos?.includes('MOV') !== false && <MovilidadFamiliaApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <TareasHijosApp api={api} />}
-        {colegio.roles.includes('apoderado') && colegio.modulos?.includes('TIE') && <TiendaApp api={api} color={color} />}
-        {colegio.modulos?.includes('BIB') && colegio.roles.some((r) => ['alumno', 'apoderado'].includes(r)) && <BibliotecaApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && colegio.modulos?.includes('COD') !== false && <MenuComedorApp api={api} />}
-        {colegio.roles.includes('apoderado') && <AutorizacionesApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <RecojoApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && colegio.modulos?.includes('SAL') !== false && <FichaSaludApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <TramitesApp api={api} color={color} />}
-        {colegio.roles.includes('apoderado') && <AgendaApp api={api} />}
-        {colegio.roles.includes('apoderado') && (
-          <>
-            <RatificacionApp api={api} color={color} alRatificar={() => setVersion((v) => v + 1)} />
-            <Tarjeta>
-              <Text style={estilos.etiqueta}>Mis pagos</Text>
-              <EstadoCuentaApp key={version} api={api} color={color} />
-            </Tarjeta>
-          </>
-        )}
-        <Tarjeta>
-          <Text style={[estilos.etiqueta, enfocar !== 'inicio' && { color }]}>Notificaciones</Text>
-          <Preferencias api={api} color={color} />
-          <Boton titulo="Enviarme una notificación de prueba" borde color={color} cargando={envio.enviando}
-            alPulsar={() => envio.ejecutar(async () => {
-              const r = await api.pedir<{ enviados: number }>('/notificaciones/prueba', { metodo: 'POST' });
-              setOk(r.enviados ? 'Enviada. Debería llegarte en unos segundos.' : 'No se envió: revisa que los comunicados estén activados y que diste permiso de notificaciones.');
-            })} />
-          {ok && <Text style={estilos.subtitulo}>{ok}</Text>}
-          <MensajeError>{envio.error}</MensajeError>
-        </Tarjeta>
-        <Tarjeta>
-          <Text style={estilos.etiqueta}>Seguridad</Text>
-          {biometria.disponible ? (
-            <View style={estilos.fila}>
-              <Text style={{ fontSize: 16, color: colores.texto, flex: 1 }}>Entrar con huella o rostro</Text>
-              <Switch accessibilityLabel="Entrar con huella o rostro" value={biometria.activa} trackColor={{ true: color }} onValueChange={alBiometria} />
-            </View>
-          ) : (
-            <Text style={estilos.subtitulo}>Este teléfono no tiene huella ni reconocimiento facial configurado.</Text>
-          )}
-        </Tarjeta>
-        {estado.colegios.length > 1 && <Boton titulo="Cambiar de colegio" borde color={color} alPulsar={alCambiarColegio} />}
-        <Boton titulo="Cerrar sesión" borde color={colores.error} alPulsar={alSalir} />
-      </ScrollView>
-    </View>
   );
 }

@@ -1,4 +1,5 @@
 // Lógica sin interfaz del aula en la app (EDUN-126, 130, 135, 142), probada con Vitest.
+import { leerFecha } from './fechas';
 
 export type Accesibilidad = { escala: 1 | 1.25 | 1.5; contraste: boolean };
 export const ACCESIBILIDAD_INICIAL: Accesibilidad = { escala: 1, contraste: false };
@@ -37,7 +38,7 @@ export function faltanRespuestas(preguntas: { id: number; tipo: string; opciones
 
 /** Texto del plazo de una tarea («vence hoy 18:00», «venció»). */
 export function plazo(venceIso: string, ahora: Date = new Date()): string {
-  const v = new Date(venceIso);
+  const v = leerFecha(venceIso);
   if (v.getTime() < ahora.getTime()) return 'venció';
   const mismoDia = v.toDateString() === ahora.toDateString();
   const hora = `${String(v.getHours()).padStart(2, '0')}:${String(v.getMinutes()).padStart(2, '0')}`;

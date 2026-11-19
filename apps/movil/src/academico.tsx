@@ -159,13 +159,14 @@ export function PuertaQrApp({ api, color }: { api: Cliente; color: string }) {
 type PeriodoNotas = { id: number; periodo_id: number; periodo: string; areas: { area: string; competencias: { numero: number; valor: string | null; competencia: string }[] }[] };
 
 /** EDUN-100 · Notas y libreta por hijo y periodo en la app (sin bloqueo por deuda). */
-export function NotasApp({ api, color }: { api: Cliente; color: string }) {
-  const [hijos, setHijos] = useState<{ alumno_id: number; alumno: string; periodos: PeriodoNotas[] }[] | null>(null);
+export function NotasApp({ api, color, alumnoId, vacio }: { api: Cliente; color: string; alumnoId?: number; vacio?: string }) {
+  const [todos, setHijos] = useState<{ alumno_id: number; alumno: string; periodos: PeriodoNotas[] }[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     api.pedir<{ hijos: { alumno_id: number; alumno: string; periodos: PeriodoNotas[] }[] }>('/familia/notas').then((r) => setHijos(r.hijos)).catch(() => setHijos([]));
   }, [api]);
-  if (!hijos?.length) return null;
+  const hijos = alumnoId ? todos?.filter((h) => h.alumno_id === alumnoId) : todos;
+  if (!hijos?.length) return vacio && hijos ? <View style={estilos.tarjeta}><Text style={estilos.etiqueta}>Notas y libretas</Text><Text style={estilos.subtitulo}>{vacio}</Text></View> : null;
   return (
     <View style={estilos.tarjeta}>
       <Text style={estilos.etiqueta}>Notas y libretas</Text>

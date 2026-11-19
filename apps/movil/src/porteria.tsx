@@ -5,6 +5,7 @@ import type { Cliente } from './api';
 import { guardarCifrado, guardarOperacion, leerCifrado, useEstadoCola } from './colaDispositivo';
 import { buscarEnLista, verificar, type AlumnoPorteria, type ListaTurno } from './porteriaLogica';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
+import { leerFecha } from './fechas';
 
 
 /**
@@ -48,7 +49,7 @@ export function PorteriaApp({ api, color }: { api: Cliente; color: string }) {
       setError(e instanceof Error ? e.message : 'No se pudo registrar.');
     }
   };
-  const hora = lista ? new Date(lista.generado_at).toTimeString().slice(0, 5) : null;
+  const hora = lista ? leerFecha(lista.generado_at).toTimeString().slice(0, 5) : null;
   return (
     <View style={estilos.tarjeta}>
       <Text style={estilos.etiqueta}>Portería: salidas y recojo</Text>

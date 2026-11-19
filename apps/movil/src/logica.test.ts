@@ -67,8 +67,8 @@ describe('imagen del colegio (EDUN-200)', () => {
 
 describe('abrir la pantalla del aviso (EDUN-196)', () => {
   it('abre la pantalla indicada o el inicio con el aviso', () => {
-    expect(destinoDeAviso({ pantalla: 'notificaciones' })).toEqual({ pantalla: 'notificaciones', id: undefined, tipo: undefined });
-    expect(destinoDeAviso({ pantalla: 'pagos', id: '12', tipo: 'pagos' }, 'Vence tu pensión')).toEqual({ pantalla: 'inicio', id: 12, tipo: 'pagos', aviso: 'Vence tu pensión' });
-    expect(destinoDeAviso(null)).toEqual({ pantalla: 'inicio', id: undefined, tipo: undefined, aviso: undefined });
+    expect(destinoDeAviso({ pantalla: 'notificaciones' })).toEqual({ pantalla: 'notificaciones', id: undefined, tipo: undefined, origen: 'notificaciones' });
+    expect(destinoDeAviso({ pantalla: 'pagos', id: '12', tipo: 'pagos' }, 'Vence tu pensión')).toEqual({ pantalla: 'inicio', id: 12, tipo: 'pagos', aviso: 'Vence tu pensión', origen: 'pagos' });
+    expect(destinoDeAviso(null)).toEqual({ pantalla: 'inicio', id: undefined, tipo: undefined, aviso: undefined, origen: undefined });
   });
 });

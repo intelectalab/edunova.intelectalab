@@ -3,11 +3,12 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import type { Cliente } from './api';
 import { distanciaLegible } from './serviciosLogica';
 import { Boton, Campo, colores, estilos, MensajeError } from './ui';
+import { leerFecha } from './fechas';
 
 type Hijo = { asignacion_id: number; alumno: string; ruta: string; placa: string | null; paradero: string; hora_estimada: string | null; recorrido: { estado: string } | null; en_vivo: { distancia_m: number | null; llegada_min: number | null; mapa_url: string; posicion_at: string } | null; bitacora: { tipo: string; ocurrido_at: string }[] };
 type Ficha = { grupo_sanguineo: string | null; seguro: string | null; alergias: string | null; condiciones: string | null; medicacion: string | null; contacto_emergencia: string | null; telefono_emergencia: string | null };
 const EVENTO: Record<string, string> = { subio: 'subió', bajo: 'bajó', no_subio: 'no subió' };
-const hora = (iso: string) => new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+const hora = (iso: string) => leerFecha(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
 /** EDUN-166 · La familia sigue la movilidad: llegada estimada, mapa del teléfono y bitácora (se actualiza cada 20 s). */
 export function MovilidadFamiliaApp({ api, color }: { api: Cliente; color: string }) {

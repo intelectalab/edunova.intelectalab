@@ -2,22 +2,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { Cliente } from './api';
 import { Boton, colores, estilos, MensajeError } from './ui';
+import { leerFecha } from './fechas';
 
-type Comunicado = { id: number; titulo: string; contenido: string; enviado_at: string; requiere_confirmacion: boolean; leido_at: string | null; confirmado_at: string | null; alumno: string };
+type Comunicado = { id: number; titulo: string; contenido: string; enviado_at: string; requiere_confirmacion: boolean; leido_at: string | null; confirmado_at: string | null; alumno: string; alumno_id: number };
 type Evento = { id: number; titulo: string; inicio: string; descripcion: string | null };
 
-const fechaCorta = (iso: string) => new Date(iso).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fechaCorta = (iso: string) => leerFecha(iso).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** EDUN-62 · Comunicados en la app: push, lectura, confirmación y historial por hijo. */
-export function ComunicadosApp({ api, color }: { api: Cliente; color: string }) {
-  const [lista, setLista] = useState<Comunicado[] | null>(null);
+export function ComunicadosApp({ api, color, alumnoId, vacio }: { api: Cliente; color: string; alumnoId?: number; vacio?: string }) {
+  const [todos, setLista] = useState<Comunicado[] | null>(null);
   const [abierto, setAbierto] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cargar = useCallback(() => api.pedir<{ data: Comunicado[] }>('/familia/comunicados').then((r) => setLista(r.data)).catch(() => setLista([])), [api]);
   useEffect(() => {
     cargar();
   }, [cargar]);
-  if (!lista?.length) return null;
+  const lista = alumnoId ? todos?.filter((c) => c.alumno_id === alumnoId) : todos;
+  if (!lista?.length) return vacio && lista ? <View style={estilos.tarjeta}><Text style={estilos.etiqueta}>Comunicados</Text><Text style={estilos.subtitulo}>{vacio}</Text></View> : null;
   const marcar = async (c: Comunicado, confirmar: boolean) => {
     try {
       setLista((await api.pedir<{ data: Comunicado[] }>(`/familia/comunicados/${c.id}`, { metodo: 'POST', cuerpo: { confirmar } })).data);
@@ -50,7 +52,7 @@ export function ComunicadosApp({ api, color }: { api: Cliente; color: string }) 
 export function AgendaApp({ api }: { api: Cliente }) {
   const [eventos, setEventos] = useState<Evento[] | null>(null);
   useEffect(() => {
-    api.pedir<{ data: Evento[] }>('/agenda?familia=1').then((r) => setEventos(r.data.filter((e) => new Date(e.inicio) >= new Date(Date.now() - 86400000)))).catch(() => setEventos([]));
+    api.pedir<{ data: Evento[] }>('/agenda?familia=1').then((r) => setEventos(r.data.filter((e) => leerFecha(e.inicio) >= new Date(Date.now() - 86400000)))).catch(() => setEventos([]));
   }, [api]);
   if (!eventos?.length) return null;
   return (

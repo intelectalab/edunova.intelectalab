@@ -66,7 +66,8 @@
           "photosPermission": "Usamos tus fotos solo para adjuntar el sustento de una justificación.",
           "cameraPermission": "Usamos la cámara para fotografiar el sustento de una justificación o leer el QR del carné."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

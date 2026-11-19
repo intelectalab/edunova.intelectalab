@@ -9,6 +9,27 @@ colegio activo. Esta primera versión trae la base (EDUN-195, 196 y 200):
 - Notificaciones push con Expo Notifications: registro del token en la API, preferencias por
   tipo y apertura de la pantalla relacionada al tocar el aviso.
 
+## Navegación según el rol (S36)
+
+Pestañas inferiores con React Navigation (`navegacion.tsx`); la regla de qué ve cada rol está en
+`navegacionLogica.ts` (con pruebas):
+
+| Grupo | Roles | Pestañas |
+|---|---|---|
+| Familia | apoderado | Inicio · Pagos · Académico · Avisos · Perfil |
+| Alumno, docente, operación, oficina | el resto | Inicio (funciones del rol) · Perfil — se rehacen en S37–S39 |
+
+- Quien tiene varios roles (p. ej. docente y apoderado) elige el modo en **Perfil**; se recuerda en el teléfono.
+- **Inicio de la familia** (`familiaApp.tsx`, diseño `MOB/inicio_familia` del kit): selector de hijo con foto,
+  pensión por vencer con «Pagar en línea», asistencia de hoy, notas recientes y libreta, tareas pendientes,
+  comunicado importante con «Confirmar lectura» y los servicios de los módulos encendidos. Todo sale de
+  una sola llamada, `GET /app/familia`; deslizar hacia abajo recarga.
+- **Académico:** notas y libreta, asistencia del mes en calendario (`GET /familia/asistencia`) con justificar,
+  tareas y horario de la sección (`GET /familia/horario`). **Pagos** y **Avisos** filtran por el hijo elegido.
+- **Perfil:** tamaño de letra y alto contraste para toda la app (comparten la preferencia con el aula),
+  avisos por tipo, huella o rostro, cambiar de colegio y cerrar sesión.
+- Un aviso push abre su pestaña según su `pantalla` (`pestanaDeAviso`).
+
 ## Desarrollo
 
 Está fuera del workspace de pnpm (React Native necesita `node_modules` sin enlaces).

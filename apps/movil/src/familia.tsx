@@ -33,8 +33,9 @@ function useAccion() {
  * EDUN-82 · Estado de cuenta en la app: cargos por hijo, próximo vencimiento y comprobantes
  * descargables. EDUN-73 · Desde aquí se pagan en línea los cargos ya emitidos.
  */
-export function EstadoCuentaApp({ api, color }: { api: Cliente; color: string }) {
-  const [datos, setDatos] = useState<EstadoCuenta | null>(null);
+export function EstadoCuentaApp({ api, color, alumnoId }: { api: Cliente; color: string; alumnoId?: number }) {
+  const [completo, setDatos] = useState<EstadoCuenta | null>(null);
+  const datos = completo && alumnoId ? { ...completo, hijos: completo.hijos.filter((h) => h.alumno_id === alumnoId) } : completo;
   const [elegidos, setElegidos] = useState<number[]>([]);
   const accion = useAccion();
   const cargar = useCallback(() => api.pedir<EstadoCuenta>('/familia/estado-cuenta').then(setDatos).catch(() => setDatos({ hijos: [], comprobantes: [] })), [api]);

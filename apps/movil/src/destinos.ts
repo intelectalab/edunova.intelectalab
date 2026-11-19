@@ -1,7 +1,8 @@
 // EDUN-196 · Cada aviso push trae `pantalla` (y a veces `id`): la app abre la pantalla relacionada.
 // Las pantallas que aún no existen en la app caen en el inicio con el aviso visible.
+// S36 · `origen` conserva la pantalla pedida para abrir la pestaña que corresponde (navegacionLogica).
 
-export type Destino = { pantalla: 'inicio' | 'notificaciones' | 'preferencias'; id?: number; tipo?: string; aviso?: string };
+export type Destino = { pantalla: 'inicio' | 'notificaciones' | 'preferencias'; id?: number; tipo?: string; aviso?: string; origen?: string };
 
 const CONOCIDAS = new Set(['inicio', 'notificaciones', 'preferencias']);
 
@@ -10,7 +11,7 @@ export function destinoDeAviso(datos: Record<string, unknown> | null | undefined
   const id = typeof datos?.id === 'number' ? datos.id : typeof datos?.id === 'string' && /^\d+$/.test(datos.id) ? Number(datos.id) : undefined;
   const tipo = typeof datos?.tipo === 'string' ? datos.tipo : undefined;
   if (CONOCIDAS.has(pantalla)) {
-    return { pantalla: pantalla as Destino['pantalla'], id, tipo };
+    return { pantalla: pantalla as Destino['pantalla'], id, tipo, origen: typeof datos?.pantalla === 'string' ? pantalla : undefined };
   }
-  return { pantalla: 'inicio', id, tipo, aviso: titulo ?? undefined };
+  return { pantalla: 'inicio', id, tipo, aviso: titulo ?? undefined, origen: typeof datos?.pantalla === 'string' ? pantalla : undefined };
 }

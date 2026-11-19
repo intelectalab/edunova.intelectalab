@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, Text, TextInput, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import type { Cliente } from './api';
-import { ACCESIBILIDAD_INICIAL, coloresAula, faltanRespuestas, leerAccesibilidad, plazo, siguienteEscala, type Accesibilidad } from './aulaLogica';
+import { coloresAula, faltanRespuestas, plazo, siguienteEscala, type Accesibilidad } from './aulaLogica';
+import { useTema } from './tema';
 import { Boton, estilos, MensajeError } from './ui';
 
 type Recurso = { id: number; tipo: string; titulo: string; url: string | null; contenido: string | null; archivo_id: number | null; completado: boolean; bloqueado: boolean; porcentaje: number };
@@ -13,16 +13,12 @@ type Unidad = { id: number; titulo: string; recursos: Recurso[]; tareas: Tarea[]
 type Curso = { id: number; titulo: string; area: string; docente: string; avance: number | null; continuar: { recurso_id: number; titulo: string } | null; unidades: Unidad[]; video_pct_completado: number };
 type CursoLista = { id: number; area: string; docente: string; pendientes: number };
 type Pregunta = { id: number; tipo: string; enunciado: string; opciones: unknown };
-type TareaHijo = { id: number; titulo: string; curso: string; vence_at: string; alumno: string; estado: string; nota: string | null };
+type TareaHijo = { id: number; titulo: string; curso: string; vence_at: string; alumno: string; alumno_id: number; estado: string; nota: string | null };
 
-const CLAVE_ACCESIBILIDAD = 'edunova.aula.accesibilidad';
-
+/** S36 · La preferencia de letra y contraste es de toda la app (Perfil) y se comparte con el aula. */
 function useAccesibilidad(): [Accesibilidad, (a: Accesibilidad) => void] {
-  const [a, setA] = useState<Accesibilidad>(ACCESIBILIDAD_INICIAL);
-  useEffect(() => {
-    AsyncStorage.getItem(CLAVE_ACCESIBILIDAD).then((t) => setA(leerAccesibilidad(t))).catch(() => undefined);
-  }, []);
-  return [a, (n) => { setA(n); void AsyncStorage.setItem(CLAVE_ACCESIBILIDAD, JSON.stringify(n)).catch(() => undefined); }];
+  const { acc, cambiar } = useTema();
+  return [acc, cambiar];
 }
 
 /**
@@ -235,12 +231,13 @@ function EntregaTarea({ api, cursoId, tarea, color, escala, alTerminar }: { api:
 const ESTADO_HIJO: Record<string, string> = { pendiente: 'Pendiente', entregada: 'Entregada', revisada: 'Revisada', vencida: 'No entregó' };
 
 /** EDUN-134 · La familia ve en la app las tareas de sus hijos. */
-export function TareasHijosApp({ api }: { api: Cliente }) {
-  const [tareas, setTareas] = useState<TareaHijo[]>([]);
+export function TareasHijosApp({ api, alumnoId, vacio }: { api: Cliente; alumnoId?: number; vacio?: string }) {
+  const [todas, setTareas] = useState<TareaHijo[]>([]);
+  const tareas = alumnoId ? todas.filter((t) => t.alumno_id === alumnoId) : todas;
   useEffect(() => {
     api.pedir<{ data: TareaHijo[] }>('/aula/familia/tareas').then((r) => setTareas(r.data)).catch(() => setTareas([]));
   }, [api]);
-  if (!tareas.length) return null;
+  if (!tareas.length) return vacio ? <View style={estilos.tarjeta}><Text style={estilos.etiqueta}>Tareas del aula</Text><Text style={estilos.subtitulo}>{vacio}</Text></View> : null;
   return (
     <View style={estilos.tarjeta}>
       <Text style={estilos.etiqueta}>Tareas del aula</Text>
